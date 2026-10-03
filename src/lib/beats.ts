@@ -231,7 +231,6 @@ export async function downloadAsset(asset: BeatAsset): Promise<void> {
 }
 
 export type BeatInsert = {
-  owner_id: string;
   title: string;
   type_beat_artists: string[];
   bpm: number;
@@ -244,9 +243,19 @@ export type BeatInsert = {
   is_public: boolean;
 };
 
-export async function createBeat(supabase: SupabaseBrowserClient, beat: BeatInsert) {
-  const { data, error } = await supabase.from("beats").insert(beat).select("id, title").single();
+/** Создание бита идёт через сервер: там нормализация тегов, цен и тональности. */
+export async function createBeat(beat: BeatInsert): Promise<{ id: string; title: string }> {
+  const response = await fetch("/api/beats", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(beat),
+  });
 
-  if (error) throw error;
-  return data;
+  const data = (await response.json()) as { id?: string; title?: string; error?: string };
+
+  if (!response.ok || !data.id) {
+    throw new Error(data.error ?? "Не удалось создать бит");
+  }
+
+  return { id: data.id, title: data.title ?? beat.title };
 }

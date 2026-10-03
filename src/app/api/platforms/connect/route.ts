@@ -19,6 +19,13 @@ async function getUser() {
   return { supabase, user };
 }
 
+/** Ключи, которые нельзя оставлять в meta: токены живут только в зашифрованной колонке. */
+const SECRET_KEYS = new Set(["accesstoken", "token", "secret", "password", "webhookurl"]);
+
+function stripSecrets(meta: Record<string, string | number | null>): Record<string, string | number | null> {
+  return Object.fromEntries(Object.entries(meta).filter(([key]) => !SECRET_KEYS.has(key.toLowerCase())));
+}
+
 /** Подключение или обновление площадки. */
 export async function POST(request: Request) {
   const body = (await request.json()) as Body;
@@ -33,14 +40,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Эта площадка подключается вручную" }, { status: 400 });
   }
 
-  const { supabase, user } = await getUser();
+const { supabase, user } = await getUser();
   if (!user) return NextResponse.json({ error: "Нужно войти" }, { status: 401 });
 
   const meta = body.meta ?? {};
 
+  // у вебхука Discord URL сам по себе секрет, у токенной площадки токен приходит отдельным полем
+  const webhook = platform.auth === "webhook" ? String(meta.webhookUrl ?? "").trim() : "";
+  const accessToken = webhook || body.accessToken?.trim() || String(meta.accessToken ?? "").trim();
+
   if (platform.auth === "token" || platform.auth === "webhook") {
-    const missing = (platform.fields ?? []).filter((field) => !String(meta[field.key] ?? "").trim());
-    if (missing.length > 0 && !body.accessToken) {
+    const missing = (platform.fields ?? [])
+      .filter((field) => field.key !== "accessToken")
+      .filter((field) => !String(meta[field.key] ?? "").trim());
+
+    if (missing.length > 0 && !accessToken) {
       return NextResponse.json({ error: `Заполни: ${missing.map((field) => field.label).join(", ")}` }, { status: 400 });
     }
   }
@@ -49,8 +63,8 @@ export async function POST(request: Request) {
     user_id: user.id,
     platform: body.platform,
     label: body.label ?? null,
-    meta,
-    access_token_cipher: body.accessToken ? encryptSecret(body.accessToken) : null,
+    meta: stripSecrets(meta),
+    access_token_cipher: accessToken ? encryptSecret(accessToken) : null,
   };
 
   const { error } = await supabase

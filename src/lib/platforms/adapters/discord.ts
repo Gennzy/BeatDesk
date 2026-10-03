@@ -6,7 +6,9 @@ export async function publishToDiscord(
   connection: PlatformConnection,
   payload: PublishPayload,
 ): Promise<PublishResult> {
-  const webhookUrl = connection.meta?.webhookUrl ? String(connection.meta.webhookUrl) : null;
+  const webhookUrl =
+    connection.accessToken?.trim() ||
+    (connection.meta?.webhookUrl ? String(connection.meta.webhookUrl) : null);
 
   if (!webhookUrl || !webhookUrl.startsWith("https://discord.com/api/webhooks/")) {
     return { ok: false, error: "Некорректный webhook URL" };

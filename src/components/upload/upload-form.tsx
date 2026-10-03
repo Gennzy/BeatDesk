@@ -118,7 +118,6 @@ export function UploadForm({ userId }: { userId: string }) {
     const beatId = crypto.randomUUID();
 
     const payload: BeatInsert = {
-      owner_id: userId,
       title: String(form.get("title") ?? "").trim(),
       type_beat_artists: String(form.get("typeBeat") ?? "")
         .split(",")
@@ -154,7 +153,7 @@ export function UploadForm({ userId }: { userId: string }) {
         onStep: setStep,
       });
 
-      const beat = await createBeat(supabase, {
+      const beat = await createBeat({
         ...payload,
         mp3_url: uploaded.audioUrl,
         cover_url: uploaded.coverUrl,

@@ -1,12 +1,21 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { fetchPublicBeats, type FeedFilters, type FeedSort } from "@/lib/feed";
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   if (!isSupabaseConfigured) {
     return NextResponse.json({ error: "not_configured" }, { status: 503 });
+  }
+
+  const limit = rateLimit(clientKey(request, "feed"), 120, 60_000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Слишком много запросов" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
+    );
   }
 
   const params = new URL(request.url).searchParams;

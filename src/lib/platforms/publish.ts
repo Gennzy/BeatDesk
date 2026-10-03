@@ -41,6 +41,16 @@ export async function publishBeat(input: {
   const platform = PLATFORM_MAP[input.platform];
   const payload = buildPayload(input.beat);
 
+  // токен площадки лежит только в зашифрованной колонке, в meta его больше нет
+  const decrypt = (connection: StoredConnection | undefined): string | null => {
+    if (!connection?.accessTokenCipher || !input.decrypt) return null;
+    try {
+      return input.decrypt(connection.accessTokenCipher);
+    } catch {
+      return null;
+    }
+  };
+
   if (platform.kind === "manual") {
     return {
       ok: false,
@@ -57,14 +67,20 @@ export async function publishBeat(input: {
   }
 
   if (input.platform === "vk") {
-    const decrypted = input.connection?.accessTokenCipher && input.decrypt ? input.decrypt(input.connection.accessTokenCipher) : null;
+    const decrypted = decrypt(input.connection);
     const meta = (input.connection?.meta ?? {}) as Record<string, string | number | null>;
 
-    return publishToVk({ accessToken: decrypted ?? (meta.accessToken as string | undefined) ?? null, meta }, payload);
+    return publishToVk({ accessToken: decrypted, meta }, payload);
   }
 
   if (input.platform === "discord") {
-    return publishToDiscord(toConnection(input.connection), payload);
+    return publishToDiscord(
+      {
+        accessToken: decrypt(input.connection),
+        meta: (input.connection?.meta ?? {}) as Record<string, string | number | null>,
+      },
+      payload,
+    );
   }
 
   if (input.platform === "soundcloud" || input.platform === "youtube") {

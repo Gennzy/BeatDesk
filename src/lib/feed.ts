@@ -83,6 +83,19 @@ type QueryOptions = {
 
 type QueryResult = { data: BeatRow[] | null; error: { message: string } | null };
 
+/**
+ * Поиск идёт по названию и по тегу. Теги в базе хранятся без решётки,
+ * поэтому в фильтр уходит чистое слово: # и запятые разрывают or-фильтр PostgREST.
+ */
+export function normalizeSearch(input: string): string {
+  return input
+    .replace(/^[#\s]+/, "")
+    .replace(/[#%,()'"\\]/g, " ")
+    .trim()
+    .toLowerCase()
+    .slice(0, 60);
+}
+
 async function queryBeats(supabase: SupabaseServerClient, columns: string, options: QueryOptions): Promise<QueryResult> {
   const filters = options.filters ?? {};
   const limit = options.limit ?? FEED_PAGE_SIZE;
@@ -98,8 +111,8 @@ async function queryBeats(supabase: SupabaseServerClient, columns: string, optio
   }
 
   if (filters.query) {
-    const clean = filters.query.replace(/[#%,]/g, " ").trim().toLowerCase();
-    if (clean) query = query.or(`title.ilike.%${clean}%,tags.cs.{%${clean}}`);
+    const clean = normalizeSearch(filters.query);
+    if (clean) query = query.or(`title.ilike.%${clean}%,tags.cs.{${clean}}`);
   }
 
   if (filters.key) query = query.eq("key", filters.key);
@@ -107,7 +120,12 @@ async function queryBeats(supabase: SupabaseServerClient, columns: string, optio
   if (typeof filters.bpmMax === "number" && Number.isFinite(filters.bpmMax)) query = query.lte("bpm", filters.bpmMax);
 
   const canSortByPlays = columns.includes("plays") && filters.sort === "popular";
-  query = canSortByPlays ? query.order("plays", { ascending: false }) : query.order("created_at", { ascending: false });
+
+  if (canSortByPlays) {
+    query = query.order("plays", { ascending: false }).order("created_at", { ascending: false });
+  } else {
+    query = query.order("created_at", { ascending: false });
+  }
 
   const result = await query.range(offset, offset + limit - 1);
   return result as QueryResult;

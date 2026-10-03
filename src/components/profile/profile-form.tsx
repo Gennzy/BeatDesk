@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
@@ -28,6 +28,8 @@ const PLATFORMS = [
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
+type UsernameStatus = "idle" | "checking" | "free" | "taken" | "invalid";
+
 export function ProfileForm({ userId, profile }: { userId: string; profile: ProfileData }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -38,7 +40,33 @@ export function ProfileForm({ userId, profile }: { userId: string; profile: Prof
   const [links, setLinks] = useState<Record<string, string>>(profile.links);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatarUrl);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [usernameState, setUsernameState] = useState<UsernameStatus>("idle");
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+  const trimmedUsername = username.trim();
+  const usernameUnchanged = trimmedUsername === profile.username;
+  const usernameFormatOk = /^[a-zA-Z0-9_]{3,24}$/.test(trimmedUsername);
+  const usernameStatus: UsernameStatus = usernameUnchanged
+    ? "idle"
+    : !usernameFormatOk
+      ? "invalid"
+      : usernameState;
+
+  useEffect(() => {
+    if (usernameUnchanged || !usernameFormatOk) return;
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/profile/username?username=${encodeURIComponent(trimmedUsername)}`);
+        const data = (await response.json()) as { available?: boolean };
+        setUsernameState(data.available ? "free" : "taken");
+      } catch {
+        setUsernameState("idle");
+      }
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [trimmedUsername, usernameUnchanged, usernameFormatOk]);
 
   async function handleAvatar(event: ChangeEvent<HTMLInputElement>) {
     const picked = event.target.files?.[0];
@@ -73,6 +101,12 @@ export function ProfileForm({ userId, profile }: { userId: string; profile: Prof
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (usernameStatus === "invalid" || usernameStatus === "taken") {
+      setState("error");
+      return;
+    }
+
     setState("saving");
 
     try {
@@ -139,7 +173,13 @@ export function ProfileForm({ userId, profile }: { userId: string; profile: Prof
             pattern="[A-Za-z0-9_]{3,24}"
             maxLength={24}
             required
+            aria-describedby="username-state"
           />
+          <p id="username-state" aria-live="polite" className="label">
+            {usernameStatus === "invalid" ? t("profile.usernameInvalid") : null}
+            {usernameStatus === "taken" ? t("profile.usernameTaken") : null}
+            {usernameStatus === "free" ? t("profile.usernameFree") : null}
+          </p>
         </Field>
 
         <Field label={t("profile.bio")} hint={t("profile.bioHint")}>

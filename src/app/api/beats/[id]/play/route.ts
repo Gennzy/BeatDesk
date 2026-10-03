@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server";
 
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 /** Один прослушивание = один вызов. Счётчик не должен расти от догрузки страницы. */
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+
+  const limit = rateLimit(clientKey(request, `play:${id}`), 20, 60_000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Слишком часто" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
+    );
+  }
 
   try {
     const supabase = await createClient();

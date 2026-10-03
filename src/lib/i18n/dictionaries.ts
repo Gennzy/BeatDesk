@@ -142,8 +142,10 @@ const ru = {
   "profile.save": "Сохранить",
   "profile.saved": "Сохранено",
   "profile.saveError": "Не сохранилось",
-  "profile.usernameTaken": "Такой ник уже занят",
   "profile.yours": "Ваши биты",
+  "profile.usernameInvalid": "Ник: 3–24 символа, латиница, цифры и _",
+  "profile.usernameTaken": "Такой ник уже занят",
+  "profile.usernameFree": "Ник свободен",
   "profile.linkPlaceholder": "https://",
 
   "upload.title": "Загрузка бита",
@@ -340,8 +342,10 @@ const en: Record<keyof typeof ru, string> = {
   "profile.save": "Save",
   "profile.saved": "Saved",
   "profile.saveError": "Could not save",
-  "profile.usernameTaken": "That handle is taken",
   "profile.yours": "Your beats",
+  "profile.usernameInvalid": "Username: 3–24 chars, letters, digits and _",
+  "profile.usernameTaken": "That username is taken",
+  "profile.usernameFree": "Username is available",
   "profile.linkPlaceholder": "https://",
 
   "upload.title": "Upload a beat",
