@@ -29,5 +29,5 @@ create policy "owners delete own masters"
   on storage.objects for delete
   using (bucket_id = 'masters' and (storage.foldername(name))[1] = (select auth.uid()::text));
 
-comment on bucket 'beats' is 'Публичные превью: тегированный MP3 и обложки';
-comment on bucket 'masters' is 'Приватные мастера: WAV, ZIP, RAR. Доступны только автору';
+-- бакет beats: публичные превью (тегированный MP3) и обложки
+-- бакет masters: приватные мастера (WAV, ZIP, RAR), доступны только автору

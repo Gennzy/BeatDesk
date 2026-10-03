@@ -1,12 +1,22 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import { ImageResponse } from "next/og";
 
-import { SITE_NAME } from "@/lib/site";
 
 export const alt = "BeatDesk — выкладка битов без рутины";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
+async function logoDataUrl(): Promise<string> {
+  const file = await readFile(path.join(process.cwd(), "public", "brand", "beatdesk-mark-180.png"));
+
+  return `data:image/png;base64,${file.toString("base64")}`;
+}
+
 export default async function OpengraphImage() {
+  const logo = await logoDataUrl();
+
   return new ImageResponse(
     (
       <div
@@ -22,9 +32,9 @@ export default async function OpengraphImage() {
           fontFamily: "sans-serif",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 20, fontSize: 34, letterSpacing: 6 }}>
-          <div style={{ width: 20, height: 20, background: "#d8ff3e" }} />
-          <div style={{ fontWeight: 700 }}>{SITE_NAME.toUpperCase()}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logo} width={72} height={72} alt="" />
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 900 }}>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Logo } from "@/components/layout/logo";
 import { Container } from "@/components/ui/container";
 import { getT } from "@/lib/i18n/server";
 
@@ -11,10 +12,7 @@ export async function SiteFooter() {
       <Container>
         <div className="grid gap-10 py-14 md:grid-cols-3">
           <div className="flex flex-col gap-3">
-            <span className="flex items-center gap-2.5">
-              <span aria-hidden className="size-2 bg-signal" />
-              <span className="font-display text-sm font-black tracking-[0.22em] text-paper uppercase">BeatDesk</span>
-            </span>
+            <Logo className="h-[19px]" />
             <p className="max-w-[30ch] text-sm text-mute">{t("footer.tagline")}</p>
           </div>
 

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { LanguageSwitch } from "@/components/language-switch";
+import { Logo } from "@/components/layout/logo";
 import { Container } from "@/components/ui/container";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
@@ -14,9 +15,8 @@ import type { SessionUser } from "@/lib/supabase/user";
 
 export function Wordmark({ className }: { className?: string }) {
   return (
-    <Link href="/" className={cn("flex items-center gap-2.5", className)} aria-label="BeatDesk">
-      <span aria-hidden className="size-2 bg-signal" />
-      <span className="font-display text-sm font-black tracking-[0.22em] text-paper uppercase">BeatDesk</span>
+    <Link href="/" className={cn("flex items-center", className)} aria-label="BeatDesk">
+      <Logo priority className="h-[26px]" />
     </Link>
   );
 }
