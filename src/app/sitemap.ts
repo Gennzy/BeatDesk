@@ -14,25 +14,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   if (!supabase) return base;
 
-  const [beats, profiles] = await Promise.all([
-    supabase
-      .from("beats")
-      .select("id, created_at")
-      .eq("is_public", true)
-      .order("created_at", { ascending: false })
-      .limit(500),
-    supabase.from("profiles").select("username, created_at").limit(500),
-  ]);
+  const { data: beats } = await supabase
+    .from("beats")
+    .select("id, owner_id, created_at")
+    .eq("is_public", true)
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  // в индекс попадают только битмейкеры с хотя бы одним публичным битом
+  const ownerIds = [...new Set((beats ?? []).map((beat) => beat.owner_id))];
+  const { data: profiles } = ownerIds.length
+    ? await supabase.from("profiles").select("id, username, created_at").in("id", ownerIds)
+    : { data: [] };
 
   return [
     ...base,
-    ...(beats.data ?? []).map((beat) => ({
+    ...(beats ?? []).map((beat) => ({
       url: `${siteUrl}/beats/${beat.id}`,
       lastModified: new Date(beat.created_at),
       changeFrequency: "weekly" as const,
       priority: 0.7,
     })),
-    ...(profiles.data ?? []).map((profile) => ({
+    ...(profiles ?? []).map((profile) => ({
       url: `${siteUrl}/beatmakers/${profile.username}`,
       lastModified: new Date(profile.created_at),
       changeFrequency: "weekly" as const,
