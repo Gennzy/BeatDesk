@@ -1,0 +1,5 @@
+# Vercel не нуждается в локальных артефактах
+.next
+logs
+*.tsbuildinfo
+*.bat

@@ -1,0 +1,135 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+
+import { BeatManager } from "@/components/profile/beat-manager";
+import { Container, SectionHead } from "@/components/ui/container";
+import { fetchBeatsByOwner } from "@/lib/feed";
+import { getLocale, getT } from "@/lib/i18n/server";
+import { pluralEn, pluralRu } from "@/lib/plural";
+import { getSupabase } from "@/lib/supabase/user";
+
+const PLATFORM_KEYS = ["beatchain", "youtube", "vk", "telegram", "instagram"] as const;
+
+const PLATFORM_LABELS: Record<(typeof PLATFORM_KEYS)[number], string> = {
+  beatchain: "BeatChain",
+  youtube: "YouTube",
+  vk: "ВК",
+  telegram: "Telegram",
+  instagram: "Instagram",
+};
+
+export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
+  const { username } = await params;
+  const supabase = await getSupabase();
+
+  const { data } = supabase
+    ? await supabase.from("profiles").select("username, avatar_url, bio").eq("username", username).maybeSingle()
+    : { data: null };
+
+  if (!data) return { title: `@${username}` };
+
+  const description = data.bio ?? `Биты битмейкера @${data.username}: BPM, тональность, теги и цены.`;
+
+  return {
+    title: `@${data.username}`,
+    description,
+    alternates: { canonical: `/beatmakers/${data.username}` },
+    openGraph: {
+      type: "profile",
+      title: `@${data.username} · BeatDesk`,
+      description,
+      images: data.avatar_url ? [{ url: data.avatar_url }] : undefined,
+    },
+    twitter: { card: "summary_large_image", title: `@${data.username}`, description },
+  };
+}
+
+export default async function BeatmakerPage({ params }: { params: Promise<{ username: string }> }) {
+  const { username } = await params;
+  const [t, locale, supabase] = await Promise.all([getT(), getLocale(), getSupabase()]);
+
+  if (!supabase) {
+    notFound();
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, username, avatar_url, bio, links")
+    .eq("username", username)
+    .maybeSingle();
+
+  if (!profile) {
+    notFound();
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isOwner = user?.id === profile.id;
+
+  const beats = await fetchBeatsByOwner(supabase, profile.id, isOwner).catch(() => []);
+  const links = (profile.links ?? {}) as Record<string, string>;
+  const hasLinks = PLATFORM_KEYS.some((key) => Boolean(links[key]));
+
+  return (
+    <section className="py-14 lg:py-20">
+      <Container>
+        <div className="grid gap-10 border-b border-line pb-12 lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-8">
+          <div className="grid size-24 place-items-center overflow-hidden border border-line bg-ink-2 font-display text-2xl text-mute">
+            {profile.avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profile.avatar_url} alt="" className="size-full object-cover" />
+            ) : (
+              profile.username.slice(0, 2).toUpperCase()
+            )}
+          </div>
+
+          <div className="flex flex-col gap-5">
+            <span className="label text-mute">{t("profile.title")}</span>
+            <h1 className="flex items-baseline gap-2 font-display text-section font-black text-paper uppercase">
+              <span className="font-mono text-title text-mute">@</span>
+              {profile.username}
+            </h1>
+            <p className="max-w-[58ch] text-sub text-mute">{profile.bio ?? t("profile.bioPlaceholder")}</p>
+
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-2">
+              <span className="label text-mute">{t("profile.links")}</span>
+              {hasLinks
+                ? PLATFORM_KEYS.filter((key) => links[key]).map((key) => (
+                    <a
+                      key={key}
+                      href={links[key]}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="label text-paper underline-offset-4 transition-colors hover:text-signal hover:underline"
+                    >
+                      {PLATFORM_LABELS[key]}
+                    </a>
+                  ))
+                : PLATFORM_KEYS.map((key) => (
+                    <span key={key} className="label text-mute">
+                      {PLATFORM_LABELS[key]}
+                    </span>
+                  ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-8 pt-12">
+          <SectionHead
+            label={t("profile.beats")}
+            hint={beats.length > 0 ? `${beats.length} ${locale === "ru" ? pluralRu(beats.length, "бит", "бита", "битов") : pluralEn(beats.length, "beat", "beats")}` : undefined}
+          />
+
+          <BeatManager
+            beats={beats}
+            isOwner={isOwner}
+            redirectTo={`/beatmakers/${profile.username}`}
+            emptyTitle={t("profile.empty")}
+            emptyDescription={isOwner ? t("profile.emptyOwner") : t("profile.emptyGuest")}
+          />
+        </div>
+      </Container>
+    </section>
+  );
+}
