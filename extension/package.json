@@ -1,0 +1,17 @@
+{
+  "name": "beatdesk-fill",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Подставляет данные бита BeatDesk в формы BeatStars и BeatChain. Ничего не публикует сама.",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7",
+    "@types/chrome": "^0.0.287"
+  }
+}

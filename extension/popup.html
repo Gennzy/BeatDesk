@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <title>BeatDesk</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #0b0b0b;
+        --line: #26262b;
+        --paper: #f4f4f5;
+        --mute: #8b8b93;
+        --signal: #d8ff3e;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        width: 340px;
+        padding: 16px;
+        background: var(--ink);
+        color: var(--paper);
+        font: 13px/1.5 ui-sans-serif, system-ui, sans-serif;
+      }
+      h1 {
+        margin: 0 0 4px;
+        font-size: 15px;
+        letter-spacing: 0.02em;
+      }
+      p.sub {
+        margin: 0 0 14px;
+        color: var(--mute);
+        font-size: 12px;
+      }
+      label {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--mute);
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      input {
+        width: 100%;
+        height: 34px;
+        padding: 0 10px;
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        background: #000;
+        color: var(--paper);
+        font: 12px/1 ui-monospace, monospace;
+      }
+      button {
+        width: 100%;
+        height: 36px;
+        margin-top: 10px;
+        border: 0;
+        border-radius: 3px;
+        background: var(--signal);
+        color: #0b0b0b;
+        font: 700 11px/1 ui-sans-serif, system-ui, sans-serif;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      button.ghost {
+        background: transparent;
+        border: 1px solid var(--line);
+        color: var(--mute);
+      }
+      .status {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+        color: var(--mute);
+        font-size: 12px;
+      }
+      .status.ok {
+        color: var(--signal);
+      }
+      .status.err {
+        color: #f59e0b;
+      }
+      dl {
+        display: grid;
+        grid-template-columns: 96px 1fr;
+        gap: 3px 10px;
+        margin: 8px 0 0;
+      }
+      dt {
+        color: var(--mute);
+      }
+      dd {
+        margin: 0;
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+        overflow-wrap: anywhere;
+      }
+      .warn {
+        margin-top: 12px;
+        color: var(--mute);
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>BeatDesk — заполнение форм</h1>
+    <p class="sub">Вставь ссылку на бит, потом открой форму на маркетплейсе.</p>
+
+    <label for="url">Ссылка на бит</label>
+    <input id="url" type="url" placeholder="https://beat-desk.vercel.app/beats/…" spellcheck="false" />
+
+    <button id="load" type="button">Загрузить бит</button>
+
+    <div id="status" class="status">Форма должна быть уже открыта на BeatStars или BeatChain.</div>
+    <dl id="beat"></dl>
+    <button id="fill" class="ghost" type="button" disabled>Заполнить форму на этой вкладке</button>
+
+    <p class="warn">Расширение только заполняет поля. Кнопку публикации нажимаешь ты.</p>
+
+    <script type="module" src="/src/popup.ts"></script>
+  </body>
+</html>

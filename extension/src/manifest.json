@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "BeatDesk — заполнение форм",
+  "version": "0.1.0",
+  "description": "Подставляет данные бита BeatDesk в формы BeatStars и BeatChain. Публиковать всё равно нужно вручную.",
+  "action": {
+    "default_title": "BeatDesk: заполнить форму",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": [
+    "https://studio.beatstars.com/*",
+    "https://www.beatstars.com/*",
+    "https://beatchain.io/*",
+    "https://*.beat-desk.vercel.app/*",
+    "http://localhost:3161/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://studio.beatstars.com/*", "https://www.beatstars.com/*", "https://beatchain.io/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
