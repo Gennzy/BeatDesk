@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 export const SITE_NAME = "BeatDesk";
 
 export const SITE_DESCRIPTION =
-  "BeatDesk собирает название, BPM, тональность и теги для BeatChain, YouTube, ВК и Telegram и показывает бит в общей ленте битмейкеров.";
+  "BeatDesk ведёт бит от загрузки до публикации: имена файлов, тексты для постов и данные для маркетплейсов, автопост в Telegram, ВК и Discord. Мастера и стемы остаются приватными.";
 
 /**
  * Адрес сайта для canonical, og-тегов, sitemap и ссылок в постах.

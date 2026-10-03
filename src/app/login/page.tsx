@@ -10,7 +10,7 @@ import { getSessionUser } from "@/lib/supabase/user";
 
 export const metadata: Metadata = {
   title: "Вход",
-  description: "Вход и регистрация в BeatDesk: загружай биты, получай блоки для BeatChain, YouTube, ВК и Telegram.",
+  description: "Вход и регистрация в BeatDesk: загружай биты, публикуй их в Telegram, ВК и Discord, получай готовые блоки для маркетплейсов.",
   robots: { index: false, follow: true },
 };
 

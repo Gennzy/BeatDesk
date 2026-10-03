@@ -13,12 +13,12 @@ const ru = {
   "lang.en": "EN",
 
   "hero.title.line1": "Один бит",
-  "hero.title.line2": "четыре",
+  "hero.title.line2": "все",
   "hero.title.line3": "площадки",
-  "hero.sub": "BeatDesk собирает название, BPM, тональность и теги для BeatChain, YouTube, ВК и Telegram. Заполнил форму один раз: дальше копируешь и вставляешь.",
+  "hero.sub": "Загрузи бит один раз: BeatDesk придумает имена файлов, соберёт тексты для постов и данные для маркетплейсов. Мастера и стемы останутся приватными.",
   "hero.ctaPrimary": "Загрузить бит",
   "hero.ctaSecondary": "Смотреть ленту",
-  "hero.platforms": "BeatChain · YouTube · ВК · Telegram",
+  "hero.platforms": "Telegram · ВК · Discord · BeatStars · Airbit",
 
   "feed.label": "Лента",
   "feed.hint": "Публичные биты битмейкеров",
@@ -113,7 +113,7 @@ const ru = {
   "publish.pasteTitle": "Что вставить",
   "publish.noConnections": "Пока ничего не подключено.",
   "share.title": "Раздача",
-  "share.note": "BeatDesk не продаёт биты. Здесь тексты и имена файлов, продажа идёт на BeatChain и других площадках.",
+  "share.note": "BeatDesk не продаёт биты и не отдаёт мастера: здесь превью, тексты и имена файлов. Продажа идёт на BeatStars, Airbit и других площадках.",
   "share.filenames": "Имена файлов",
   "share.platforms": "Блоки для площадок",
   "share.files": "Файлы",
@@ -207,6 +207,7 @@ const ru = {
   "footer.nav": "Разделы",
   "footer.rights": "BeatDesk · сервис для битмейкеров",
   "footer.placeholder": "Здесь ничего лишнего",
+  "footer.formats": "MP3 · ≤15 МБ · мастера и стемы приватные",
 } satisfies Record<string, string>;
 
 const en: Record<keyof typeof ru, string> = {
@@ -222,12 +223,12 @@ const en: Record<keyof typeof ru, string> = {
   "lang.en": "EN",
 
   "hero.title.line1": "One beat",
-  "hero.title.line2": "four",
-  "hero.title.line3": "platforms",
-  "hero.sub": "BeatDesk builds the title, BPM, key and tags for BeatChain, YouTube, VK and Telegram. Fill the form once, then copy and paste.",
+  "hero.title.line2": "every",
+  "hero.title.line3": "platform",
+  "hero.sub": "Upload a beat once: BeatDesk names the files, writes the post copy and fills in the marketplace fields. Masters and stems stay private.",
   "hero.ctaPrimary": "Upload a beat",
   "hero.ctaSecondary": "Open the feed",
-  "hero.platforms": "BeatChain · YouTube · VK · Telegram",
+  "hero.platforms": "Telegram · VK · Discord · BeatStars · Airbit",
 
   "feed.label": "Feed",
   "feed.hint": "Public beats from beatmakers",
@@ -322,7 +323,7 @@ const en: Record<keyof typeof ru, string> = {
   "publish.pasteTitle": "Paste these fields",
   "publish.noConnections": "Nothing connected yet.",
   "share.title": "Distribution",
-  "share.note": "BeatDesk does not sell beats. These texts and file names go to BeatChain and the other platforms.",
+  "share.note": "BeatDesk does not sell beats and never exposes masters: this page has the preview, the copy and the file names. Sales happen on BeatStars, Airbit and the other marketplaces.",
   "share.filenames": "File names",
   "share.platforms": "Platform blocks",
   "share.files": "Files",
@@ -416,6 +417,7 @@ const en: Record<keyof typeof ru, string> = {
   "footer.nav": "Sections",
   "footer.rights": "BeatDesk · a service for beatmakers",
   "footer.placeholder": "Nothing extra here",
+  "footer.formats": "MP3 · ≤15 MB · masters and stems stay private",
 };
 
 export const dictionaries = { ru, en } satisfies Record<Locale, Record<keyof typeof ru, string>>;

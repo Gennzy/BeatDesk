@@ -38,7 +38,7 @@ export async function SiteFooter() {
 
         <div className="flex flex-col gap-2 border-t border-line py-6 md:flex-row md:items-center md:justify-between">
           <span className="label text-mute">{t("footer.rights")}</span>
-          <span className="label text-mute">MP3 · ≤15 МБ · BeatChain / YouTube / ВК / Telegram</span>
+          <span className="label text-mute">{t("footer.formats")}</span>
         </div>
       </Container>
     </footer>
