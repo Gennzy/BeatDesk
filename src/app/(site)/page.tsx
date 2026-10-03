@@ -13,7 +13,7 @@ import { getT } from "@/lib/i18n/server";
 import { getSupabase } from "@/lib/supabase/user";
 
 export const metadata: Metadata = {
-  // заголовок главной берётся из дефолта в layout: «BeatDesk · выкладка битов без рутины»
+  // заголовок главной берётся из дефолта в layout
   description: "Свежие биты битмейкеров: обложка, BPM, тональность, теги и цены. Слушай прямо в ленте.",
   alternates: { canonical: "/" },
   openGraph: { title: "Лента битов · BeatDesk", description: "Свежие публичные биты битмейкеров с плеером." },

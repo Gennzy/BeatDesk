@@ -38,7 +38,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     metadataBase,
     title: {
-      default: "BeatDesk · выкладка битов без рутины",
+      default: "BeatDesk · публикация битов без рутины",
       template: `%s · ${SITE_NAME}`,
     },
     description: SITE_DESCRIPTION,
@@ -48,13 +48,13 @@ export async function generateMetadata(): Promise<Metadata> {
     type: "website",
     siteName: SITE_NAME,
     locale: "ru_RU",
-    title: "BeatDesk · выкладка битов без рутины",
+    title: "BeatDesk · публикация битов без рутины",
     description: SITE_DESCRIPTION,
     url: "/",
   },
   twitter: {
     card: "summary_large_image",
-    title: "BeatDesk · выкладка битов без рутины",
+    title: "BeatDesk · публикация битов без рутины",
     description: SITE_DESCRIPTION,
   },
     robots: { index: true, follow: true },

@@ -203,7 +203,7 @@ const ru = {
   "states.error.sub": "Проверь соединение и попробуй ещё раз.",
   "states.error.retry": "Повторить",
 
-  "footer.tagline": "Выкладка битов без рутины",
+  "footer.tagline": "Публикация битов без рутины",
   "footer.nav": "Разделы",
   "footer.rights": "BeatDesk · сервис для битмейкеров",
   "footer.placeholder": "Здесь ничего лишнего",
@@ -412,7 +412,7 @@ const en: Record<keyof typeof ru, string> = {
   "states.error.sub": "Check your connection and try again.",
   "states.error.retry": "Retry",
 
-  "footer.tagline": "Beat distribution without the busywork",
+  "footer.tagline": "Publish beats without the busywork",
   "footer.nav": "Sections",
   "footer.rights": "BeatDesk · a service for beatmakers",
   "footer.placeholder": "Nothing extra here",

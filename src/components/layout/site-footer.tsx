@@ -12,7 +12,7 @@ export async function SiteFooter() {
       <Container>
         <div className="grid gap-10 py-14 md:grid-cols-3">
           <div className="flex flex-col gap-3">
-            <Logo className="h-[19px]" />
+            <Logo className="h-[19px] self-start" />
             <p className="max-w-[30ch] text-sm text-mute">{t("footer.tagline")}</p>
           </div>
 
