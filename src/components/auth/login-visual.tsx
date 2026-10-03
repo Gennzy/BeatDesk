@@ -86,7 +86,7 @@ export function LoginVisual() {
       <div className="absolute left-1/2 top-1/2 size-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(216,255,62,0.1),transparent_62%)] blur-2xl" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_38%,rgba(8,8,10,0.86)_100%)]" />
 
-      <div className="absolute inset-0 mx-auto h-[min(70vh,34rem)] max-w-[42rem] opacity-[0.62]">
+      <div className="absolute inset-0 mx-auto h-[min(70vh,34rem)] max-w-[42rem] opacity-55">
         {use3d ? (
           <PulseRingCanvas reducedMotion={reducedMotion} frameloop={visible ? "always" : "never"} />
         ) : (

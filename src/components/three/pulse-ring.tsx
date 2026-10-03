@@ -14,7 +14,6 @@ const BPM = 124;
 
 const LIME = new THREE.Color("#d8ff3e");
 const INK = new THREE.Color("#33333c");
-const HOT = new THREE.Color("#f2f2ec");
 
 /** Ритмика: бочка на доли, малый барабан на 2 и 4, хэты на восьмых. */
 function levelAt(time: number, index: number): number {
@@ -80,9 +79,8 @@ export function PulseRing({ reducedMotion }: PulseRingProps) {
 
       mesh.setMatrixAt(index, dummy.matrix);
 
-      const hot = Math.min(1, Math.max(0, (level - 0.38) / 0.55));
-      color.copy(INK).lerp(LIME, hot);
-      if (hot > 0.82) color.lerp(HOT, (hot - 0.82) / 0.18);
+      const hot = Math.min(1, Math.max(0, (level - 0.3) / 0.6));
+      color.copy(INK).lerp(LIME, hot * 0.92);
       mesh.setColorAt(index, color);
     }
 
