@@ -125,6 +125,11 @@ export function ShareBoard({ beats, channels, published }: Props) {
               );
             })}
           </div>
+          {channels.every((channel) => !channel.connected) ? (
+            <Link href="/settings/connections" className="label w-fit border-b border-line-2 pb-0.5 text-paper">
+              {t("sharing.connectChannels")}
+            </Link>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center gap-3">

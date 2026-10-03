@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { ConnectForm } from "@/components/platforms/connect-form";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n/provider";
@@ -231,7 +232,7 @@ export function PublishPanel({ beatId, connections, botReady, posts, pasteFields
                           </button>
                         </div>
                       ) : (
-                        <ConnectFields platform={platform} busy={busy} onConnect={connect} />
+                        <ConnectForm platform={platform} busy={busy} onConnect={connect} />
                       )
                     ) : null}
 
@@ -398,45 +399,5 @@ function CopyChip({ text }: { text: string }) {
     >
       {copied ? t("share.copied") : t("share.copy")}
     </button>
-  );
-}
-
-function ConnectFields({
-  platform,
-  busy,
-  onConnect,
-}: {
-  platform: Platform;
-  busy: boolean;
-  onConnect: (platform: Platform, meta: Record<string, string>) => void;
-}) {
-  const { t } = useI18n();
-  const [values, setValues] = useState<Record<string, string>>({});
-
-  return (
-    <div className="flex flex-col gap-3 border-t border-line pt-4">
-      {(platform.fields ?? []).map((field) => (
-        <label key={field.key} className="flex flex-col gap-1.5">
-          <span className="label text-paper">{field.label}</span>
-          <input
-            value={values[field.key] ?? ""}
-            onChange={(event) => setValues((prev) => ({ ...prev, [field.key]: event.target.value }))}
-            placeholder={field.placeholder}
-            className="mono h-10 rounded-xs border border-line bg-ink px-3 text-sm text-paper"
-          />
-          {field.hint ? <span className="text-[11px] text-mute">{field.hint}</span> : null}
-        </label>
-      ))}
-
-      <Button
-        type="button"
-        variant="ink"
-        size="sm"
-        disabled={busy}
-        onClick={() => onConnect(platform, values)}
-      >
-        {busy ? t("publish.saving") : t("publish.connect")}
-      </Button>
-    </div>
   );
 }
