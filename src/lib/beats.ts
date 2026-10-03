@@ -36,16 +36,23 @@ export const ASSET_MIME: Record<AssetKind, string> = {
   rar: "application/vnd.rar",
 };
 
-export type AssetPart = { url: string; size: number };
+export type AssetPart = { url?: string; path?: string; size: number };
 
-/** Файл целиком (url) либо нарезанный на чанки (parts). */
+/**
+ * Мастер лежит в закрытом бакете, поэтому храним путь, а не публичную ссылку.
+ * url остался для старых записей: путь из него вытаскивается на лету.
+ */
 export type BeatAsset = {
   name: string;
   size: number;
   mime: string;
   url?: string;
+  path?: string;
   parts?: AssetPart[];
 };
+
+export const MASTERS_BUCKET = "masters";
+export const PREVIEWS_BUCKET = "beats";
 
 export type BeatFilesColumn = Partial<Record<AssetKind, BeatAsset>>;
 
@@ -95,7 +102,7 @@ function partName(kind: BeatFileKind, fileName: string, index: number, total: nu
 
 async function uploadToBucket(
   supabase: SupabaseBrowserClient,
-  bucket: "beats" | "covers",
+  bucket: "beats" | "covers" | "masters",
   path: string,
   body: Blob,
 ): Promise<string> {
@@ -103,7 +110,7 @@ async function uploadToBucket(
 
   if (error) throw error;
 
-  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+  return bucket === "masters" ? path : supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
 
 /**
@@ -135,14 +142,15 @@ export async function uploadAsset(
 
     onStep?.(total > 1 ? `${file.name} · ${index + 1}/${total}` : file.name);
 
-    const url = await uploadToBucket(supabase, "beats", `${userId}/${beatId}/${partName(kind, file.name, index, total)}`, blob);
-    parts.push({ url, size: blob.size });
+    const path = `${userId}/${beatId}/${partName(kind, file.name, index, total)}`;
+    await uploadToBucket(supabase, MASTERS_BUCKET, path, blob);
+    parts.push({ path, size: blob.size });
   }
 
   const asset: BeatAsset = { name: file.name, size: file.size, mime: ASSET_MIME[kind] };
 
   if (total === 1) {
-    asset.url = parts[0].url;
+    asset.path = parts[0].path;
   } else {
     asset.parts = parts;
   }
@@ -206,17 +214,49 @@ export async function uploadBeat(
   return { audioUrl, coverUrl, files: assets };
 }
 
-/** Собирает файл из частей прямо в браузере и отдаёт на скачивание. */
-export async function downloadAsset(asset: BeatAsset): Promise<void> {
-  const urls = asset.parts ? asset.parts.map((part) => part.url) : asset.url ? [asset.url] : [];
+/** Путь в бакете masters: из новой записи берём path, из старой вытаскиваем из url. */
+export function assetPaths(asset: BeatAsset): string[] {
+  if (asset.path) return [asset.path];
 
-  if (urls.length === 0) return;
+  const legacy: string[] = [];
+  const pattern = /\/object\/[^/]+\/beats\/(.+)$/;
+
+  if (asset.url) {
+    const match = pattern.exec(asset.url);
+    if (match) legacy.push(match[1]);
+  }
+
+  for (const part of asset.parts ?? []) {
+    if (part.path) legacy.push(part.path);
+    else if (part.url) {
+      const match = pattern.exec(part.url);
+      if (match) legacy.push(match[1]);
+    }
+  }
+
+  return legacy;
+}
+
+/** Собирает файл из частей прямо в браузере и отдаёт на скачивание. */
+export async function downloadAsset(beatId: string, asset: BeatAsset): Promise<void> {
+  const response = await fetch(`/api/beats/${beatId}/masters`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ paths: assetPaths(asset) }),
+  });
+
+  if (!response.ok) {
+    throw new Error("download failed");
+  }
+
+  const { urls } = (await response.json()) as { urls: string[] };
+  if (!urls || urls.length === 0) return;
 
   const chunks: Blob[] = [];
   for (const url of urls) {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`download failed: ${response.status}`);
-    chunks.push(await response.blob());
+    const part = await fetch(url);
+    if (!part.ok) throw new Error(`download failed: ${part.status}`);
+    chunks.push(await part.blob());
   }
 
   const blob = new Blob(chunks, { type: asset.mime });

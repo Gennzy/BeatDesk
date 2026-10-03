@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AuthForm } from "@/components/auth/auth-form";
-import { HeroVideo } from "@/components/media/hero-video";
+import { ScopeTrace } from "@/components/media/scope-trace";
 import { HeroIntro } from "@/components/ui/hero-intro";
 import { Container } from "@/components/ui/container";
 import { getT } from "@/lib/i18n/server";
@@ -60,8 +60,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
   return (
     <section className="relative min-h-[calc(100vh-4.5rem)] overflow-x-clip overflow-y-hidden">
-      <HeroVideo src="/media/hero.mp4" />
-      <div aria-hidden className="guide-grid pointer-events-none absolute inset-0 opacity-30" />
+      <ScopeTrace />
+      <div aria-hidden className="guide-grid pointer-events-none absolute inset-0 opacity-20" />
 
       <Container>
         <div className="grid items-center gap-16 py-16 lg:grid-cols-[minmax(0,1fr)_26rem] lg:gap-20 lg:py-24">

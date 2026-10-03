@@ -79,14 +79,16 @@ function FileNameRow({ item }: { item: FileName }) {
   );
 }
 
-function AssetRow({ asset }: { asset: BeatAsset }) {
+function AssetRow({ beatId, asset }: { beatId: string; asset: BeatAsset }) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(false);
 
   return (
     <div className="flex flex-col gap-2 border-b border-line py-3 last:border-b-0 sm:flex-row sm:items-center sm:gap-4">
       <span className="min-w-0 flex-1 font-mono text-[13px] break-all text-paper">{asset.name}</span>
       <span className="label text-mute">{formatBytes(asset.size)}</span>
+      {error ? <span className="label text-amber">{t("share.downloadError")}</span> : null}
       <div className="sm:shrink-0">
         <Button
         type="button"
@@ -95,8 +97,11 @@ function AssetRow({ asset }: { asset: BeatAsset }) {
         disabled={busy}
         onClick={async () => {
           setBusy(true);
+          setError(false);
           try {
-            await downloadAsset(asset);
+            await downloadAsset(beatId, asset);
+          } catch {
+            setError(true);
           } finally {
             setBusy(false);
           }
@@ -113,10 +118,12 @@ export function DistributionBlocks({
   beat,
   assets,
   audio,
+  isOwner = false,
 }: {
   beat: DistributionBeat;
   assets: BeatAsset[];
   audio: BeatAsset | null;
+  isOwner?: boolean;
 }) {
   const { t } = useI18n();
 
@@ -148,15 +155,20 @@ export function DistributionBlocks({
         </div>
       </section>
 
-      {assets.length > 0 ? (
+      {isOwner && assets.length > 0 ? (
         <section className="flex flex-col gap-6">
-          <SectionHead label={t("share.files")} />
+          <SectionHead label={t("share.files")} hint={t("share.filesOwnerHint")} />
           <div className="border border-line bg-ink-2 px-4">
             {[audio, ...assets].filter((item): item is BeatAsset => Boolean(item)).map((asset) => (
-              <AssetRow key={asset.name} asset={asset} />
+              <AssetRow key={asset.name} beatId={beat.id} asset={asset} />
             ))}
           </div>
         </section>
+      ) : !isOwner && audio ? (
+        <p className="label flex items-start gap-3 border border-line bg-ink-2 px-4 py-3 text-mute">
+          <span aria-hidden className="mt-0.5 size-1.5 shrink-0 bg-signal" />
+          {t("share.lockedHint")}
+        </p>
       ) : null}
     </div>
   );

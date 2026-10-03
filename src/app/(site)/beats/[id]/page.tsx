@@ -59,9 +59,15 @@ export default async function BeatDistributionPage({ params }: { params: Promise
     notFound();
   }
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const owner = Array.isArray(beat.profiles) ? beat.profiles[0] : beat.profiles;
   const files = (beat.files ?? {}) as Record<string, BeatAsset>;
-  const assets = Object.values(files).filter(Boolean);
+  // гостям мастера не отдаём даже список: пути живут в закрытом бакете
+  const isOwner = Boolean(user && user.id === beat.owner_id);
+  const assets = isOwner ? Object.values(files).filter(Boolean) : [];
 
   const FORMATS: Record<string, string> = {
     "audio/mpeg": "MP3",
@@ -71,11 +77,6 @@ export default async function BeatDistributionPage({ params }: { params: Promise
     "application/vnd.rar": "RAR",
   };
   const formats = [...new Set([...(beat.mp3_url ? ["MP3"] : []), ...assets.map((asset) => FORMATS[asset.mime]).filter(Boolean)])];
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const isOwner = Boolean(user && user.id === beat.owner_id);
 
   return (
     <section className="py-14 lg:py-20">
@@ -110,6 +111,7 @@ export default async function BeatDistributionPage({ params }: { params: Promise
             ownerUsername: owner?.username ?? "",
           }}
           assets={assets}
+          isOwner={isOwner}
           audio={
             beat.mp3_url
               ? { name: `${fileBase({

@@ -146,6 +146,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   await Promise.all([
     removeFolder(access.supabase, "beats", folder),
+    removeFolder(access.supabase, "masters", folder),
     removeFolder(access.supabase, "covers", folder),
   ]);
 
