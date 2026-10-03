@@ -25,7 +25,7 @@ import type { TranslationKey } from "@/lib/i18n/dictionaries";
 import { compressImage } from "@/lib/image";
 import { useI18n } from "@/lib/i18n/provider";
 import { createClient } from "@/lib/supabase/client";
-import { SupabaseNotConfiguredError } from "@/lib/supabase/config";
+import { MastersBucketMissingError, SupabaseNotConfiguredError } from "@/lib/supabase/config";
 
 type KindLabels = Record<BeatFileKind, TranslationKey>;
 
@@ -168,7 +168,9 @@ export function UploadForm({ userId }: { userId: string }) {
       setError(
         uploadError instanceof SupabaseNotConfiguredError
           ? t("auth.notConfigured")
-          : `${t("upload.errorGeneric")}: ${uploadError instanceof Error ? uploadError.message : String(uploadError)}`,
+          : uploadError instanceof MastersBucketMissingError
+            ? t("upload.errorMastersBucket")
+            : `${t("upload.errorGeneric")}: ${uploadError instanceof Error ? uploadError.message : String(uploadError)}`,
       );
     }
   }

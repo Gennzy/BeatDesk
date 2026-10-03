@@ -9,3 +9,19 @@ export class SupabaseNotConfiguredError extends Error {
     this.name = "SupabaseNotConfiguredError";
   }
 }
+
+/** Мастер лежит в старом публичном бакете и в закрытом его нет. */
+export class LegacyMasterMissingError extends Error {
+  constructor() {
+    super("Файл мастера остался в старом публичном хранилище — его нужно загрузить заново");
+    this.name = "LegacyMasterMissingError";
+  }
+}
+
+/** Закрытый бакет мастеров не создан миграцией 0008_private_masters.sql. */
+export class MastersBucketMissingError extends Error {
+  constructor() {
+    super("На сервере нет закрытого бакета для мастеров: не выполнена миграция 0008_private_masters.sql");
+    this.name = "MastersBucketMissingError";
+  }
+}

@@ -1,3 +1,4 @@
+import { LegacyMasterMissingError, MastersBucketMissingError } from "@/lib/supabase/config";
 import type { SupabaseBrowserClient } from "@/lib/supabase/client";
 
 export type BeatFileKind = "mp3" | "wav" | "zip" | "rar";
@@ -108,7 +109,14 @@ async function uploadToBucket(
 ): Promise<string> {
   const { error } = await supabase.storage.from(bucket).upload(path, body, { cacheControl: "3600", upsert: true });
 
-  if (error) throw error;
+  if (error) {
+    // Незакрытый бакет masters — это поломка сервера, а не файла.
+    // Без пояснения пользователь видит «Bucket not found» и не понимает, что делать.
+    if (bucket === "masters" && /bucket not found/i.test(error.message)) {
+      throw new MastersBucketMissingError();
+    }
+    throw error;
+  }
 
   return bucket === "masters" ? path : supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
@@ -255,6 +263,10 @@ export async function downloadAsset(beatId: string, asset: BeatAsset): Promise<v
   const chunks: Blob[] = [];
   for (const url of urls) {
     const part = await fetch(url);
+    // Ссылка подписывается по имени файла и не проверяет, что он вообще есть.
+    // Старые мастера лежат в публичном бакете, поэтому 404 здесь — не сбой,
+    // а незакрытый хвост после переезда. Пользователю надо сказать об этом прямо.
+    if (part.status === 404) throw new LegacyMasterMissingError();
     if (!part.ok) throw new Error(`download failed: ${part.status}`);
     chunks.push(await part.blob());
   }

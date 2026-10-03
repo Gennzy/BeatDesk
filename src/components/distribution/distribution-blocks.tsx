@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SectionHead } from "@/components/ui/container";
 import { downloadAsset, formatBytes, type BeatAsset } from "@/lib/beats";
+import { LegacyMasterMissingError } from "@/lib/supabase/config";
 import {
   allBlocks,
   fileNames,
@@ -82,13 +83,15 @@ function FileNameRow({ item }: { item: FileName }) {
 function AssetRow({ beatId, asset }: { beatId: string; asset: BeatAsset }) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<"generic" | "legacy" | null>(null);
 
   return (
     <div className="flex flex-col gap-2 border-b border-line py-3 last:border-b-0 sm:flex-row sm:items-center sm:gap-4">
       <span className="min-w-0 flex-1 font-mono text-[13px] break-all text-paper">{asset.name}</span>
       <span className="label text-mute">{formatBytes(asset.size)}</span>
-      {error ? <span className="label text-amber">{t("share.downloadError")}</span> : null}
+      {error ? (
+        <span className="label text-amber">{t(error === "legacy" ? "share.downloadLegacy" : "share.downloadError")}</span>
+      ) : null}
       <div className="sm:shrink-0">
         <Button
         type="button"
@@ -97,11 +100,11 @@ function AssetRow({ beatId, asset }: { beatId: string; asset: BeatAsset }) {
         disabled={busy}
         onClick={async () => {
           setBusy(true);
-          setError(false);
+          setError(null);
           try {
             await downloadAsset(beatId, asset);
-          } catch {
-            setError(true);
+          } catch (downloadError) {
+            setError(downloadError instanceof LegacyMasterMissingError ? "legacy" : "generic");
           } finally {
             setBusy(false);
           }
