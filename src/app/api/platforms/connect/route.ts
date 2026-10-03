@@ -64,8 +64,14 @@ const { supabase, user } = await getUser();
     platform: body.platform,
     label: body.label ?? null,
     meta: stripSecrets(meta),
-    access_token_cipher: accessToken ? encryptSecret(accessToken) : null,
+    access_token_cipher: null as string | null,
   };
+
+  try {
+    row.access_token_cipher = accessToken ? encryptSecret(accessToken) : null;
+  } catch {
+    return NextResponse.json({ error: "Сервер не настроен: не задан PLATFORM_TOKEN_SECRET" }, { status: 503 });
+  }
 
   const { error } = await supabase
     .from("platform_connections")
