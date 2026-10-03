@@ -1,5 +1,6 @@
 import type { BeatFill } from "./fields";
 import type { FillReport } from "./filler";
+import { detectSite } from "./sites";
 
 const urlInput = document.getElementById("url") as HTMLInputElement;
 const loadButton = document.getElementById("load") as HTMLButtonElement;
@@ -66,6 +67,7 @@ loadButton.addEventListener("click", async () => {
 
     beat = data;
     renderBeat(data);
+
     fillButton.disabled = false;
     setStatus("Бит загружен. Открой форму на маркетплейсе и жми «Заполнить».", "ok");
   } catch {
@@ -88,13 +90,13 @@ fillButton.addEventListener("click", async () => {
       return;
     }
 
-    const supported = /beatstars\.com|beatchain\.io/.test(tab.url ?? "");
-    if (!supported) {
+    const site = detectSite(tab.url ?? "");
+    if (!site) {
       setStatus("Открой Studio BeatStars или beatchain.io — сейчас открыта другая страница", "err");
       return;
     }
 
-    let response: { report?: FillReport } | undefined;
+    let response: { ok: boolean; report?: FillReport; error?: string } | undefined;
     try {
       response = await chrome.tabs.sendMessage(tab.id, { type: "beatdesk:apply", beat });
     } catch {
@@ -103,18 +105,26 @@ fillButton.addEventListener("click", async () => {
       response = await chrome.tabs.sendMessage(tab.id, { type: "beatdesk:apply", beat });
     }
 
-    const report = response?.report;
+    if (!response?.ok) {
+      setStatus(response?.error ?? "Форма не ответила. Обнови страницу и попробуй снова.", "err");
+      return;
+    }
+
+    const report = response.report;
     if (!report) {
       setStatus("Форма не ответила. Обнови страницу и попробуй снова.", "err");
       return;
     }
 
-    const parts = [`Заполнено: ${report.filled.map((item) => item.label).join(", ") || "ничего"}`];
+    const parts = [`${site.title}: заполнено ${report.filled.map((item) => item.label).join(", ") || "ничего"}`];
+    if (report.skipped.length > 0) {
+      parts.push(`цены пропущены: ${report.skipped[0]?.reason}`);
+    }
     if (report.empty.length > 0) {
-      parts.push(`Пропущено, цена не задана: ${report.empty.map((item) => item.label).join(", ")}`);
+      parts.push(`цена не задана: ${report.empty.map((item) => item.label).join(", ")}`);
     }
     if (report.missing.length > 0) {
-      parts.push(`Форма не содержит: ${report.missing.join(", ")}`);
+      parts.push(`нет на форме: ${report.missing.join(", ")}`);
     }
 
     setStatus(parts.join(" · "), report.filled.length > 0 ? "ok" : "err");
