@@ -37,9 +37,10 @@ export async function publishBeat(input: {
   connection?: StoredConnection;
   decrypt?: (payload: string) => string;
   telegramToken?: string | null;
+  siteUrl: string;
 }): Promise<PublishResult> {
   const platform = PLATFORM_MAP[input.platform];
-  const payload = buildPayload(input.beat);
+  const payload = buildPayload(input.beat, input.siteUrl);
 
   // токен площадки лежит только в зашифрованной колонке, в meta его больше нет
   const decrypt = (connection: StoredConnection | undefined): string | null => {
@@ -63,7 +64,7 @@ export async function publishBeat(input: {
     const token = input.telegramToken;
     if (!token) return { ok: false, error: "TELEGRAM_BOT_TOKEN не задан на сервере" };
 
-    return publishToTelegram(toConnection(input.connection), payload, token);
+    return publishToTelegram(toConnection(input.connection), payload, token, input.siteUrl);
   }
 
   if (input.platform === "vk") {

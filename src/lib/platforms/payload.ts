@@ -1,5 +1,4 @@
 import { hashtagList, priceLine, typeBeatLine } from "@/lib/distribution";
-import { SITE_URL } from "@/lib/site";
 
 export type PublishBeat = {
   id: string;
@@ -33,8 +32,8 @@ export type PublishResult = {
   detail?: Record<string, unknown>;
 };
 
-export function buildPayload(beat: PublishBeat): PublishPayload {
-  const beatUrl = `${SITE_URL}/beats/${beat.id}`;
+export function buildPayload(beat: PublishBeat, siteUrl: string): PublishPayload {
+  const beatUrl = `${siteUrl}/beats/${beat.id}`;
   const prices = priceLine(beat);
 
   const message = [

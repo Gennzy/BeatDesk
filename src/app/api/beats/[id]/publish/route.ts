@@ -5,6 +5,7 @@ import type { PublishBeat } from "@/lib/platforms/payload";
 import { isPlatformId } from "@/lib/platforms/registry";
 import { loadConnections, publishBeat, recordPost } from "@/lib/platforms/publish";
 import { getBotToken } from "@/lib/platforms/telegram-client";
+import { getSiteUrl } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
 
 type Body = { platforms?: string[] };
@@ -35,6 +36,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (beat.owner_id !== user.id) return NextResponse.json({ error: "Это не твой бит" }, { status: 403 });
 
   const owner = Array.isArray(beat.profiles) ? beat.profiles[0] : beat.profiles;
+  const siteUrl = await getSiteUrl();
 
   const distribution: PublishBeat = {
     id: beat.id,
@@ -65,6 +67,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       connection,
       decrypt: decryptSecret,
       telegramToken,
+      siteUrl,
     });
 
     await recordPost({

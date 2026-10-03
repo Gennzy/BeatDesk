@@ -1,4 +1,3 @@
-import { SITE_URL } from "@/lib/site";
 import {
   fetchUpdates,
   sendTelegramAudio,
@@ -30,6 +29,7 @@ export async function publishToTelegram(
   connection: PlatformConnection,
   payload: PublishPayload,
   token: string,
+  siteUrl: string,
 ): Promise<PublishResult> {
   const chatId = connection.meta?.chatId;
 
@@ -51,7 +51,7 @@ export async function publishToTelegram(
   const keyboard = buildKeyboard({
     beatUrl: payload.beatUrl,
     audioUrl: payload.audioUrl,
-    profileUrl: payload.beat.username ? `${SITE_URL}/beatmakers/${payload.beat.username}` : null,
+    profileUrl: payload.beat.username ? `${siteUrl}/beatmakers/${payload.beat.username}` : null,
   });
 
   let mainMessage: TelegramMessage | undefined;
@@ -109,9 +109,9 @@ export async function publishToTelegram(
 }
 
 /** Приветственное сообщение с кнопками — для лички и подключения канала. */
-export async function sendWelcome(token: string, chatId: string | number, name?: string) {
+export async function sendWelcome(token: string, chatId: string | number, siteUrl: string, name?: string) {
   const keyboard = buildKeyboard({
-    beatUrl: SITE_URL,
+    beatUrl: siteUrl,
     audioUrl: null,
     profileUrl: null,
   });

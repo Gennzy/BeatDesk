@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { SITE_URL } from "@/lib/site";
+import { getSiteUrl } from "@/lib/site";
 import {
   getBotToken,
   sendTelegramMessage,
@@ -22,14 +22,14 @@ type Update = {
 const SECRET_HEADER = "x-telegram-bot-api-secret-token";
 
 /** Кнопки бота: на старте и в личке, дальше — по нажатию. */
-function menuMarkup() {
+function menuMarkup(siteUrl: string) {
   return {
     inline_keyboard: [
       [
-        { text: "▶ Открыть BeatDesk", url: `${SITE_URL}/` },
-        { text: "Загрузить бит", url: `${SITE_URL}/upload` },
+        { text: "▶ Открыть BeatDesk", url: `${siteUrl}/` },
+        { text: "Загрузить бит", url: `${siteUrl}/upload` },
       ],
-      [{ text: "Моя лента", url: `${SITE_URL}/` }],
+      [{ text: "Моя лента", url: `${siteUrl}/` }],
     ],
   };
 }
@@ -65,6 +65,7 @@ export async function POST(request: Request) {
   }
 
   const update = (await request.json()) as Update;
+  const siteUrl = await getSiteUrl();
 
   try {
     if (update.message?.text?.startsWith("/start")) {
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
         chat_id: chat.id,
         text: welcome([chat.title, chat.username].filter(Boolean).join(" ")),
         parse_mode: "HTML",
-        reply_markup: menuMarkup(),
+        reply_markup: menuMarkup(siteUrl),
       });
     }
 
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
           "/link — ссылка на твой профиль в BeatDesk",
         ].join("\n"),
         parse_mode: "HTML",
-        reply_markup: menuMarkup(),
+        reply_markup: menuMarkup(siteUrl),
       });
     }
 

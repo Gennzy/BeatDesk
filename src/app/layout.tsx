@@ -8,7 +8,7 @@ import { PlayerProvider } from "@/components/player/player-provider";
 import { I18nProvider } from "@/lib/i18n/provider";
 import { getLocale } from "@/lib/i18n/server";
 import { getSessionUser } from "@/lib/supabase/user";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+import { getSiteUrl, SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 
 import "./globals.css";
 
@@ -32,15 +32,18 @@ const jetbrains = JetBrains_Mono({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: {
-    default: "BeatDesk · выкладка битов без рутины",
-    template: `%s · ${SITE_NAME}`,
-  },
-  description: SITE_DESCRIPTION,
-  applicationName: SITE_NAME,
-  alternates: { canonical: "/" },
+export async function generateMetadata(): Promise<Metadata> {
+  const metadataBase = new URL(await getSiteUrl());
+
+  return {
+    metadataBase,
+    title: {
+      default: "BeatDesk · выкладка битов без рутины",
+      template: `%s · ${SITE_NAME}`,
+    },
+    description: SITE_DESCRIPTION,
+    applicationName: SITE_NAME,
+    alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
@@ -54,9 +57,10 @@ export const metadata: Metadata = {
     title: "BeatDesk · выкладка битов без рутины",
     description: SITE_DESCRIPTION,
   },
-  robots: { index: true, follow: true },
-  formatDetection: { telephone: false },
-};
+    robots: { index: true, follow: true },
+    formatDetection: { telephone: false },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#08080a",

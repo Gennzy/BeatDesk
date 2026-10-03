@@ -1,7 +1,32 @@
-/** Адрес сайта для canonical, og-тегов и sitemap. */
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+import { headers } from "next/headers";
 
+/** Название и описание сайта для метаданных. */
 export const SITE_NAME = "BeatDesk";
 
 export const SITE_DESCRIPTION =
   "BeatDesk собирает название, BPM, тональность и теги для BeatChain, YouTube, ВК и Telegram и показывает бит в общей ленте битмейкеров.";
+
+/**
+ * Адрес сайта для canonical, og-тегов, sitemap и ссылок в постах.
+ * Переменная окружения приоритетна, но если в ней localhost или она
+ * не задана, адрес берётся из заголовков запроса: на Vercel это
+ * работает и для продакшена, и для превью-деплоев.
+ */
+export async function getSiteUrl(): Promise<string> {
+  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+
+  if (fromEnv && !fromEnv.includes("localhost") && fromEnv.includes(".")) {
+    return fromEnv.replace(/\/+$/, "");
+  }
+
+  const store = await headers();
+  const host = store.get("x-forwarded-host") ?? store.get("host");
+
+  if (!host) {
+    return (fromEnv ?? "http://localhost:3000").replace(/\/+$/, "");
+  }
+
+  const proto = store.get("x-forwarded-proto") ?? (host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https");
+
+  return `${proto}://${host}`;
+}
