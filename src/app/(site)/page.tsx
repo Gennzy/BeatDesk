@@ -63,7 +63,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
                 <span className="label text-mute">{t("hero.platforms")}</span>
               </div>
 
-              <h1 className="mt-9 font-display text-hero font-black text-paper uppercase lg:mt-12">
+              <h1 className="mt-9 font-display text-hero font-black text-balance text-paper uppercase lg:mt-12">
                 {[t("hero.title.line1"), t("hero.title.line2"), t("hero.title.line3")].map((line, index) => (
                   <span key={line} className="block overflow-hidden pb-[0.06em]">
                     <span data-line className={index === 1 ? "block text-signal" : "block"}>
@@ -73,12 +73,16 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
                 ))}
               </h1>
 
-              <div className="mt-9 flex max-w-[36rem] flex-col gap-8">
-                <p data-fade className="text-sub text-mute">
+              <div className="mt-9 flex max-w-[34rem] flex-col gap-6">
+                <p data-fade className="text-pretty text-sub text-mute">
                   {t("hero.sub")}
                 </p>
 
-                <div data-fade className="flex flex-wrap items-center gap-3">
+                <p data-fade className="flex items-start gap-3 border-l border-signal/50 pl-4 text-sm leading-relaxed text-paper/70">
+                  {t("hero.note")}
+                </p>
+
+                <div data-fade className="mt-2 flex flex-wrap items-center gap-3">
                   <Button href="/upload" size="lg">
                     {t("hero.ctaPrimary")}
                     <span aria-hidden>→</span>
