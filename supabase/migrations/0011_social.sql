@@ -169,12 +169,16 @@ create trigger post_like_count
 -- Вставки идут только из триггеров с security definer. Политики на insert
 -- у пользователя нет, поэтому из приложения уведомление не подделать.
 
-create or replace function public.notify() returns void
+create or replace function public.notify(
+  p_recipient uuid,
+  p_actor uuid,
+  p_post uuid,
+  p_kind text
+) returns void
 language sql security definer set search_path = public as $$
   insert into public.notifications (user_id, actor_id, post_id, kind)
-  select recipient, actor, target_post, target_kind
-  from (values ($1::uuid, $2::uuid, $3::uuid, $4::text)) as v(recipient, actor, target_post, target_kind)
-  where recipient is not null and recipient <> actor
+  select p_recipient, p_actor, p_post, p_kind
+  where p_recipient is not null and p_recipient <> p_actor
   on conflict do nothing;
 $$;
 
