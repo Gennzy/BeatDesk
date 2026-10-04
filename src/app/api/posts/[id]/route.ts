@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { clientKey, rateLimit } from "@/lib/rate-limit";
-import { fetchThread } from "@/lib/posts";
+import { branchCounts, fetchThread } from "@/lib/posts";
 import { createClient } from "@/lib/supabase/server";
 
 /** Ветка целиком: корень плюс первые уровни вложенности. */
@@ -42,7 +42,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   // удаление ветки с ответами запрещено, а каскад требует явного намерения.
   const { data: post } = await supabase
     .from("posts")
-    .select("id, parent_id, reply_count")
+    .select("id, parent_id")
     .eq("id", id)
     .eq("author_id", user.id)
     .maybeSingle();
@@ -51,7 +51,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
   const wantsCascade = request.nextUrl.searchParams.get("cascade") === "true";
 
-  if ((post.reply_count ?? 0) > 0 && !wantsCascade) {
+  // Считаем всю ветку, а не прямых детей: иначе пост без прямых ответов,
+  // но с глубокой перепиской удалялся молча и уносил её с собой.
+  const descendants = (await branchCounts(supabase, [id])).get(id) ?? 0;
+
+  if (descendants > 0 && !wantsCascade) {
     return NextResponse.json(
       { error: "На этот пост есть ответы. Удалить вместе со всей веткой?", hasReplies: true },
       { status: 409 },

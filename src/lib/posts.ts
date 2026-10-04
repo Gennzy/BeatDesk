@@ -104,7 +104,7 @@ function toBeat(value: PostRowBeat | PostRowBeat[] | null): PostBeat | null {
   };
 }
 
-function toPost(row: PostRow, liked: Set<string>): Post {
+function toPost(row: PostRow, liked: Set<string>, branchTotal?: number): Post {
   const author = one(row.profiles);
 
   return {
@@ -115,10 +115,74 @@ function toPost(row: PostRow, liked: Set<string>): Post {
     beat: toBeat(row.beats),
     author: { username: author?.username ?? "", avatarUrl: author?.avatar_url ?? null },
     likeCount: row.like_count ?? 0,
-    replyCount: row.reply_count ?? 0,
+    // Колонка reply_count в базе растёт только у непосредственного родителя,
+    // поэтому для корня ветки она не равна числу ответов, которые видит
+    // читатель. Сверху приходит итог по всей ветке.
+    replyCount: branchTotal ?? row.reply_count ?? 0,
     likedByMe: liked.has(row.id),
     createdAt: row.created_at,
   };
+}
+
+/**
+ * Сколько ответов в ветке целиком, а не только прямых.
+ *
+ * Триггер в базе увеличивает счётчик у непосредственного родителя, поэтому
+ * на глубоком ответе он показывал «0», хотя под ним была целая переписка.
+ * Считаем здесь по карте (id → parent_id): запрос забирает две колонки
+ * вместо обхода поддерева на каждую карточку, а результат один на страницу.
+ *
+ * Возвращает число только для запрошенных id: у корня это размер ветки,
+ * у вложенного поста — число ответов под ним.
+ */
+export async function branchCounts(
+  supabase: SupabaseServerClient,
+  ids: string[],
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (ids.length === 0) return counts;
+
+  const { data, error } = await supabase.from("posts").select("id, parent_id").limit(20_000);
+
+  if (error) {
+    console.error("branch counts query failed", error);
+    return counts;
+  }
+
+  const children = new Map<string, string[]>();
+  for (const row of data ?? []) {
+    const { id, parent_id: parentId } = row as { id: string; parent_id: string | null };
+    if (!parentId) continue;
+    const list = children.get(parentId);
+    if (list) list.push(id);
+    else children.set(parentId, [id]);
+  }
+
+  // Обход в ширину с защитой от повторов: при испорченных данных цикл
+  // не должен превращаться в бесконечный цикл на странице.
+  for (const rootId of ids) {
+    const seen = new Set<string>([rootId]);
+    const queue = [rootId];
+    let total = 0;
+
+    while (queue.length > 0) {
+      const next: string[] = [];
+      for (const id of queue) {
+        for (const child of children.get(id) ?? []) {
+          if (seen.has(child)) continue;
+          seen.add(child);
+          total += 1;
+          next.push(child);
+        }
+      }
+      queue.length = 0;
+      queue.push(...next);
+    }
+
+    counts.set(rootId, total);
+  }
+
+  return counts;
 }
 
 /** Какие из постов текущий пользователь уже лайкнул — одним запросом на страницу. */
@@ -173,9 +237,14 @@ export async function fetchPosts(
   if (!data) return [];
 
   const rows = data as PostRow[];
-  const liked = await likedIds(supabase, options.viewerId, rows.map((row) => row.id));
+  const ids = rows.map((row) => row.id);
 
-  return rows.map((row) => toPost(row, liked));
+  const [liked, totals] = await Promise.all([
+    likedIds(supabase, options.viewerId, ids),
+    branchCounts(supabase, ids),
+  ]);
+
+  return rows.map((row) => toPost(row, liked, totals.get(row.id)));
 }
 
 /** Корень ветки со всеми потомками до maxDepth уровней. */
@@ -216,11 +285,18 @@ export async function fetchThread(
     frontier = rows.map((row) => row.id);
   }
 
-  const liked = await likedIds(supabase, viewerId, [rootRow.id, ...replyRows.map((row) => row.id)]);
+  const ids = [rootRow.id, ...replyRows.map((row) => row.id)];
+
+  const [liked, totals] = await Promise.all([
+    likedIds(supabase, viewerId, ids),
+    // Внутри ветки счётчик тоже нужен: у вложенного ответа он показывал
+    // только прямых детей, хотя глубже была переписка.
+    branchCounts(supabase, ids),
+  ]);
 
   return {
-    root: toPost(rootRow, liked),
-    replies: replyRows.map((row) => toPost(row, liked)),
+    root: toPost(rootRow, liked, totals.get(rootRow.id)),
+    replies: replyRows.map((row) => toPost(row, liked, totals.get(row.id))),
   };
 }
 
