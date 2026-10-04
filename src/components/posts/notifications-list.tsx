@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
-import { timeAgo } from "@/lib/dates";
+import { TimeAgo } from "@/components/ui/time-ago";
 import { useI18n } from "@/lib/i18n/provider";
 import type { Notification, NotificationKind } from "@/app/api/notifications/route";
 
@@ -75,9 +75,7 @@ export function NotificationsList({ initial }: { initial: Notification[] }) {
                   {item.postExcerpt ? (
                     <p className="truncate text-xs text-mute">{item.postExcerpt}</p>
                   ) : null}
-                  <time dateTime={item.createdAt} className="label text-mute">
-                    {timeAgo(item.createdAt, locale)}
-                  </time>
+                  <TimeAgo iso={item.createdAt} locale={locale} className="label text-mute" />
                 </div>
 
                 {!item.readAt ? (

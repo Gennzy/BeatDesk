@@ -1,6 +1,6 @@
 "use client";
 
-import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
+import { CURRENCIES, DEFAULT_CURRENCY, isCurrency, type CurrencyCode } from "@/lib/currency";
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -33,7 +33,11 @@ export function EditBeatForm({ beat }: Props) {
   const router = useRouter();
 
   const [cover, setCover] = useState<File | null>(null);
-  const [currency, setCurrency] = useState<CurrencyCode>((beat as unknown as { currency?: CurrencyCode }).currency ?? "RUB");
+  // Валюта приходит из базы, поэтому проверяем её, а не верим на слово:
+  // неизвестный код оставил бы пикер без выбранной валюты и тихо записал бы
+  // рубли вместо того, что стоит в бите.
+  const storedCurrency = (beat as { currency?: unknown }).currency;
+  const [currency, setCurrency] = useState<CurrencyCode>(isCurrency(storedCurrency) ? storedCurrency : DEFAULT_CURRENCY);
   const currencyHint = CURRENCIES.find((item) => item.code === currency)?.symbol ?? "₽";
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);

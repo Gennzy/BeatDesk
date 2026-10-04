@@ -1,18 +1,7 @@
 import { FIELDS, NUMERIC_KEYS, SKIP_WHEN_ZERO, type BeatFill, type FieldSpec } from "./fields";
-/**
- * Тип площадки объявлен здесь же, а не импортируется: content script
- * собирается одним файлом и не должен тянуть общий чанк.
- */
-type SiteConfig = {
-  id: string;
-  title: string;
-  hosts: string[];
-  titleLimit: number;
-  currency: "RUB" | "USD";
-  pricesFillable: boolean;
-  keyAsShort: boolean;
-  tagsAs: "chips" | "text";
-};
+import { priceSkipReason, type SiteConfig } from "./sites";
+
+export type { SiteConfig };
 
 export type FillReport = {
   filled: { label: string; value: string }[];
@@ -58,32 +47,65 @@ function collectCandidates(root: Document): Candidate[] {
       element.getAttribute("autocomplete") ?? "",
     ];
 
-    // подпись через for=
-    const id = element.getAttribute("id");
-    if (id) {
-      const label = root.querySelector(`label[for="${CSS.escape(id)}"]`);
-      if (label?.textContent) parts.push(label.textContent);
+    for (const label of labelsFor(element, root)) {
+      if (label.textContent) parts.push(label.textContent);
     }
-
-    // ближайшая обёртка: текст её заголовков и лебелов
-    const wrapper = element.closest("div, fieldset, section, form");
-    if (wrapper) {
-      const ownLabels = wrapper.querySelectorAll(
-        ":scope > label, :scope > div > label, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > span",
-      );
-      for (const node of Array.from(ownLabels).slice(0, 4)) {
-        if (node.textContent) parts.push(node.textContent);
-      }
-    }
-
-    const ownLabel = element.closest("label");
-    if (ownLabel?.textContent) parts.push(ownLabel.textContent);
 
     const haystack = parts.join(" ").toLowerCase().replace(/\s+/g, " ");
     candidates.push({ element, haystack, chipHost: findChipHost(element) });
   }
 
   return candidates;
+}
+
+/**
+ * Подписи, которые относятся именно к этому полю.
+ *
+ * Раньше здесь брался ближайший div/fieldset/form вместе со всеми его
+ * заголовками. На плоской форме вродеBeatChain это означало, что подпись
+ * «Теги» попадала в описание, бpm и во всё остальное: любое поле
+ * выглядело как «и теги, и описание», и заполнялось тем, что оказалось
+ * первым в разметке. Поэтому берём только родственные подписи, а подпись
+ * с `for`, указывающим на другое поле, не считаем своей.
+ */
+function labelsFor(field: Candidate["element"], root: Document): HTMLLabelElement[] {
+  const labels: HTMLLabelElement[] = [];
+  const seen = new Set<Element>();
+
+  const add = (label: Element | null | undefined) => {
+    if (!label || seen.has(label)) return;
+    // Подпись другого поля делает наше поле похожим на то поле.
+    const target = label.getAttribute("for");
+    if (target && target !== field.getAttribute("id")) return;
+
+    seen.add(label);
+    labels.push(label as HTMLLabelElement);
+  };
+
+  // Подпись через for=
+  const id = field.getAttribute("id");
+  if (id) add(root.querySelector(`label[for="${CSS.escape(id)}"]`));
+
+  // Поле внутри своей подписи
+  add(field.closest("label"));
+
+  // Ближайшие заголовки контейнера: два уровня вверх хватает для вложенных
+  // форм площадок, а весь form уже захватывает чужие подписи.
+  let node: HTMLElement | null = field.parentElement;
+
+  for (let depth = 0; depth < 2 && node; depth += 1) {
+    node
+      .querySelectorAll<HTMLElement>(
+        ":scope > label, :scope > div > label, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > span",
+      )
+      .forEach((node_) => add(node_));
+
+    const parent = node.parentElement;
+    if (!parent || parent === root.body || parent === root.documentElement) break;
+    node = parent;
+  }
+
+  return labels;
 }
 
 /**
@@ -227,10 +249,7 @@ export function fillForm(beat: BeatFill, site: SiteConfig, root: Document = docu
 
   for (const spec of FIELDS) {
     if (spec.key.startsWith("price_") && !site.pricesFillable) {
-      report.skipped.push({
-        label: spec.label,
-        reason: `цены в BeatDesk в рублях, форма в ${site.currency === "USD" ? "долларах" : "рублях"}`,
-      });
+      report.skipped.push({ label: spec.label, reason: priceSkipReason(beat.currency, site) });
       continue;
     }
 

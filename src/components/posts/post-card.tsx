@@ -7,7 +7,7 @@ import { usePlayer } from "@/components/player/player-provider";
 import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/currency";
-import { timeAgo } from "@/lib/dates";
+import { TimeAgo } from "@/components/ui/time-ago";
 import { useI18n } from "@/lib/i18n/provider";
 import { beatToFeedCard, type Post } from "@/lib/posts";
 import { useAuthPrompt } from "@/components/posts/auth-prompt-provider";
@@ -100,9 +100,7 @@ export function PostCard({ post, loggedIn = true, depth = 0, inThread = false }:
           >
             {post.author.username}
           </Link>
-          <time dateTime={post.createdAt} className="text-[11px] text-mute">
-            {timeAgo(post.createdAt, locale)}
-          </time>
+          <TimeAgo iso={post.createdAt} locale={locale} className="text-[11px] text-mute" />
         </div>
       </div>
 

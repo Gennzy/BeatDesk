@@ -23,13 +23,18 @@ export function currencySymbol(code: string | null | undefined): string {
   return CURRENCIES.find((item) => item.code === code)?.symbol ?? "₽";
 }
 
+/** Обычный пробел переносится по строкам, и «199» с «₽» разъезжаются. */
+const NBSP = "\u00a0";
+/** Узкий неразрывный — так пишут евро по ISO 4217 и в европейских прайсах. */
+const NNBSP = "\u202f";
+
 /** 1500 → «1 500 ₽». Разделитель разрядов выбираем по валюте. */
 export function formatMoney(value: number | null | undefined, code: string | null | undefined): string {
   if (value === null || value === undefined || Number.isNaN(value)) return "";
 
   const locale = code === "USD" || code === "EUR" ? "en-US" : "ru-RU";
   const symbol = currencySymbol(code);
-  const space = code === "RUB" || code === "USD" ? " " : " ";
+  const space = code === "EUR" ? NNBSP : NBSP;
 
   return `${new Intl.NumberFormat(locale).format(value)}${space}${symbol}`;
 }

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { ConnectForm } from "@/components/platforms/connect-form";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
+import { absoluteDateTime } from "@/lib/dates";
 import { useI18n } from "@/lib/i18n/provider";
 import {
   DISTRIBUTORS,
@@ -325,7 +326,7 @@ export function PublishPanel({ beatId, connections, botReady, posts, pasteFields
                 <span className={post.status === "published" ? "label text-signal" : "label text-amber"}>
                   {post.status === "published" ? t("publish.sent") : (post.error ?? t("publish.error"))}
                 </span>
-                <span className="label text-mute">{new Date(post.createdAt).toLocaleString("ru-RU")}</span>
+                <span className="label text-mute">{absoluteDateTime(post.createdAt, "ru")}</span>
                 {post.externalUrl ? (
                   <a
                     href={post.externalUrl}

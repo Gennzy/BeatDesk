@@ -6,9 +6,9 @@ export type SiteConfig = {
   hosts: string[];
   /** Сколько символов влезет в название на площадке. */
   titleLimit: number;
-  /** Валюта цен в форме. */
+  /** Валюта цен в форме площадки. */
   currency: "RUB" | "USD";
-  /** Наши цены хранятся в рублях. На площадке в долларах ставить их нельзя. */
+  /** Ставятся ли цены: валюта бита должна совпасть с валютой формы. */
   pricesFillable: boolean;
   /** Поле тональности — выпадающий список со сокращениями вроде «G#m». */
   keyAsShort: boolean;
@@ -16,14 +16,20 @@ export type SiteConfig = {
   tagsAs: "chips" | "text";
 };
 
-export const SITES: SiteConfig[] = [
+/**
+ * Что о площадке знать независимо от бита.
+ *
+ * `pricesFillable` здесь не задан: он зависит от валюты конкретного бита
+ * и вычисляется в siteForBeat. Раньше он был зашит в конфиг площадки, и
+ * бит в долларах на BeatChain молча остался бы без цены.
+ */
+const SITE_FACTS: Omit<SiteConfig, "pricesFillable">[] = [
   {
     id: "beatstars",
     title: "BeatStars Studio",
     hosts: ["studio.beatstars.com", "www.beatstars.com"],
     titleLimit: 60,
     currency: "USD",
-    pricesFillable: false,
     keyAsShort: true,
     tagsAs: "chips",
   },
@@ -33,11 +39,12 @@ export const SITES: SiteConfig[] = [
     hosts: ["beatchain.io", "www.beatchain.io"],
     titleLimit: 30,
     currency: "RUB",
-    pricesFillable: true,
     keyAsShort: false,
     tagsAs: "text",
   },
 ];
+
+export const SITES: SiteConfig[] = SITE_FACTS.map((site) => ({ ...site, pricesFillable: false }));
 
 export function detectSite(url: string): SiteConfig | null {
   let host = "";
@@ -48,4 +55,25 @@ export function detectSite(url: string): SiteConfig | null {
   }
 
   return SITES.find((site) => site.hosts.includes(host)) ?? null;
+}
+
+/**
+ * Конфиг площадки под конкретный бит.
+ *
+ * Цены заполняются только когда валюта бита совпадает с той, что ждёт
+ * форма: BeatStars показывает доллары, BeatChain рубли. Поставить 500 ₽ в
+ * поле `$25.00` — значит назначить треку неверную цену, а такие треки
+ * площадки отправляют на переделку. Конвертации нет намеренно: у трека
+ * цена должна быть той, которую поставил автор.
+ */
+export function siteForBeat(url: string, currency: string): SiteConfig | null {
+  const site = detectSite(url);
+  if (!site) return null;
+
+  return { ...site, pricesFillable: currency === site.currency };
+}
+
+/** Текст отчёта: почему цены не поставились. */
+export function priceSkipReason(beatCurrency: string, site: SiteConfig): string {
+  return `валюта бита ${beatCurrency}, а форма ждёт ${site.currency}`;
 }

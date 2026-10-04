@@ -10,11 +10,14 @@ import type { BeatFill } from "./fields";
 
 type Platform = "beatstars" | "beatchain";
 
+/** Что сайт может прислать расширению. */
 type ExternalMessage = {
   type: "beatdesk:open-and-fill";
   platform: Platform;
   beatId: string;
 };
+
+type Incoming = ExternalMessage | { type: "beatdesk:hello" };
 
 const UPLOAD_PATHS: Record<Platform, string> = {
   beatstars: "https://studio.beatstars.com/content/tracks/uploaded",
@@ -38,7 +41,7 @@ async function rememberOrigin(url: string | undefined): Promise<void> {
 }
 
 chrome.runtime.onMessageExternal.addListener((message: unknown, sender, sendResponse) => {
-  const typed = (message ?? {}) as { type?: string; platform?: Platform; beatId?: unknown };
+  const typed = (message ?? {}) as Partial<Incoming>;
 
   if (typed?.type === "beatdesk:hello") {
     void rememberOrigin(sender.url).then(() => sendResponse({ ok: true }));

@@ -19,6 +19,13 @@ function manifest(): Plugin {
   };
 }
 
+/**
+ * popup и service worker.
+ *
+ * Content script собирается отдельным проходом: если входов несколько,
+ * общий модуль уезжает в отдельный чанк, а content script не умеет
+ * импортировать соседние файлы — он выполняется как обычный скрипт.
+ */
 export default defineConfig({
   plugins: [manifest()],
   build: {
@@ -29,7 +36,6 @@ export default defineConfig({
       input: {
         popup: "popup.html",
         background: "src/background.ts",
-        content: "src/content.ts",
       },
       output: {
         entryFileNames: "[name].js",

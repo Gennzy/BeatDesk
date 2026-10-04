@@ -5,8 +5,8 @@
   "type": "module",
   "description": "Подставляет данные бита BeatDesk в формы BeatStars и BeatChain. Ничего не публикует сама.",
   "scripts": {
-    "build": "vite build",
-    "dev": "vite build --watch",
+    "build": "vite build && vite build --config vite.content.config.ts && node scripts/check-dist.mjs",
+    "dev": "vite build && vite build --config vite.content.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

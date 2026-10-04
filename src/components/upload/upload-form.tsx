@@ -23,7 +23,7 @@ import {
   validateCoverFile,
 } from "@/lib/beats";
 import type { TranslationKey } from "@/lib/i18n/dictionaries";
-import { CURRENCIES, isCurrency, type CurrencyCode } from "@/lib/currency";
+import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
 import { compressImage } from "@/lib/image";
 import { useI18n } from "@/lib/i18n/provider";
 import { createClient } from "@/lib/supabase/client";

@@ -24,3 +24,35 @@ export function timeAgo(iso: string, locale: Locale): string {
 
   return new Intl.RelativeTimeFormat(unitLocale, { numeric: "auto" }).format(0, "year");
 }
+
+/**
+ * Дата в UTC — единственное значение, которое сервер и браузер рисуют
+ * одинаково.
+ *
+ * «5 минут назад» зависит от момента отрисовки: сервер считает его при
+ * отдаче страницы, браузер при гидрации, и на границе единиц текст
+ * разъезжается. Если до этих часов ещё и timezone у клиента свой, то
+ * календарная дата тоже отличается. Поэтому до монтирования показываем
+ * дату в UTC, а относительное время подставляет клиент.
+ */
+export function absoluteDate(iso: string, locale: Locale): string {
+  return new Intl.DateTimeFormat(locale === "ru" ? "ru-RU" : "en-US", {
+    day: "2-digit",
+    month: "short",
+    timeZone: "UTC",
+  }).format(new Date(iso));
+}
+
+/** Полная дата с временем для мест, где важно когда именно. */
+export function absoluteDateTime(iso: string, locale: Locale): string {
+  return new Intl.DateTimeFormat(locale === "ru" ? "ru-RU" : "en-US", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  })
+    .format(new Date(iso))
+    .replace(",", "");
+}
