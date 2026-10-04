@@ -3,16 +3,11 @@
 import Link from "next/link";
 
 import { usePlayer } from "@/components/player/player-provider";
-import { Badge } from "@/components/ui/badge";
+import { Avatar } from "@/components/ui/avatar";
 import type { FeedBeat } from "@/lib/feed";
 import { cn } from "@/lib/cn";
 import { trackFromBeat } from "@/lib/player";
 import { useI18n } from "@/lib/i18n/provider";
-
-function formatPrice(value: number | null): string {
-  if (value === null) return "";
-  return `${new Intl.NumberFormat("ru-RU").format(value)} ₽`;
-}
 
 function Cover({ beat, noCoverLabel }: { beat: FeedBeat; noCoverLabel: string }) {
   if (beat.coverUrl) {
@@ -38,31 +33,31 @@ function Cover({ beat, noCoverLabel }: { beat: FeedBeat; noCoverLabel: string })
 
 export function BeatCard({ beat }: { beat: FeedBeat }) {
   const { t } = useI18n();
-  const { track, isPlaying, play } = usePlayer();
+  const { track, isPlaying, play, toggle, plays } = usePlayer();
+
   const active = track?.id === beat.id && isPlaying;
   const playable = Boolean(beat.mp3Url);
+  const ownPlays = active ? plays : beat.plays;
 
-  const prices = [
-    beat.prices.mp3 ? `MP3 ${formatPrice(beat.prices.mp3)}` : null,
-    beat.prices.bundle ? `MP3+WAV ${formatPrice(beat.prices.bundle)}` : null,
-    beat.prices.exclusive ? `Эксклюзив ${formatPrice(beat.prices.exclusive)}` : null,
-  ].filter(Boolean) as string[];
+  function listen() {
+    const next = trackFromBeat(beat);
+    if (!next) return;
+    if (active) toggle();
+    else play(next);
+  }
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-md border border-line bg-ink-2 transition-colors duration-200 hover:border-line-2">
-      <div className="relative aspect-square overflow-hidden">
+    <article className="group flex gap-4 border border-line bg-ink-2 p-3 transition-colors duration-200 hover:border-line-2">
+      <div className="relative size-28 shrink-0 overflow-hidden sm:size-32">
         <Cover beat={beat} noCoverLabel={t("feed.noCover")} />
 
         {playable ? (
           <button
             type="button"
-            onClick={() => {
-              const next = trackFromBeat(beat);
-              if (next) play(next);
-            }}
+            onClick={listen}
             aria-label={active ? t("player.pause") : t("player.play")}
             className={cn(
-              "absolute bottom-4 left-4 grid size-11 place-items-center border border-line bg-ink/85 text-paper backdrop-blur-sm transition-colors duration-150",
+              "absolute bottom-2 left-2 grid size-9 place-items-center border border-line bg-ink/85 text-paper backdrop-blur-sm transition-colors duration-150",
               active ? "border-signal bg-signal text-ink" : "hover:border-signal hover:bg-signal hover:text-ink",
             )}
           >
@@ -76,47 +71,59 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
               </svg>
             )}
           </button>
-        ) : (
-          <span className="label absolute bottom-4 left-4 border border-line bg-ink/85 px-2 py-1.5 text-mute">
-            {t("feed.noAudio")}
-          </span>
-        )}
+        ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col gap-4 p-4">
-        <div className="flex flex-col gap-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+        <div className="flex flex-col gap-1.5">
           <Link href={`/beats/${beat.id}`} className="group/title">
-            <h3 className="font-display text-lg leading-tight tracking-tight text-paper uppercase transition-colors group-hover/title:text-signal">
+            <h3 className="font-display text-base leading-tight text-paper uppercase transition-colors group-hover/title:text-signal">
               {beat.title}
             </h3>
           </Link>
-          <Link href={`/beatmakers/${beat.username}`} className="flex items-center gap-2 hover:opacity-80">
-            <span aria-hidden className="grid size-5 place-items-center bg-ink-3 font-display text-[10px] text-mute">
-              {beat.username.slice(0, 2).toUpperCase()}
-            </span>
-            <span className="label text-mute">@{beat.username}</span>
-          </Link>
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <Link href={`/beatmakers/${beat.username}`} className="flex items-center gap-1.5 hover:opacity-80">
+              <Avatar username={beat.username} src={beat.avatarUrl} size="xs" />
+              <span className="label text-mute">@{beat.username}</span>
+            </Link>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Badge tone="outline">{beat.bpm} BPM</Badge>
-          <Badge tone="outline">{beat.musicalKey}</Badge>
-          {beat.tags.slice(0, 3).map((tag) => (
-            <span key={tag} className="label text-mute">
-              #{tag}
-            </span>
-          ))}
+        {/* Технические данные — моноширинным, это факты, а не бейджи */}
+        <div className="mono flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-mute">
+          <span>{beat.bpm} BPM</span>
+          <span className="text-line">{beat.musicalKey}</span>
+          {ownPlays > 0 ? <span className="text-line">{ownPlays} {t("posts.playsShort")}</span> : null}
         </div>
 
-        {prices.length > 0 ? (
-          <p className="label mt-auto flex flex-wrap gap-x-2 gap-y-1 text-amber">
-            {prices.map((price) => (
-              <span key={price} className="whitespace-nowrap">
-                {price}
+        {beat.tags.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            {beat.tags.slice(0, 3).map((tag) => (
+              <span key={tag} className="label text-mute">
+                {tag}
               </span>
             ))}
-          </p>
+          </div>
         ) : null}
+
+        {/* Цена: базовая заметно, остальные в подписи — иначе строка не читается */}
+        <div className="mt-auto flex flex-wrap items-baseline gap-x-3 gap-y-1 pt-1">
+          {beat.prices.mp3 ? (
+            <span className="flex items-baseline gap-1.5">
+              <span className="label text-mute">{t("posts.from")}</span>
+              <span className="font-display text-lg leading-none text-signal">{beat.prices.mp3} ₽</span>
+            </span>
+          ) : null}
+
+          {beat.prices.bundle || beat.prices.exclusive ? (
+            <span className="label text-mute">
+              {[beat.prices.bundle ? `WAV ${beat.prices.bundle}` : null, beat.prices.exclusive ? `эксклюзив ${beat.prices.exclusive}` : null]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+          ) : null}
+        </div>
       </div>
     </article>
   );

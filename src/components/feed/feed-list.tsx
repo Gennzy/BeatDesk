@@ -64,7 +64,7 @@ export function FeedList({ initial, initialNextOffset, filters }: Props) {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-3 xl:grid-cols-2">
         {beats.map((beat) => (
           <BeatCard key={beat.id} beat={beat} />
         ))}
@@ -72,7 +72,7 @@ export function FeedList({ initial, initialNextOffset, filters }: Props) {
 
       <div ref={sentinelRef} aria-live="polite" className="flex min-h-24 items-center justify-center">
         {status === "loading" ? (
-          <div className="grid w-full gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid w-full gap-3 xl:grid-cols-2">
             {Array.from({ length: 3 }, (_, index) => (
               <div key={index} className="flex flex-col overflow-hidden rounded-md border border-line bg-ink-2">
                 <Skeleton className="aspect-square rounded-none" />
