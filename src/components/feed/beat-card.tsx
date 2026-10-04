@@ -27,7 +27,12 @@ function Cover({ beat, noCoverLabel }: { beat: FeedBeat; noCoverLabel: string })
   return (
     <div className="cover-grid relative size-full bg-ink-3">
       <span aria-hidden className="absolute top-3 right-3 size-2 bg-signal" />
-      <span className="label absolute top-3 left-3 text-mute">{noCoverLabel}</span>
+      {/* Заглушка занимает две трети карточки, поэтому emptiness должен быть
+          оформлен, а не пуст: тонкая рамка по центру и подпись под ней. */}
+      <span aria-hidden className="absolute inset-0 grid place-items-center">
+        <span className="size-10 border border-line-2" />
+      </span>
+      <span className="label absolute top-3 left-4 text-mute">{noCoverLabel}</span>
     </div>
   );
 }
@@ -91,11 +96,28 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
           </div>
         </div>
 
-        {/* Технические данные — моноширинным, это факты, а не бейджи */}
-        <div className="mono flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-mute">
+        {/* Технические данные — моноширинным, это факты, а не бейджи.
+            Цвет mute, а не line: line — это цвет рамки, на тексте он не читается. */}
+        <div className="mono flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12px] text-mute">
           <span>{beat.bpm} BPM</span>
-          <span className="text-line">{beat.musicalKey}</span>
-          {ownPlays > 0 ? <span className="text-line">{ownPlays} {t("posts.playsShort")}</span> : null}
+          {beat.musicalKey ? (
+            <>
+              <span aria-hidden className="text-line-2">
+                /
+              </span>
+              <span>{beat.musicalKey}</span>
+            </>
+          ) : null}
+          {ownPlays > 0 ? (
+            <>
+              <span aria-hidden className="text-line-2">
+                /
+              </span>
+              <span>
+                {ownPlays} {t("posts.playsShort")}
+              </span>
+            </>
+          ) : null}
         </div>
 
         {beat.tags.length > 0 ? (
@@ -108,7 +130,8 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
           </div>
         ) : null}
 
-        {/* Цена: базовая заметно, остальные в подписи — иначе строка не читается */}
+        {/* Цена: базовая заметно, остальные в подписи — иначе строка не читается.
+            Подпись моноширинная: это числа, а не слова. */}
         <div className="mt-auto flex flex-wrap items-baseline gap-x-3 gap-y-1 pt-1">
           {beat.prices.mp3 ? (
             <span className="flex items-baseline gap-1.5">
@@ -118,10 +141,10 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
           ) : null}
 
           {beat.prices.bundle || beat.prices.exclusive ? (
-            <span className="label text-mute">
-              {[beat.prices.bundle ? `WAV ${beat.prices.bundle}` : null, beat.prices.exclusive ? `эксклюзив ${beat.prices.exclusive}` : null]
-                .filter(Boolean)
-                .join(" · ")}
+            <span className="mono text-[11px] text-mute">
+              {beat.prices.bundle ? `WAV ${beat.prices.bundle}` : null}
+              {beat.prices.bundle && beat.prices.exclusive ? " · " : null}
+              {beat.prices.exclusive ? `EXCL ${beat.prices.exclusive}` : null}
             </span>
           ) : null}
         </div>
