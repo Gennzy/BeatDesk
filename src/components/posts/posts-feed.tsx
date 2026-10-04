@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { PostCard } from "@/components/posts/post-card";
 import { PostComposer } from "@/components/posts/post-composer";
 import { Button } from "@/components/ui/button";
 import type { FeedBeat } from "@/lib/feed";
 import { useI18n } from "@/lib/i18n/provider";
+import { useRealtime } from "@/lib/realtime";
 import type { Post } from "@/lib/posts";
 
 type Tab = "all" | "following";
@@ -32,6 +33,66 @@ export function PostsFeed({ tab, initial, myBeats, loggedIn, onTabChange }: Prop
   const [extra, setExtra] = useState<Post[]>([]);
   const [extraNext, setExtraNext] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  // Живые посты стоят перед серверной первой страницей: новый пост должен
+  // оказаться наверху, а не в конце уже загруженного.
+  const [live, setLive] = useState<Post[]>([]);
+
+  const visible = useMemo(() => (isAll ? [...live, ...initial, ...extra] : fetched), [isAll, live, initial, extra, fetched]);
+  const nextOffset = isAll ? extraNext : fetchedNext;
+
+  // Новые посты не вставляем в список молча: если человек читает середину
+  // ленты, содержимое подъедет под ним и собьёт место. Показываем плашку,
+  // а если он и так наверху — добавляем сразу.
+  const [pending, setPending] = useState<Post[]>([]);
+  const topRef = useRef(true);
+
+  useEffect(() => {
+    const onScroll = () => {
+      topRef.current = window.scrollY < 120;
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  /** Забирает свежие посты и решает: показать плашкой или добавить сразу. */
+  const absorbNew = useCallback(async () => {
+    const response = await fetch("/api/posts?tab=all&offset=0", { cache: "no-store" }).catch(() => null);
+    if (!response?.ok) return;
+
+    const data = (await response.json()) as { posts?: Post[] };
+    const fresh = (data.posts ?? []).filter(
+      (post) => !visible.some((item) => item.id === post.id) && !pending.some((item) => item.id === post.id),
+    );
+    if (fresh.length === 0) return;
+
+    if (topRef.current && isAll) {
+      setLive((prev) => [...fresh, ...prev]);
+    } else {
+      setPending((prev) => [...fresh, ...prev]);
+    }
+  }, [isAll, pending, visible]);
+
+  useRealtime("posts", () => void absorbNew());
+
+  // Страховка на случай, если таблица не добавлена в публикацию realtime:
+  // событий не будет, но лента всё равно обновится сама, просто реже.
+  //
+  // Колбэк держим в ref и создаём таймер один раз: если зависеть от
+  // absorbNew, любой рендер сбрасывал бы интервал заново и он никогда
+  // не досработал бы тридцати секунд.
+  const absorbRef = useRef(absorbNew);
+  useEffect(() => {
+    absorbRef.current = absorbNew;
+  });
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void absorbRef.current();
+    }, 20_000);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (isAll) return;
@@ -56,9 +117,6 @@ export function PostsFeed({ tab, initial, myBeats, loggedIn, onTabChange }: Prop
       alive = false;
     };
   }, [isAll]);
-
-  const visible = isAll ? [...initial, ...extra] : fetched;
-  const nextOffset = isAll ? extraNext : fetchedNext;
 
   async function loadMore() {
     if (loading) return;
@@ -107,6 +165,20 @@ export function PostsFeed({ tab, initial, myBeats, loggedIn, onTabChange }: Prop
           </button>
         ))}
       </div>
+
+      {pending.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => {
+            setLive((prev) => [...pending, ...prev]);
+            setPending([]);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          className="label sticky top-20 z-10 w-fit border border-signal bg-signal px-3 py-1.5 text-ink"
+        >
+          {pending.length} {t("posts.newPosts")}
+        </button>
+      ) : null}
 
       {visible.length === 0 && !loading ? (
         <p className="text-sub text-mute">{isAll ? t("posts.empty") : t("posts.emptyFollowing")}</p>

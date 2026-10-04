@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { PostCard } from "@/components/posts/post-card";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n/provider";
 import type { Post } from "@/lib/posts";
+import { useRealtime } from "@/lib/realtime";
 
 type Props = {
   rootId: string;
@@ -23,8 +24,25 @@ export function ReplyThread({ rootId, initial, maxDepth }: Props) {
   const [extra, setExtra] = useState<Post[]>([]);
   const [nextOffset, setNextOffset] = useState<number | null>(initial.length > 0 ? initial.length : null);
   const [loading, setLoading] = useState(false);
+  // В ветке споришь с кем-то прямо сейчас: ответ, написанный другим,
+  // должен появиться без перезагрузки.
+  const [live, setLive] = useState<Post[]>([]);
 
-  const all = [...initial, ...extra];
+  const pull = useCallback(async () => {
+    const response = await fetch(`/api/posts/${rootId}/replies?offset=0`, { cache: "no-store" }).catch(() => null);
+    if (!response?.ok) return;
+
+    const data = (await response.json()) as { replies?: Post[] };
+    setLive((prev) => {
+      const seen = new Set([...initial, ...extra, ...prev].map((post) => post.id));
+      const fresh = (data.replies ?? []).filter((post) => !seen.has(post.id));
+      return fresh.length > 0 ? [...fresh, ...prev] : prev;
+    });
+  }, [extra, initial, rootId]);
+
+  useRealtime("posts", () => void pull());
+
+  const all = [...live, ...initial, ...extra];
   const byParent = new Map<string, Post[]>();
   for (const post of all) {
     if (!post.parentId) continue;

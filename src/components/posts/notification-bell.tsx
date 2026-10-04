@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n/provider";
+import { useRealtime } from "@/lib/realtime";
 
 /**
  * Колокольчик со счётчиком непрочитанных. Считает раз в минуту и сразу
@@ -49,6 +50,14 @@ export function NotificationBell() {
       window.clearInterval(timer);
     };
   }, [fetchUnread, pathname]);
+
+  // Счётчик обязан реагировать сразу: иначе человек узнает об ответе
+  // только после перезагрузки.
+  useRealtime("notifications", () => {
+    void fetchUnread().then((value) => {
+      if (value !== null) setUnread(value);
+    });
+  });
 
   return (
     <Link

@@ -1,8 +1,45 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { clientKey, rateLimit } from "@/lib/rate-limit";
-import { POST_BODY_LIMIT } from "@/lib/posts";
+import { fetchPosts, POST_BODY_LIMIT, POSTS_PAGE_SIZE } from "@/lib/posts";
 import { createClient } from "@/lib/supabase/server";
+
+/** Лента постов: «все» или «подписки». */
+export async function GET(request: NextRequest) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const params = request.nextUrl.searchParams;
+  const raw = Number(params.get("offset") ?? 0);
+  const offset = Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 0;
+  const tab = params.get("tab") === "following" ? "following" : "all";
+
+  const gate = rateLimit(clientKey(request, `posts-feed:${user?.id ?? "anon"}`), 120, 60_000);
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "Слишком много запросов" },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
+    );
+  }
+
+  // Подписки без входа смотреть не на что: показываем всех.
+  const followingOf = tab === "following" && user ? user.id : null;
+
+  const posts = await fetchPosts(supabase, {
+    viewerId: user?.id ?? null,
+    offset,
+    limit: POSTS_PAGE_SIZE,
+    followingOf,
+  });
+
+  return NextResponse.json({
+    posts,
+    nextOffset: posts.length === POSTS_PAGE_SIZE ? offset + POSTS_PAGE_SIZE : null,
+  });
+}
 
 type Body = {
   body?: string;

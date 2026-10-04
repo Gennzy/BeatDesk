@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { usePlayer } from "@/components/player/player-provider";
@@ -24,7 +23,6 @@ type Props = {
 
 export function PostCard({ post, depth = 0, inThread = false }: Props) {
   const { t, locale } = useI18n();
-  const router = useRouter();
   const { track: playing, isPlaying, play, toggle } = usePlayer();
 
   const [liked, setLiked] = useState(post.likedByMe);
