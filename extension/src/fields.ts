@@ -12,6 +12,8 @@ export type BeatFill = {
   hashtags: string;
   prices: { mp3: number | null; bundle: number | null; exclusive: number | null };
   priceLine: string;
+  /** Валюта цен бита: RUB, USD или EUR. */
+  currency: string;
   description: string;
   files: { label: string; name: string }[];
 };

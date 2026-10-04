@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 
   const { data: beats } = await supabase
     .from("beats")
-    .select("id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, profiles(username)")
+    .select("id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, currency, profiles(username)")
     .in("id", beatIds)
     .eq("owner_id", user.id);
 
@@ -92,6 +92,7 @@ export async function POST(request: Request) {
       musicalKey: beat.key,
       tags: beat.tags ?? [],
       prices: (beat.prices ?? { mp3: null, bundle: null, exclusive: null }) as PublishBeat["prices"],
+      currency: beat.currency ?? "RUB",
       username: owner?.username ?? "",
       mp3Url: beat.mp3_url,
       coverUrl: beat.cover_url,

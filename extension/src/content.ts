@@ -55,10 +55,18 @@ const SITES: Record<ExternalMessage["platform"], SiteId> = {
   airbit: "beatstars",
 };
 
-/** Конфиг площадки того же вида, что ждёт fillForm. */
-function siteConfig(id: SiteId): Parameters<typeof fillForm>[1] {
+/**
+ * Конфиг площадки того же вида, что ждёт fillForm.
+ *
+ * Цены заполняются, когда валюта бита совпадает с той, что ждёт форма:
+ * BeatChain принимает рубли, BeatStars доллары. Раньше валюты у бита не
+ * было и цены приходилось пропускать на всех маркетплейсах.
+ */
+function siteConfig(id: SiteId, currency: string): Parameters<typeof fillForm>[1] {
   const flags = SITE_FLAGS[id];
-  return { id, hosts: SITE_HOSTS[id], pricesFillable: id === "beatchain", ...flags };
+  const wanted = id === "beatchain" ? "RUB" : "USD";
+
+  return { id, hosts: SITE_HOSTS[id], pricesFillable: currency === wanted, ...flags };
 }
 
 /**
@@ -146,7 +154,7 @@ chrome.runtime.onMessage.addListener((message: InboundMessage, _sender, sendResp
       return false;
     }
 
-    const report = fillForm(message.beat, siteConfig(site));
+    const report = fillForm(message.beat, siteConfig(site, message.beat.currency));
     showNotice([
       `Заполнено: ${report.filled.map((item) => item.label).join(", ") || "ничего"}`,
       report.empty.length > 0 ? `Пропущено, цена не задана: ${report.empty.map((item) => item.label).join(", ")}` : "",

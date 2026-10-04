@@ -8,6 +8,7 @@ export type PublishBeat = {
   musicalKey: string;
   tags: string[];
   prices: { mp3: number | null; bundle: number | null; exclusive: number | null };
+  currency?: string;
   username: string;
   mp3Url: string | null;
   coverUrl: string | null;

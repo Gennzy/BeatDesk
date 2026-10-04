@@ -34,7 +34,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     .from("beats")
     // wav_url/zip_url/rar_url миграция 0005 удалила: файлы лежат в jsonb
     // files. Ошибка запроса здесь раньше маскировалась под «бит не найден».
-    .select("id, title, type_beat_artists, bpm, key, tags, prices, is_public, mp3_url, files, profiles(username)")
+    .select("id, title, type_beat_artists, bpm, key, tags, prices, currency, is_public, mp3_url, files, profiles(username)")
     .eq("id", id)
     .eq("is_public", true)
     .maybeSingle();
@@ -56,6 +56,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     musicalKey: beat.key,
     tags: beat.tags ?? [],
     prices: (beat.prices ?? { mp3: null, bundle: null, exclusive: null }) as DistributionBeat["prices"],
+    currency: beat.currency ?? "RUB",
     audioUrl: null,
     ownerUsername: owner?.username ?? "",
   };
@@ -88,6 +89,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     tags: beat.tags ?? [],
     hashtags: hashtagList(distributionBeat),
     prices: beat.prices ?? { mp3: null, bundle: null, exclusive: null },
+    currency: beat.currency ?? "RUB",
     priceLine: priceLine(distributionBeat),
     description,
     fileBase: translit(beat.title),

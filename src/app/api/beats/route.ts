@@ -11,6 +11,7 @@ type Body = {
   key?: unknown;
   tags?: unknown;
   prices?: unknown;
+  currency?: unknown;
   mp3_url?: unknown;
   cover_url?: unknown;
   files?: unknown;
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
     musicalKey: body.key,
     tags: body.tags,
     prices: body.prices,
+    currency: body.currency,
   });
 
   if (!validated.ok) {

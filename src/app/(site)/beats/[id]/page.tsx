@@ -51,7 +51,7 @@ export default async function BeatDistributionPage({ params }: { params: Promise
 
   const { data: beat } = await supabase
     .from("beats")
-    .select("id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, files, owner_id, profiles(username, avatar_url)")
+    .select("id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, currency, files, owner_id, profiles(username, avatar_url)")
     .eq("id", id)
     .maybeSingle();
 
@@ -93,6 +93,7 @@ export default async function BeatDistributionPage({ params }: { params: Promise
             musicalKey: beat.key,
             tags: beat.tags ?? [],
             prices: (beat.prices ?? { mp3: null, bundle: null, exclusive: null }) as BeatHeroData["prices"],
+            currency: beat.currency ?? "RUB",
             formats,
           }}
           isOwner={isOwner}
@@ -107,6 +108,7 @@ export default async function BeatDistributionPage({ params }: { params: Promise
             musicalKey: beat.key,
             tags: beat.tags ?? [],
             prices: (beat.prices ?? { mp3: null, bundle: null, exclusive: null }) as DistributionBeat["prices"],
+            currency: beat.currency ?? "RUB",
             audioUrl: beat.mp3_url,
             ownerUsername: owner?.username ?? "",
           }}
@@ -122,6 +124,7 @@ export default async function BeatDistributionPage({ params }: { params: Promise
                   musicalKey: beat.key,
                   tags: beat.tags ?? [],
                   prices: beat.prices,
+                  currency: beat.currency ?? "RUB",
                   audioUrl: beat.mp3_url,
                   ownerUsername: owner?.username ?? "",
                 })}_tagged.mp3`, size: 0, mime: "audio/mpeg", url: beat.mp3_url }

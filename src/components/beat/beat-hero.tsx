@@ -7,6 +7,7 @@ import { usePlayer } from "@/components/player/player-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
+import { formatMoney } from "@/lib/currency";
 import { useI18n } from "@/lib/i18n/provider";
 
 export type BeatHeroData = {
@@ -20,6 +21,7 @@ export type BeatHeroData = {
   musicalKey: string;
   tags: string[];
   prices: { mp3: number | null; bundle: number | null; exclusive: number | null };
+  currency?: string;
   formats: string[];
 };
 
@@ -29,12 +31,13 @@ const TIERS = [
   { key: "exclusive", label: "Эксклюзив", hint: "Все файлы, права" },
 ] as const;
 
-function money(value: number): string {
-  return `${new Intl.NumberFormat("ru-RU").format(value)} ₽`;
+function money(value: number, currency?: string): string {
+  return formatMoney(value, currency);
 }
 
 export function BeatHero({ beat, isOwner }: { beat: BeatHeroData; isOwner: boolean }) {
   const { t } = useI18n();
+  const { currency } = beat;
   const { track, isPlaying, play } = usePlayer();
   const [copied, setCopied] = useState(false);
 
@@ -45,7 +48,7 @@ export function BeatHero({ beat, isOwner }: { beat: BeatHeroData; isOwner: boole
   );
 
   async function copyPrices() {
-    const line = tiers.map((tier) => `${tier.label} ${money(tier.value as number)}`).join(" · ");
+    const line = tiers.map((tier) => `${tier.label} ${money(tier.value as number, currency)}`).join(" · ");
     try {
       await navigator.clipboard.writeText(line);
     } catch {
@@ -188,7 +191,7 @@ export function BeatHero({ beat, isOwner }: { beat: BeatHeroData; isOwner: boole
                     <span className="label text-paper">{tier.label}</span>
                     <span className="text-xs text-mute">{tier.hint}</span>
                   </span>
-                  <span className="font-mono text-sm text-amber">{money(tier.value as number)}</span>
+                  <span className="font-mono text-sm text-amber">{money(tier.value as number, currency)}</span>
                 </li>
               ))}
             </ul>

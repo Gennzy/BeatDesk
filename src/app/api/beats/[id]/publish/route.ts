@@ -28,7 +28,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const { data: beat } = await supabase
     .from("beats")
-    .select("id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, owner_id, profiles(username)")
+    .select("id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, currency, owner_id, profiles(username)")
     .eq("id", id)
     .maybeSingle();
 
@@ -46,6 +46,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     musicalKey: beat.key,
     tags: beat.tags ?? [],
     prices: (beat.prices ?? { mp3: null, bundle: null, exclusive: null }) as PublishBeat["prices"],
+    currency: beat.currency ?? "RUB",
     username: owner?.username ?? "",
     mp3Url: beat.mp3_url,
     coverUrl: beat.cover_url,
