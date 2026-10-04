@@ -38,10 +38,13 @@ export type Post = {
   createdAt: string;
 };
 
+// Профиль приходится указывать явно: у posts на profiles две связи —
+// напрямую через author_id и многие-ко-многим через post_likes.
+// Без подсказки PostgREST отвечает PGRST201 и возвращает пустую выборку.
 const POST_COLUMNS = `
   id, author_id, parent_id, body, like_count, reply_count, created_at,
   beats(id, title, bpm, key, tags, cover_url, mp3_url, prices),
-  profiles(username, avatar_url)
+  profiles!posts_author_id_fkey(username, avatar_url)
 `;
 
 type PostRow = {
@@ -130,7 +133,7 @@ export async function fetchPosts(
   let query = supabase
     .from("posts")
     .select(POST_COLUMNS)
-    .eq("parent_id", null)
+    .is("parent_id", null)
     .order("last_reply_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
@@ -147,7 +150,15 @@ export async function fetchPosts(
   }
 
   const { data, error } = await query;
-  if (error || !data) return [];
+
+  if (error) {
+    // Молчаливый пустой массив выглядел бы как «постов нет» и прятал бы
+    // поломку запроса. Пусть причина будет видна в логах сервера.
+    console.error("posts feed query failed", error);
+    return [];
+  }
+
+  if (!data) return [];
 
   const rows = data as PostRow[];
   const liked = await likedIds(supabase, options.viewerId, rows.map((row) => row.id));
@@ -163,7 +174,13 @@ export async function fetchThread(
   maxDepth = THREAD_RENDER_DEPTH,
 ): Promise<{ root: Post | null; replies: Post[]; totalReplies: number }> {
   const { data, error } = await supabase.from("posts").select(POST_COLUMNS).eq("id", rootId).maybeSingle();
-  if (error || !data) return { root: null, replies: [], totalReplies: 0 };
+
+  if (error) {
+    console.error("thread query failed", error);
+    return { root: null, replies: [], totalReplies: 0 };
+  }
+
+  if (!data) return { root: null, replies: [], totalReplies: 0 };
 
   const rootRow = data as PostRow;
 
@@ -254,6 +271,32 @@ export async function loadLikedPostIds(supabase: SupabaseServerClient, viewerId:
   if (!viewerId) return new Set();
   const { data } = await supabase.from("post_likes").select("post_id").eq("user_id", viewerId);
   return new Set((data ?? []).map((row) => row.post_id as string));
+}
+
+/**
+ * Посты профиля для страницы битмейкера. Ответы пропускаем: профиль
+ * показывает верхнеуровневые посты, ветка живёт на своей странице.
+ */
+export async function fetchProfilePosts(
+  supabase: SupabaseServerClient,
+  profileId: string,
+  isOwner: boolean,
+  limit = 10,
+): Promise<Post[]> {
+  const { data } = await supabase
+    .from("posts")
+    .select(POST_COLUMNS)
+    .eq("author_id", profileId)
+    .is("parent_id", null)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  const rows = (data ?? []) as PostRow[];
+  // Лайки автора на своих постах гостя не показываем: их всё равно не увидеть
+  // в интерфейсе без подписки, а лишний запрос на каждый пост дорог.
+  const liked = isOwner ? await likedIds(supabase, profileId, rows.map((row) => row.id)) : new Set<string>();
+
+  return rows.map((row) => toPost(row, liked));
 }
 
 /** Кусок FeedBeat для карточки бита внутри поста. */

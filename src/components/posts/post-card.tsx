@@ -155,7 +155,7 @@ export function PostCard({ post, depth = 0, inThread = false }: Props) {
         ) : null}
       </div>
 
-      {depth === 0 && post.replyCount > 0 ? (
+      {depth === 0 && post.replyCount === 0 ? (
         <Badge tone="dim" className="w-fit">
           {t("posts.threadHint")}
         </Badge>

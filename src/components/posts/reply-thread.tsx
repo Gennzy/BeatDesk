@@ -10,7 +10,6 @@ import type { Post } from "@/lib/posts";
 type Props = {
   rootId: string;
   initial: Post[];
-  totalReplies: number;
   maxDepth: number;
 };
 
@@ -18,7 +17,7 @@ type Props = {
  * Ответы внутри ветки. Глубокие уровни сворачиваются: без этого один
  * спорный ответ разворачивает на экране двадцать экранов текста.
  */
-export function ReplyThread({ rootId, initial, totalReplies, maxDepth }: Props) {
+export function ReplyThread({ rootId, initial, maxDepth }: Props) {
   const { t } = useI18n();
 
   const [extra, setExtra] = useState<Post[]>([]);
@@ -70,13 +69,19 @@ export function ReplyThread({ rootId, initial, totalReplies, maxDepth }: Props) 
     }
   }
 
+  // Порядок важен: rendered наполняется только пока вызывается renderLevel,
+  // поэтому дерево строим раньше, чем считаем то, что в него не попало.
+  const tree = renderLevel(rootId, 0);
   const hidden = all.filter((post) => !rendered.has(post.id));
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="label border-b border-line pb-3 text-paper">{t("posts.repliesTitle")}</h2>
+      <h2 className="label flex items-center gap-2 border-b border-line pb-3 text-paper">
+        {t("posts.repliesTitle")}
+        {all.length > 0 ? <span className="text-mute">{all.length}</span> : null}
+      </h2>
 
-      {all.length === 0 ? <p className="text-sub text-mute">{t("posts.empty")}</p> : renderLevel(rootId, 0)}
+      {all.length === 0 ? <p className="text-sub text-mute">{t("posts.empty")}</p> : tree}
 
       {hidden.length > 0 ? (
         <details className="border border-line bg-ink-2 p-3">
@@ -93,12 +98,6 @@ export function ReplyThread({ rootId, initial, totalReplies, maxDepth }: Props) 
         <Button variant="ink" size="sm" disabled={loading} onClick={() => void loadMore()} className="w-fit">
           {t("posts.moreReplies")}
         </Button>
-      ) : null}
-
-      {totalReplies > all.length ? (
-        <p className="label text-mute">
-          {totalReplies - all.length} {t("posts.collapsedReplies")}
-        </p>
       ) : null}
     </div>
   );

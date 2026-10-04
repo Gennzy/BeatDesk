@@ -9,6 +9,7 @@ import { Logo } from "@/components/layout/logo";
 import { Container } from "@/components/ui/container";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
+import { NotificationBell } from "@/components/posts/notification-bell";
 import { useI18n } from "@/lib/i18n/provider";
 import { signOut } from "@/lib/supabase/actions";
 import type { SessionUser } from "@/lib/supabase/user";
@@ -87,6 +88,7 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
               <LanguageSwitch />
               {user ? (
                 <>
+                  <NotificationBell />
                   <Link href="/profile" className="flex items-center gap-2 transition-opacity hover:opacity-80">
                     <Avatar user={user} />
                     <span className="label max-w-24 truncate text-paper">{user.username}</span>
@@ -111,9 +113,12 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
 
             <div className="flex items-center gap-3 sm:hidden">
               {user ? (
-                <Link href="/profile" aria-label={t("auth.myProfile")}>
-                  <Avatar user={user} size="md" />
-                </Link>
+                <>
+                  <NotificationBell />
+                  <Link href="/profile" aria-label={t("auth.myProfile")}>
+                    <Avatar user={user} size="md" />
+                  </Link>
+                </>
               ) : (
                 <Link href="/login" className={buttonClass({ variant: "ghost", size: "sm" })}>
                   {t("nav.login")}

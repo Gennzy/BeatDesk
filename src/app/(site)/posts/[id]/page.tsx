@@ -48,12 +48,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
             autoFocus
           />
 
-          <ReplyThread
-            rootId={thread.root.id}
-            initial={thread.replies}
-            totalReplies={thread.totalReplies}
-            maxDepth={THREAD_RENDER_DEPTH}
-          />
+          <ReplyThread rootId={thread.root.id} initial={thread.replies} maxDepth={THREAD_RENDER_DEPTH} />
         </div>
       </Container>
     </section>

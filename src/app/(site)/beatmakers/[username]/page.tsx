@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { FollowButton } from "@/components/posts/follow-button";
+import { PostCard } from "@/components/posts/post-card";
 import { BeatManager } from "@/components/profile/beat-manager";
 import { Container, SectionHead } from "@/components/ui/container";
 import { fetchBeatsByOwner } from "@/lib/feed";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { pluralEn, pluralRu } from "@/lib/plural";
+import { fetchProfilePosts, loadFollowState } from "@/lib/posts";
 import { getSupabase } from "@/lib/supabase/user";
 
 const PLATFORM_KEYS = ["beatchain", "youtube", "vk", "telegram", "instagram"] as const;
@@ -67,7 +70,17 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
   } = await supabase.auth.getUser();
   const isOwner = user?.id === profile.id;
 
-  const beats = await fetchBeatsByOwner(supabase, profile.id, isOwner).catch(() => []);
+  const [beats, follow, posts] = await Promise.all([
+    fetchBeatsByOwner(supabase, profile.id, isOwner).catch(() => []),
+    loadFollowState(supabase, user?.id ?? null, profile.id).catch(() => ({
+      isFollowing: false,
+      followerCount: 0,
+      followingCount: 0,
+    })),
+    // Посты профиля показываем только если их больше одного: иначе это
+    // единственный бэкфилльный пост того же бита, он уже есть в каталоге.
+    fetchProfilePosts(supabase, profile.id, isOwner).catch(() => []),
+  ]);
   const links = (profile.links ?? {}) as Record<string, string>;
   const hasLinks = PLATFORM_KEYS.some((key) => Boolean(links[key]));
 
@@ -91,6 +104,17 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
               {profile.username}
             </h1>
             <p className="max-w-[58ch] text-sub text-mute">{profile.bio ?? t("profile.bioPlaceholder")}</p>
+
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-2">
+              <FollowButton
+                profileId={profile.id}
+                username={profile.username}
+                isFollowing={follow.isFollowing}
+                followerCount={follow.followerCount}
+                loggedIn={Boolean(user)}
+                isOwner={isOwner}
+              />
+            </div>
 
             <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-2">
               <span className="label text-mute">{t("profile.links")}</span>
@@ -128,6 +152,19 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
             emptyTitle={t("profile.empty")}
             emptyDescription={isOwner ? t("profile.emptyOwner") : t("profile.emptyGuest")}
           />
+
+          {posts.length > 0 ? (
+            <>
+              <SectionHead label={t("profile.posts")} />
+              <ul className="flex flex-col gap-4">
+                {posts.map((post) => (
+                  <li key={post.id}>
+                    <PostCard post={post} />
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
         </div>
       </Container>
     </section>
