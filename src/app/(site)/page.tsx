@@ -12,7 +12,7 @@ import { Suspense } from "react";
 import { fetchBeatsByOwner, fetchPublicBeats, type FeedBeat, type FeedFilters } from "@/lib/feed";
 import { getT } from "@/lib/i18n/server";
 import { fetchPosts } from "@/lib/posts";
-import { getSupabase } from "@/lib/supabase/user";
+import { getSessionUser, getSupabase } from "@/lib/supabase/user";
 
 export const metadata: Metadata = {
   // заголовок главной берётся из дефолта в layout
@@ -62,6 +62,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
 
   // Ветки и композер нужны только для вошедшего, поэтому тянутся вместе с ним.
   const viewer = supabase ? (await supabase.auth.getUser()).data.user ?? null : null;
+  const viewerName = viewer ? (await getSessionUser())?.username ?? null : null;
 
   const [posts, myBeats] = viewer
     ? await Promise.all([
@@ -137,6 +138,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
                     posts={posts}
                     myBeats={myBeats}
                     loggedIn={Boolean(viewer)}
+                    myUsername={viewerName}
                   />
                 )}
               </Suspense>

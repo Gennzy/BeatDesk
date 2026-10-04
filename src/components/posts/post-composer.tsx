@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n/provider";
@@ -14,13 +15,15 @@ type Props = {
   parentId?: string | null;
   beats: FeedBeat[];
   loggedIn: boolean;
+  /** Ник автора — для аватара в композере. */
+  myUsername?: string | null;
   /** Показать поле бита. Для ответа прикрепление тоже разрешено. */
   withBeat?: boolean;
   autoFocus?: boolean;
   onPosted?: () => void;
 };
 
-export function PostComposer({ parentId = null, beats, loggedIn, withBeat = true, autoFocus = false, onPosted }: Props) {
+export function PostComposer({ parentId = null, beats, loggedIn, myUsername, withBeat = true, autoFocus = false, onPosted }: Props) {
   const { t } = useI18n();
   const router = useRouter();
 
@@ -64,28 +67,35 @@ export function PostComposer({ parentId = null, beats, loggedIn, withBeat = true
 
   if (!loggedIn) {
     return (
-      <p className="border border-line bg-ink-2 p-4 text-sm text-mute">
-        <a href={`/login?next=${encodeURIComponent(parentId ? `/posts/${parentId}` : "/")}`} className="text-paper underline underline-offset-4">
+      <div className="flex items-center gap-3 border border-line bg-ink-2 px-4 py-3.5">
+        <Avatar username="?" size="sm" className="opacity-40" />
+        <a
+          href={`/login?next=${encodeURIComponent(parentId ? `/posts/${parentId}` : "/")}`}
+          className="text-sub text-mute transition-colors hover:text-paper"
+        >
           {t("posts.loginToPost")}
         </a>
-      </p>
+      </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-3 border border-line bg-ink-2 p-4">
-      <textarea
-        value={body}
-        onChange={(event) => setBody(event.target.value)}
-        placeholder={t("posts.placeholder")}
-        rows={parentId ? 2 : 3}
-        maxLength={POST_BODY_LIMIT + 40}
-        autoFocus={autoFocus}
-        className={cn(
-          "w-full resize-y bg-transparent text-sub text-paper outline-none placeholder:text-mute",
-          tooLong && "text-amber",
-        )}
-      />
+      <div className="flex items-start gap-3">
+        <Avatar username={myUsername ?? "?"} size="sm" />
+        <textarea
+          value={body}
+          onChange={(event) => setBody(event.target.value)}
+          placeholder={t("posts.placeholder")}
+          rows={parentId ? 2 : 3}
+          maxLength={POST_BODY_LIMIT + 40}
+          autoFocus={autoFocus}
+          className={cn(
+            "w-full resize-y bg-transparent text-sub text-pretty text-paper outline-none placeholder:text-mute",
+            tooLong && "text-amber",
+          )}
+        />
+      </div>
 
       {withBeat && publicBeats.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">

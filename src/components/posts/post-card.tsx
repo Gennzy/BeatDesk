@@ -4,14 +4,13 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { usePlayer } from "@/components/player/player-provider";
-import { beatToFeedCard } from "@/lib/posts";
-import { Badge } from "@/components/ui/badge";
+import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/cn";
 import { timeAgo } from "@/lib/dates";
 import { useI18n } from "@/lib/i18n/provider";
-import type { Post } from "@/lib/posts";
-import { trackFromBeat } from "@/lib/player";
+import { beatToFeedCard, type Post } from "@/lib/posts";
 import { pluralEn, pluralRu } from "@/lib/plural";
+import { trackFromBeat } from "@/lib/player";
 
 type Props = {
   post: Post;
@@ -60,78 +59,88 @@ export function PostCard({ post, depth = 0, inThread = false }: Props) {
     }
   }
 
+  const repliesLabel =
+    post.replyCount > 0
+      ? locale === "ru"
+        ? `${post.replyCount} ${pluralRu(post.replyCount, "ответ", "ответа", "ответов")}`
+        : `${post.replyCount} ${pluralEn(post.replyCount, "reply", "replies")}`
+      : t("posts.reply");
+
   return (
     <article
       className={cn(
-        "flex flex-col gap-3 bg-ink-2 p-4",
-        inThread && depth > 0 && "border-l border-line pl-3",
-        depth > 0 && "mt-2",
+        "flex flex-col gap-3 border-b border-line pb-5",
+        inThread && depth > 0 && "border-b-0 border-l border-line pl-4",
+        depth > 0 && "pt-1",
       )}
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <Link href={`/beatmakers/${post.author.username}`} className="label text-paper hover:underline">
-          @{post.author.username}
+      <div className="flex items-center gap-2.5">
+        <Link href={`/beatmakers/${post.author.username}`} aria-label={post.author.username}>
+          <Avatar username={post.author.username} src={post.author.avatarUrl} />
         </Link>
-        <span aria-hidden className="text-mute/50">
-          ·
-        </span>
-        <time dateTime={post.createdAt} className="label text-mute">
-          {timeAgo(post.createdAt, locale)}
-        </time>
+
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <Link
+            href={`/beatmakers/${post.author.username}`}
+            className="font-display text-sm text-paper uppercase hover:text-signal"
+          >
+            {post.author.username}
+          </Link>
+          <time dateTime={post.createdAt} className="text-[11px] text-mute">
+            {timeAgo(post.createdAt, locale)}
+          </time>
+        </div>
       </div>
 
-      {post.body ? <p className="text-sub whitespace-pre-wrap text-paper">{post.body}</p> : null}
+      {post.body ? <p className="text-sub max-w-[70ch] text-pretty whitespace-pre-wrap text-paper">{post.body}</p> : null}
 
       {beat ? (
-        <Link
-          href={`/beats/${beat.id}`}
-          className="group flex items-center gap-3 border border-line bg-ink-3 p-2.5 transition-colors hover:border-line-2"
-        >
-          {beat.coverUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={beat.coverUrl} alt="" loading="lazy" decoding="async" className="size-14 shrink-0 object-cover" />
-          ) : (
-            <span aria-hidden className="size-14 shrink-0 bg-ink-2" />
-          )}
+        <div className="flex items-center gap-3 border border-line bg-ink-2 p-2.5">
+          <Link href={`/beats/${beat.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+            {beat.coverUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={beat.coverUrl} alt="" loading="lazy" decoding="async" className="size-14 shrink-0 object-cover" />
+            ) : (
+              <span aria-hidden className="grid size-14 shrink-0 place-items-center bg-ink-3 text-[10px] text-mute">
+                {beat.bpm}
+              </span>
+            )}
 
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="truncate font-display text-sm text-paper uppercase">{beat.title}</span>
-            <span className="mono text-[11px] text-mute">
-              {beat.bpm} BPM · {beat.musicalKey}
-            </span>
-          </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="truncate font-display text-sm text-paper uppercase">{beat.title}</span>
+              <span className="mono text-[11px] text-mute">
+                {beat.bpm} BPM · {beat.musicalKey}
+                {beat.prices.mp3 ? ` · ${beat.prices.mp3} ₽` : ""}
+              </span>
+            </div>
+          </Link>
 
-          {beat.mp3Url ? (
+          {track ? (
             <span
               role="button"
               tabIndex={0}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                togglePreview();
-              }}
+              onClick={togglePreview}
               onKeyDown={(event) => {
                 if (event.key !== "Enter" && event.key !== " ") return;
                 event.preventDefault();
-                event.stopPropagation();
                 togglePreview();
               }}
-              className="label shrink-0 border border-line px-2.5 py-1.5 text-mute transition-colors hover:border-signal/60 hover:text-paper"
+              className="label shrink-0 border border-line px-3 py-1.5 text-mute transition-colors hover:border-signal/60 hover:text-paper"
             >
               {isBeatPlaying ? t("posts.pause") : t("posts.play")}
             </span>
           ) : null}
-        </Link>
+        </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex items-center gap-1">
         <button
           type="button"
           onClick={() => void toggleLike()}
           disabled={busy}
           aria-pressed={liked}
           className={cn(
-            "label flex items-center gap-1.5 transition-colors",
+            "label flex items-center gap-1.5 px-2 py-1.5 transition-colors",
             liked ? "text-signal" : "text-mute hover:text-paper",
           )}
         >
@@ -139,25 +148,13 @@ export function PostCard({ post, depth = 0, inThread = false }: Props) {
           {likes > 0 ? likes : t("posts.like")}
         </button>
 
-        {post.replyCount > 0 || depth === 0 ? (
-          <Link
-            href={`/posts/${post.id}`}
-            className="label text-mute transition-colors hover:text-paper"
-          >
-            {post.replyCount > 0
-              ? locale === "ru"
-                ? `${post.replyCount} ${pluralRu(post.replyCount, "ответ", "ответа", "ответов")}`
-                : `${post.replyCount} ${pluralEn(post.replyCount, "reply", "replies")}`
-              : t("posts.reply")}
-          </Link>
-        ) : null}
+        <Link
+          href={`/posts/${post.id}`}
+          className="label px-2 py-1.5 text-mute transition-colors hover:text-paper"
+        >
+          {repliesLabel}
+        </Link>
       </div>
-
-      {depth === 0 && post.replyCount === 0 ? (
-        <Badge tone="dim" className="w-fit">
-          {t("posts.threadHint")}
-        </Badge>
-      ) : null}
     </article>
   );
 }

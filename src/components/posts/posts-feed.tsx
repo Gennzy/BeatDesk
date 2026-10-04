@@ -18,10 +18,11 @@ type Props = {
   initial: Post[];
   myBeats: FeedBeat[];
   loggedIn: boolean;
+  myUsername?: string | null;
   onTabChange: (tab: Tab) => void;
 };
 
-export function PostsFeed({ tab, initial, myBeats, loggedIn, onTabChange }: Props) {
+export function PostsFeed({ tab, initial, myBeats, loggedIn, myUsername, onTabChange }: Props) {
   const { t } = useI18n();
 
   const isAll = tab === "all";
@@ -147,18 +148,19 @@ export function PostsFeed({ tab, initial, myBeats, loggedIn, onTabChange }: Prop
 
   return (
     <div className="flex flex-col gap-6">
-      <PostComposer beats={myBeats} loggedIn={loggedIn} />
+      <PostComposer beats={myBeats} loggedIn={loggedIn} myUsername={myUsername} />
 
-      <div className="flex items-center gap-2 border-b border-line">
+      <div className="flex items-center gap-1">
         {(["all", "following"] as Tab[]).map((item) => (
           <button
             key={item}
             type="button"
             onClick={() => onTabChange(item)}
+            aria-pressed={tab === item}
             className={
               item === tab
-                ? "label border-b-2 border-signal px-3 py-2.5 text-paper"
-                : "label border-b-2 border-transparent px-3 py-2.5 text-mute transition-colors hover:text-paper"
+                ? "label border border-signal bg-signal px-2.5 py-1.5 text-ink"
+                : "label border border-line px-2.5 py-1.5 text-mute transition-colors hover:border-line-2 hover:text-paper"
             }
           >
             {item === "all" ? t("posts.tabAll") : t("posts.tabFollowing")}

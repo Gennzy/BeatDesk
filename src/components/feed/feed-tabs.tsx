@@ -21,13 +21,14 @@ type Props = {
   posts: Post[];
   myBeats: FeedBeat[];
   loggedIn: boolean;
+  myUsername?: string | null;
 };
 
 /**
  * Каталог битов и ветки живут на одной странице: разные плотности данных,
  * и переключение табом дешевле, чем второй маршрут.
  */
-export function FeedTabs({ beats, nextOffset, filters, posts, myBeats, loggedIn }: Props) {
+export function FeedTabs({ beats, nextOffset, filters, posts, myBeats, loggedIn, myUsername }: Props) {
   const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -87,6 +88,7 @@ export function FeedTabs({ beats, nextOffset, filters, posts, myBeats, loggedIn 
           initial={posts}
           myBeats={myBeats}
           loggedIn={loggedIn}
+          myUsername={myUsername}
           onTabChange={(next) => setPostsTab(next)}
         />
         </div>
