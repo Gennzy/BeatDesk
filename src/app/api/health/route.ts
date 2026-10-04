@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 
-import { MASTERS_BUCKET } from "@/lib/beats";
 import { getSiteUrl } from "@/lib/site";
-import { createClient } from "@/lib/supabase/server";
 
-/** Какие переменные окружения настроены. Значения не отдаём, только факт наличия. */
+/**
+ * Какие переменные окружения настроены. Значения не отдаём, только факт наличия.
+ *
+ * Состояние бакетов сюда специально не проверяем: listBuckets() требует сервисного
+ * ключа, а подпись и скачивание несуществующего файла отвечают одинаково и для
+ * существующего, и для отсутствующего бакета. Отличаются только запросы на запись,
+ * а их нельзя делать из проверки. Ошибка «бакета masters нет» приходит из самой
+ * загрузки бита через MastersBucketMissingError.
+ */
 export async function GET() {
   const siteUrl = await getSiteUrl();
 
@@ -20,33 +26,10 @@ export async function GET() {
     .filter(([, present]) => !present)
     .map(([key]) => key);
 
-  // Бакет мастеров создаётся миграцией. Пока его нет, загрузка бита с WAV падает
-  // с невнятным «Bucket not found», поэтому проверяем здесь и сразу.
-  const mastersBucket = await bucketExists(MASTERS_BUCKET);
-
-  if (!mastersBucket) missing.push("bucket:masters");
-
   return NextResponse.json({
     ok: missing.length === 0,
     siteUrl,
-    env: { ...env, mastersBucket },
+    env,
     missing,
   });
-}
-
-/**
- * listBuckets() доступен только сервисному ключу. Проверяем скачиванием
- * заведомо несуществующего файла: в существующем бакете Supabase отвечает
- * NoSuchKey, а в отсутствующем — NoSuchBucket. Права на запись не нужны.
- */
-async function bucketExists(name: string): Promise<boolean> {
-  try {
-    const supabase = await createClient();
-    const { error } = await supabase.storage.from(name).download("health-probe");
-
-    if (!error) return true;
-    return /bucket/i.test(error.message) === false;
-  } catch {
-    return false;
-  }
 }
