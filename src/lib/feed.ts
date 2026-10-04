@@ -21,6 +21,7 @@ export type FeedBeat = {
   coverUrl: string | null;
   mp3Url: string | null;
   prices: { mp3: number | null; bundle: number | null; exclusive: number | null };
+  currency: string;
   username: string;
   avatarUrl: string | null;
   isPublic: boolean;
@@ -38,6 +39,7 @@ type BeatRow = {
   cover_url: string | null;
   mp3_url: string | null;
   prices: FeedBeat["prices"] | null;
+  currency: string | null;
   is_public: boolean;
   plays?: number;
   created_at: string;
@@ -46,7 +48,7 @@ type BeatRow = {
 };
 
 const BEAT_COLUMNS =
-  "id, title, bpm, key, tags, cover_url, mp3_url, prices, is_public, plays, created_at, updated_at, profiles(username, avatar_url)";
+  "id, title, bpm, key, tags, cover_url, mp3_url, prices, currency, is_public, plays, created_at, updated_at, profiles(username, avatar_url)";
 
 /** Пока не применена миграция 0007, колонок plays и updated_at ещё нет в базе. */
 const LEGACY_BEAT_COLUMNS =
@@ -64,6 +66,7 @@ function serialize(row: BeatRow): FeedBeat {
     coverUrl: row.cover_url,
     mp3Url: row.mp3_url,
     prices: row.prices ?? { mp3: null, bundle: null, exclusive: null },
+    currency: row.currency ?? "RUB",
     username: profile?.username ?? "unknown",
     avatarUrl: profile?.avatar_url ?? null,
     isPublic: row.is_public,

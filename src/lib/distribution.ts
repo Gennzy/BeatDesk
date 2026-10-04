@@ -1,3 +1,4 @@
+import { formatMoney } from "@/lib/currency";
 /** Общая часть бита, нужная генератору текстов и публикаций. */
 export type BeatMeta = {
   artists: string[];
@@ -5,6 +6,7 @@ export type BeatMeta = {
   musicalKey: string;
   tags: string[];
   prices: { mp3: number | null; bundle: number | null; exclusive: number | null };
+  currency?: string;
 };
 
 export type DistributionBeat = BeatMeta & {
@@ -67,16 +69,18 @@ export function fileNames(beat: DistributionBeat, has: { wav?: boolean; zip?: bo
   return names;
 }
 
-function formatPrice(value: number | null): string | null {
+function formatPrice(value: number | null, currency: string): string | null {
   if (value === null || Number.isNaN(value)) return null;
-  return `${new Intl.NumberFormat("ru-RU").format(value)} ₽`;
+  return formatMoney(value, currency);
 }
 
 export function priceLine(beat: BeatMeta): string {
   const parts = [
-    formatPrice(beat.prices.mp3) ? `MP3 ${formatPrice(beat.prices.mp3)}` : null,
-    formatPrice(beat.prices.bundle) ? `MP3+WAV ${formatPrice(beat.prices.bundle)}` : null,
-    formatPrice(beat.prices.exclusive) ? `Эксклюзив ${formatPrice(beat.prices.exclusive)}` : null,
+    formatPrice(beat.prices.mp3, beat.currency ?? "RUB") ? `MP3 ${formatPrice(beat.prices.mp3, beat.currency ?? "RUB")}` : null,
+    formatPrice(beat.prices.bundle, beat.currency ?? "RUB") ? `MP3+WAV ${formatPrice(beat.prices.bundle, beat.currency ?? "RUB")}` : null,
+    formatPrice(beat.prices.exclusive, beat.currency ?? "RUB")
+      ? `Эксклюзив ${formatPrice(beat.prices.exclusive, beat.currency ?? "RUB")}`
+      : null,
   ].filter(Boolean) as string[];
 
   return parts.join(" · ");

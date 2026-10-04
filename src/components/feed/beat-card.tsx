@@ -6,6 +6,7 @@ import { usePlayer } from "@/components/player/player-provider";
 import { Avatar } from "@/components/ui/avatar";
 import type { FeedBeat } from "@/lib/feed";
 import { cn } from "@/lib/cn";
+import { formatMoney } from "@/lib/currency";
 import { trackFromBeat } from "@/lib/player";
 import { useI18n } from "@/lib/i18n/provider";
 
@@ -112,7 +113,7 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
           {beat.prices.mp3 ? (
             <span className="flex items-baseline gap-1.5">
               <span className="label text-mute">{t("posts.from")}</span>
-              <span className="font-display text-lg leading-none text-signal">{beat.prices.mp3} ₽</span>
+              <span className="font-display text-lg leading-none text-signal">{formatMoney(beat.prices.mp3, beat.currency)}</span>
             </span>
           ) : null}
 

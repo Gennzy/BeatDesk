@@ -83,6 +83,7 @@ export async function POST(request: Request) {
       key: validated.value.key,
       tags: validated.value.tags,
       prices: validated.value.prices satisfies Prices,
+      currency: validated.value.currency,
       mp3_url: mp3Url,
       cover_url: coverUrl,
       files: typeof body.files === "object" && body.files !== null ? body.files : {},

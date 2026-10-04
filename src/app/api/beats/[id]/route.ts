@@ -1,3 +1,4 @@
+import { isCurrency } from "@/lib/currency";
 import { NextResponse } from "next/server";
 
 import { MAX_COVER_BYTES, extensionOf, validateCoverFile } from "@/lib/beats";
@@ -103,6 +104,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const isPublic = text("isPublic");
   if (isPublic !== null) patch.is_public = isPublic === "true";
+
+  const currency = text("currency");
+  if (currency !== null) {
+    if (!isCurrency(currency)) {
+      return NextResponse.json({ error: "Валюта должна быть RUB, USD или EUR" }, { status: 400 });
+    }
+    patch.currency = currency;
+  }
 
   const cover = form.get("coverFile");
   if (cover instanceof File && cover.size > 0) {

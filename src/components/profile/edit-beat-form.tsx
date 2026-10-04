@@ -1,8 +1,11 @@
 "use client";
 
+import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
+
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import { CurrencyPicker } from "@/components/profile/currency-picker";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { KeyPicker } from "@/components/ui/key-picker";
@@ -30,6 +33,8 @@ export function EditBeatForm({ beat }: Props) {
   const router = useRouter();
 
   const [cover, setCover] = useState<File | null>(null);
+  const [currency, setCurrency] = useState<CurrencyCode>((beat as unknown as { currency?: CurrencyCode }).currency ?? "RUB");
+  const currencyHint = CURRENCIES.find((item) => item.code === currency)?.symbol ?? "₽";
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
 
@@ -47,6 +52,7 @@ export function EditBeatForm({ beat }: Props) {
     payload.set("key", String(form.get("key") ?? ""));
     payload.set("tags", String(form.get("tags") ?? ""));
     payload.set("isPublic", form.get("isPublic") === "on" ? "true" : "false");
+    payload.set("currency", String(form.get("currency") ?? "RUB"));
     payload.set(
       "prices",
       JSON.stringify({
@@ -139,8 +145,14 @@ export function EditBeatForm({ beat }: Props) {
         </div>
       </div>
 
+      <div className="flex flex-col gap-4">
+        <Field label={t("upload.currency")}>
+          <CurrencyPicker name="currency" value={currency} onChange={setCurrency} />
+        </Field>
+      </div>
+
       <div className="grid gap-6 sm:grid-cols-3">
-        <Field label={t("upload.priceMp3")} optional="₽">
+        <Field label={t("upload.priceMp3")} optional={currencyHint}>
           <Input
             name="priceMp3"
             type="number"
@@ -149,7 +161,7 @@ export function EditBeatForm({ beat }: Props) {
             className="font-mono"
           />
         </Field>
-        <Field label={t("upload.priceBundle")} optional="₽">
+        <Field label={t("upload.priceBundle")} optional={currencyHint}>
           <Input
             name="priceBundle"
             type="number"
@@ -158,7 +170,7 @@ export function EditBeatForm({ beat }: Props) {
             className="font-mono"
           />
         </Field>
-        <Field label={t("upload.priceExclusive")} optional="₽">
+        <Field label={t("upload.priceExclusive")} optional={currencyHint}>
           <Input
             name="priceExclusive"
             type="number"

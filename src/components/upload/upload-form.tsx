@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import { CurrencyPicker } from "@/components/profile/currency-picker";
 import { Button } from "@/components/ui/button";
 import { SectionHead } from "@/components/ui/container";
 import { FileDrop } from "@/components/ui/file-drop";
@@ -22,6 +23,7 @@ import {
   validateCoverFile,
 } from "@/lib/beats";
 import type { TranslationKey } from "@/lib/i18n/dictionaries";
+import { CURRENCIES, isCurrency, type CurrencyCode } from "@/lib/currency";
 import { compressImage } from "@/lib/image";
 import { useI18n } from "@/lib/i18n/provider";
 import { createClient } from "@/lib/supabase/client";
@@ -62,6 +64,9 @@ export function UploadForm({ userId }: { userId: string }) {
   const [status, setStatus] = useState<Status>("idle");
   const [step, setStep] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Символ валюты под ценами: выбрал валюту — подписи перестали врать.
+  const [currency, setCurrency] = useState<CurrencyCode>("RUB");
+  const currencyHint = CURRENCIES.find((item) => item.code === currency)?.symbol ?? "₽";
 
   function selectFile(kind: BeatFileKind, file: File | null) {
     setFiles((prev) => ({ ...prev, [kind]: file ?? undefined }));
@@ -137,6 +142,9 @@ export function UploadForm({ userId }: { userId: string }) {
         bundle: toNumber(form.get("priceBundle")),
         exclusive: toNumber(form.get("priceExclusive")),
       },
+      // Форма хранит валюту в состоянии и кладёт в hidden-поле, но берём
+      // именно из состояния: hidden-поле может не отправиться.
+      currency,
       is_public: form.get("isPublic") === "on",
     };
 
@@ -247,13 +255,17 @@ export function UploadForm({ userId }: { userId: string }) {
           <SectionHead label={t("upload.sectionPrices")} hint={t("upload.pricesNote")} />
 
           <div className="grid gap-6 sm:grid-cols-3">
-            <Field label={t("upload.priceMp3")} optional="₽">
+            <Field label={t("upload.currency")}>
+              <CurrencyPicker name="currency" value={currency} onChange={setCurrency} />
+            </Field>
+
+            <Field label={t("upload.priceMp3")} optional={currencyHint}>
               <Input name="priceMp3" type="number" inputMode="numeric" placeholder="500" className="font-mono" />
             </Field>
-            <Field label={t("upload.priceBundle")} optional="₽">
+            <Field label={t("upload.priceBundle")} optional={currencyHint}>
               <Input name="priceBundle" type="number" inputMode="numeric" placeholder="1500" className="font-mono" />
             </Field>
-            <Field label={t("upload.priceExclusive")} optional="₽">
+            <Field label={t("upload.priceExclusive")} optional={currencyHint}>
               <Input name="priceExclusive" type="number" inputMode="numeric" placeholder="5000" className="font-mono" />
             </Field>
           </div>

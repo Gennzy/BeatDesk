@@ -1,3 +1,4 @@
+import { isCurrency, type CurrencyCode } from "@/lib/currency";
 import { MUSICAL_KEYS } from "./keys";
 
 export type Prices = { mp3: number | null; bundle: number | null; exclusive: number | null };
@@ -15,6 +16,7 @@ export type BeatDraft = {
   musicalKey?: unknown;
   tags?: unknown;
   prices?: unknown;
+  currency?: unknown;
 };
 
 export type ValidatedBeat = {
@@ -24,6 +26,7 @@ export type ValidatedBeat = {
   key: string;
   tags: string[];
   prices: Prices;
+  currency: CurrencyCode;
 };
 
 const TAG_PATTERN = /^[\p{L}\p{N} _-]+$/u;
@@ -140,6 +143,9 @@ export function validateBeat(draft: BeatDraft): { ok: true; value: ValidatedBeat
       key,
       tags: normalizeTags(draft.tags),
       prices: normalizePrices(draft.prices),
+      // Валюта приходит строкой из формы: неизвестное значение молча
+      // становится рублями, а не падает — форма могла прислать мусор.
+      currency: isCurrency(draft.currency) ? draft.currency : "RUB",
     },
   };
 }

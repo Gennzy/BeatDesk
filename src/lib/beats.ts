@@ -1,3 +1,4 @@
+import type { CurrencyCode } from "@/lib/currency";
 import { LegacyMasterMissingError, MastersBucketMissingError } from "@/lib/supabase/config";
 import type { SupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -284,6 +285,7 @@ export async function downloadAsset(beatId: string, asset: BeatAsset): Promise<v
 
 export type BeatInsert = {
   title: string;
+  currency: CurrencyCode;
   type_beat_artists: string[];
   bpm: number;
   key: string;
