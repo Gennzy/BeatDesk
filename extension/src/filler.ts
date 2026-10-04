@@ -1,5 +1,18 @@
 import { FIELDS, NUMERIC_KEYS, SKIP_WHEN_ZERO, type BeatFill, type FieldSpec } from "./fields";
-import { siteFields, type SiteConfig } from "./sites";
+/**
+ * Тип площадки объявлен здесь же, а не импортируется: content script
+ * собирается одним файлом и не должен тянуть общий чанк.
+ */
+type SiteConfig = {
+  id: string;
+  title: string;
+  hosts: string[];
+  titleLimit: number;
+  currency: "RUB" | "USD";
+  pricesFillable: boolean;
+  keyAsShort: boolean;
+  tagsAs: "chips" | "text";
+};
 
 export type FillReport = {
   filled: { label: string; value: string }[];
@@ -213,7 +226,7 @@ export function fillForm(beat: BeatFill, site: SiteConfig, root: Document = docu
   const report: FillReport = { filled: [], empty: [], missing: [], skipped: [] };
 
   for (const spec of FIELDS) {
-    if (!siteFields(spec, site)) {
+    if (spec.key.startsWith("price_") && !site.pricesFillable) {
       report.skipped.push({
         label: spec.label,
         reason: `цены в BeatDesk в рублях, форма в ${site.currency === "USD" ? "долларах" : "рублях"}`,

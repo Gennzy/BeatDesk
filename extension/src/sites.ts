@@ -1,5 +1,3 @@
-import type { FieldSpec } from "./fields";
-
 export type SiteId = "beatstars" | "beatchain";
 
 export type SiteConfig = {
@@ -50,10 +48,4 @@ export function detectSite(url: string): SiteConfig | null {
   }
 
   return SITES.find((site) => site.hosts.includes(host)) ?? null;
-}
-
-/** Поля, которые имеет смысл заполнять именно на этой площадке. */
-export function siteFields(spec: FieldSpec, site: SiteConfig): boolean {
-  if (spec.key.startsWith("price_") && !site.pricesFillable) return false;
-  return true;
 }

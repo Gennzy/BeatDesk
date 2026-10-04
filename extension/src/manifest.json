@@ -7,19 +7,37 @@
     "default_title": "BeatDesk: заполнить форму",
     "default_popup": "popup.html"
   },
-  "permissions": ["activeTab", "scripting", "storage"],
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "tabs"
+  ],
   "host_permissions": [
-    "https://studio.beatstars.com/*",
-    "https://www.beatstars.com/*",
-    "https://beatchain.io/*",
+    "http://localhost:3161/*",
     "https://*.beat-desk.vercel.app/*",
-    "http://localhost:3161/*"
+    "https://beat-desk.vercel.app/*",
+    "https://beatchain.io/*",
+    "https://studio.beatstars.com/*",
+    "https://www.beatstars.com/*"
   ],
   "content_scripts": [
     {
-      "matches": ["https://studio.beatstars.com/*", "https://www.beatstars.com/*", "https://beatchain.io/*"],
-      "js": ["content.js"],
+      "matches": [
+        "https://studio.beatstars.com/*",
+        "https://www.beatstars.com/*",
+        "https://beatchain.io/*"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
-  ]
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://beat-desk.vercel.app/*",
+      "http://localhost:3161/*"
+    ]
+  }
 }

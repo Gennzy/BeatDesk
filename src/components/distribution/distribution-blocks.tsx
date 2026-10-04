@@ -13,6 +13,7 @@ import {
   type FileName,
   type PlatformBlock,
 } from "@/lib/distribution";
+import { FillWithExtension } from "@/components/distribution/fill-with-extension";
 import { useI18n } from "@/lib/i18n/provider";
 
 async function copyText(text: string): Promise<void> {
@@ -117,6 +118,20 @@ function AssetRow({ beatId, asset }: { beatId: string; asset: BeatAsset }) {
   );
 }
 
+/** Каналы с публичным API: BeatDesk постит сам, копировать текст не нужно. */
+const AUTO_PLATFORMS = [
+  { id: "telegram", label: "Telegram" },
+  { id: "discord", label: "Discord" },
+  { id: "vk", label: "ВКонтакте" },
+] as const;
+
+/** Маркетплейсы без API: форму заполняет расширение. */
+const MANUAL_PLATFORMS = [
+  { id: "beatstars", label: "BeatStars" },
+  { id: "beatchain", label: "BeatChain" },
+  { id: "airbit", label: "Airbit" },
+] as const;
+
 export function DistributionBlocks({
   beat,
   assets,
@@ -150,12 +165,39 @@ export function DistributionBlocks({
       </section>
 
       <section className="flex flex-col gap-6">
-        <SectionHead label={t("share.platforms")} />
-        <div className="grid gap-5 xl:grid-cols-2">
-          {allBlocks(beat).map((block) => (
-            <Block key={block.title} {...block} />
+        <SectionHead label={t("share.platforms")} hint={t("fill.autoPublishHint")} />
+
+        <ul className="flex flex-col gap-2">
+          {AUTO_PLATFORMS.map((platform) => (
+            <li key={platform.id} className="flex flex-wrap items-center gap-4 border border-line bg-ink-2 px-4 py-3.5">
+              <span className="font-display text-sm text-paper uppercase">{platform.label}</span>
+              <span className="label text-mute">{t("fill.autoPublish")}</span>
+            </li>
           ))}
-        </div>
+
+          {MANUAL_PLATFORMS.map((platform) => (
+            <li key={platform.id} className="flex flex-wrap items-center justify-between gap-4 border border-line bg-ink-2 px-4 py-3.5">
+              <div className="flex flex-col gap-1">
+                <span className="font-display text-sm text-paper uppercase">{platform.label}</span>
+                <span className="max-w-[54ch] text-[11px] text-mute">{t(`fill.${platform.id}` as "fill.beatstars")}</span>
+              </div>
+              <FillWithExtension platform={platform.id} label={platform.label} beatId={beat.id} />
+            </li>
+          ))}
+        </ul>
+
+        {/* Готовые тексты остались запасным вариантом: если расширения нет
+            или площадка попросила свой формат, они всё равно нужны. */}
+        <details className="border border-line bg-ink-2">
+          <summary className="label cursor-pointer px-4 py-3 text-mute transition-colors hover:text-paper">
+            {t("fill.rawTexts")}
+          </summary>
+          <div className="grid gap-5 border-t border-line p-4 xl:grid-cols-2">
+            {allBlocks(beat).map((block) => (
+              <Block key={block.title} {...block} />
+            ))}
+          </div>
+        </details>
       </section>
 
       {isOwner && assets.length > 0 ? (
