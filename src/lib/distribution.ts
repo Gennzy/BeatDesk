@@ -37,8 +37,18 @@ export function keyShort(key: string): string {
   return mode === "minor" ? `${note}m` : note;
 }
 
+/**
+ * Тональность для имени файла. Решётку писать нельзя: в URL это якорь,
+ * а маленькая b читается как «бемоль». Поэтому знаки пишем словом.
+ */
+export function keyForFile(key: string): string {
+  const [note, mode] = key.split(" ");
+  const safeNote = note.replace(/#/g, "sharp").replace(/b/g, "flat");
+  return mode === "minor" ? `${safeNote}m` : safeNote;
+}
+
 export function fileBase(beat: DistributionBeat): string {
-  return [translit(beat.title), beat.bpm, keyShort(beat.musicalKey)].filter(Boolean).join("_");
+  return [translit(beat.title), beat.bpm, keyForFile(beat.musicalKey)].filter(Boolean).join("_");
 }
 
 export type FileName = { label: string; name: string };

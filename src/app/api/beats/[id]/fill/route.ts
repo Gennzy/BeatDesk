@@ -30,16 +30,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   if (!supabase) return NextResponse.json({ error: "Сервер не настроен" }, { status: 503 });
 
-  const { data: beat } = await supabase
+  const { data: beat, error } = await supabase
     .from("beats")
-    .select(
-      "id, title, type_beat_artists, bpm, key, tags, prices, is_public, mp3_url, wav_url, zip_url, rar_url, profiles(username)",
-    )
+    // wav_url/zip_url/rar_url миграция 0005 удалила: файлы лежат в jsonb
+    // files. Ошибка запроса здесь раньше маскировалась под «бит не найден».
+    .select("id, title, type_beat_artists, bpm, key, tags, prices, is_public, mp3_url, files, profiles(username)")
     .eq("id", id)
     .eq("is_public", true)
     .maybeSingle();
 
-  if (!beat) return NextResponse.json({ error: "Бит не найден или не публичный" }, { status: 404 });
+  if (beat === null) return NextResponse.json({ error: "Бит не найден или не публичный" }, { status: 404 });
+
+  if (!beat) {
+    console.error("fill query failed", error);
+    return NextResponse.json({ error: "Не удалось получить данные бита" }, { status: 500 });
+  }
 
   const owner = Array.isArray(beat.profiles) ? beat.profiles[0] : beat.profiles;
 
@@ -55,10 +60,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     ownerUsername: owner?.username ?? "",
   };
 
+  const stored = (beat.files ?? {}) as Record<string, unknown>;
   const files = fileNames(distributionBeat, {
-    wav: Boolean(beat.wav_url),
-    zip: Boolean(beat.zip_url),
-    rar: Boolean(beat.rar_url),
+    wav: Boolean(stored.wav),
+    zip: Boolean(stored.zip),
+    rar: Boolean(stored.rar),
   });
 
   const description = [
