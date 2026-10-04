@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { PostCard } from "@/components/posts/post-card";
 import { BeatManager } from "@/components/profile/beat-manager";
+import { ProfileStats } from "@/components/profile/profile-stats";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { Container, SectionHead } from "@/components/ui/container";
 import { fetchBeatsByOwner } from "@/lib/feed";
+import { fetchProfilePosts, loadFollowState } from "@/lib/posts";
 import { getT } from "@/lib/i18n/server";
 import { getSupabase } from "@/lib/supabase/user";
 
@@ -40,30 +43,33 @@ export default async function ProfilePage() {
     redirect("/");
   }
 
-  const beats = await fetchBeatsByOwner(supabase, user.id, true).catch(() => []);
+  const [beats, posts, follow] = await Promise.all([
+    fetchBeatsByOwner(supabase, user.id, true).catch(() => []),
+    // Именно свои посты: общая лента показывала бы чужие и портила счётчик.
+    fetchProfilePosts(supabase, user.id, true, 5).catch(() => []),
+    loadFollowState(supabase, user.id, user.id).catch(() => ({ followerCount: 0 })),
+  ]);
 
   return (
     <section className="py-14 lg:py-20">
       <Container>
-        <div className="flex flex-col gap-4 border-b border-line pb-8">
-          <span className="flex items-center gap-3">
-            <span aria-hidden className="size-1.5 bg-signal" />
-            <span className="label text-mute">{t("profile.edit")}</span>
-          </span>
-          <h1 className="font-display text-section font-black text-paper uppercase">@{profile.username}</h1>
+        <span className="flex items-center gap-3">
+          <span aria-hidden className="size-1.5 bg-signal" />
+          <span className="label text-mute">{t("profile.edit")}</span>
+        </span>
+
+        <div className="pt-6">
+          <ProfileStats
+            username={profile.username}
+            avatarUrl={profile.avatar_url}
+            bio={profile.bio}
+            beats={beats}
+            followers={follow.followerCount}
+            posts={posts.length}
+          />
         </div>
 
-        <div className="grid gap-14 pt-12 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:gap-16">
-          <ProfileForm
-            userId={user.id}
-            profile={{
-              username: profile.username,
-              avatarUrl: profile.avatar_url,
-              bio: profile.bio,
-              links: (profile.links ?? {}) as Record<string, string>,
-            }}
-          />
-
+        <div className="flex flex-col gap-12 pt-12">
           <div className="flex flex-col gap-6">
             <SectionHead label={t("profile.beats")} />
             <BeatManager
@@ -72,6 +78,32 @@ export default async function ProfilePage() {
               redirectTo="/profile"
               emptyTitle={t("profile.empty")}
               emptyDescription={t("profile.emptyOwner")}
+            />
+          </div>
+
+          {posts.length > 0 ? (
+            <div className="flex flex-col gap-6">
+              <SectionHead label={t("profile.posts")} />
+              <ul className="flex flex-col gap-5">
+                {posts.map((post) => (
+                  <li key={post.id}>
+                    <PostCard post={post} loggedIn />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          <div className="flex flex-col gap-6">
+            <SectionHead label={t("profile.edit")} />
+            <ProfileForm
+              userId={user.id}
+              profile={{
+                username: profile.username,
+                avatarUrl: profile.avatar_url,
+                bio: profile.bio,
+                links: (profile.links ?? {}) as Record<string, string>,
+              }}
             />
           </div>
         </div>
