@@ -22,7 +22,7 @@ type Props = {
 
 export function PostCard({ post, depth = 0, inThread = false }: Props) {
   const { t, locale } = useI18n();
-  const { track: playing, isPlaying, play, toggle } = usePlayer();
+  const { track: playing, isPlaying, plays: playingPlays, play, toggle } = usePlayer();
 
   const [liked, setLiked] = useState(post.likedByMe);
   const [likes, setLikes] = useState(post.likeCount);
@@ -31,6 +31,7 @@ export function PostCard({ post, depth = 0, inThread = false }: Props) {
   const beat = post.beat;
   const track = beat ? trackFromBeat(beatToFeedCard(beat, post.author)) : null;
   const isBeatPlaying = Boolean(track && playing?.id === track.id && isPlaying);
+  const plays = track && playing?.id === track.id ? playingPlays : (beat?.plays ?? 0);
 
   function togglePreview() {
     if (!track) return;
@@ -69,8 +70,8 @@ export function PostCard({ post, depth = 0, inThread = false }: Props) {
   return (
     <article
       className={cn(
-        "flex flex-col gap-3 border-b border-line pb-5",
-        inThread && depth > 0 && "border-b-0 border-l border-line pl-4",
+        "flex flex-col gap-3 border-b border-line/60 pb-5",
+        inThread && depth > 0 && "border-b-0 border-l border-line/60 pl-4",
         depth > 0 && "pt-1",
       )}
     >
@@ -106,13 +107,20 @@ export function PostCard({ post, depth = 0, inThread = false }: Props) {
               </span>
             )}
 
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <div className="flex w-0 min-w-0 flex-1 flex-col gap-1.5">
               <span className="truncate font-display text-sm text-paper uppercase">{beat.title}</span>
               <span className="mono text-[11px] text-mute">
                 {beat.bpm} BPM · {beat.musicalKey}
-                {beat.prices.mp3 ? ` · ${beat.prices.mp3} ₽` : ""}
+                {plays > 0 ? ` · ${plays} ${t("posts.playsShort")}` : ""}
               </span>
             </div>
+
+            {beat.prices.mp3 ? (
+              <span className="flex shrink-0 items-baseline gap-1.5">
+                <span className="label text-mute">{t("posts.from")}</span>
+                <span className="font-display text-lg leading-none text-signal">{beat.prices.mp3} ₽</span>
+              </span>
+            ) : null}
           </Link>
 
           {track ? (

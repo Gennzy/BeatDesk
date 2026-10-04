@@ -21,6 +21,7 @@ export type PostBeat = {
   tags: string[];
   coverUrl: string | null;
   mp3Url: string | null;
+  plays: number;
   prices: { mp3: number | null; bundle: number | null; exclusive: number | null };
 };
 
@@ -43,7 +44,7 @@ export type Post = {
 // Без подсказки PostgREST отвечает PGRST201 и возвращает пустую выборку.
 const POST_COLUMNS = `
   id, author_id, parent_id, body, like_count, reply_count, created_at,
-  beats(id, title, bpm, key, tags, cover_url, mp3_url, prices, is_public),
+  beats(id, title, bpm, key, tags, cover_url, mp3_url, plays, prices, is_public),
   profiles!posts_author_id_fkey(username, avatar_url)
 `;
 
@@ -67,6 +68,7 @@ type PostRowBeat = {
   tags: string[] | null;
   cover_url: string | null;
   mp3_url: string | null;
+  plays: number | null;
   prices: PostBeat["prices"] | null;
   is_public: boolean | null;
 };
@@ -94,6 +96,7 @@ function toBeat(value: PostRowBeat | PostRowBeat[] | null): PostBeat | null {
     tags: beat.tags ?? [],
     coverUrl: beat.cover_url,
     mp3Url: beat.mp3_url,
+    plays: beat.plays ?? 0,
     prices: beat.prices ?? { mp3: null, bundle: null, exclusive: null },
   };
 }
@@ -309,7 +312,7 @@ export function beatToFeedCard(beat: PostBeat, author: PostAuthor): FeedBeat {
     username: author.username,
     avatarUrl: author.avatarUrl,
     isPublic: true,
-    plays: 0,
+    plays: beat.plays,
     createdAt: new Date(0).toISOString(),
     updatedAt: null,
   };
