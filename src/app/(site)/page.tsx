@@ -1,5 +1,5 @@
-import { FeedFiltersBar, type FeedFilterState } from "@/components/feed/feed-filters";
-import { FeedList } from "@/components/feed/feed-list";
+import { FeedTabs } from "@/components/feed/feed-tabs";
+import type { FeedFilterState } from "@/components/feed/feed-filters";
 import { HeroVideo } from "@/components/media/hero-video";
 import { Button } from "@/components/ui/button";
 import { Container, SectionHead } from "@/components/ui/container";
@@ -8,8 +8,9 @@ import { Reveal } from "@/components/ui/reveal";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { fetchPublicBeats, type FeedFilters } from "@/lib/feed";
+import { fetchBeatsByOwner, fetchPublicBeats, type FeedFilters } from "@/lib/feed";
 import { getT } from "@/lib/i18n/server";
+import { fetchPosts } from "@/lib/posts";
 import { getSupabase } from "@/lib/supabase/user";
 
 export const metadata: Metadata = {
@@ -47,6 +48,16 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const feed = supabase
     ? await fetchPublicBeats(supabase, 0, undefined, feedFilters).catch(() => ({ beats: [], nextOffset: null }))
     : { beats: [], nextOffset: null };
+
+  // Ветки и композер нужны только для вошедшего, поэтому тянутся вместе с ним.
+  const viewer = supabase ? (await supabase.auth.getUser()).data.user ?? null : null;
+
+  const [posts, myBeats] = viewer
+    ? await Promise.all([
+        fetchPosts(supabase!, { viewerId: viewer.id, limit: 10 }).catch(() => []),
+        fetchBeatsByOwner(supabase!, viewer.id, true).catch(() => []),
+      ])
+    : [supabase ? await fetchPosts(supabase, { viewerId: null, limit: 10 }).catch(() => []) : [], []];
 
   return (
     <>
@@ -103,11 +114,17 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             <SectionHead label={t("feed.label")} hint={t("feed.hint")} />
           </Reveal>
           <Reveal delay={0.08}>
-            <div className="mt-8 flex flex-col gap-6">
+            <div className="mt-8">
               <Suspense fallback={null}>
-                <FeedFiltersBar resultCount={feed.beats.length} />
+                <FeedTabs
+                  beats={feed.beats}
+                  nextOffset={feed.nextOffset}
+                  filters={filters}
+                  posts={posts}
+                  myBeats={myBeats}
+                  loggedIn={Boolean(viewer)}
+                />
               </Suspense>
-              <FeedList initial={feed.beats} initialNextOffset={feed.nextOffset} filters={filters} />
             </div>
           </Reveal>
         </Container>
