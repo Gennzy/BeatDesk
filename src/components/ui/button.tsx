@@ -37,6 +37,17 @@ export function Button({ variant, size, href, className, children, ...rest }: Bu
   const classes = buttonClass({ variant, size, className });
 
   if (href) {
+    // Внешний адрес через next/link открывается в той же вкладке и без rel,
+    // а площадки публикации открывают в новой: так человек не теряет
+    // страницу, с которой ушёл.
+    if (/^https?:\/\//.test(href)) {
+      return (
+        <a href={href} target="_blank" rel="noreferrer noopener" className={classes}>
+          {children}
+        </a>
+      );
+    }
+
     return (
       <Link href={href} className={classes}>
         {children}

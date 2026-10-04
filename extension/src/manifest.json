@@ -21,6 +21,10 @@
     "https://studio.beatstars.com/*",
     "https://www.beatstars.com/*"
   ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
   "content_scripts": [
     {
       "matches": [

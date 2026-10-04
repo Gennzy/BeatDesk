@@ -129,8 +129,14 @@ const AUTO_PLATFORMS = [
 const MANUAL_PLATFORMS = [
   { id: "beatstars", label: "BeatStars" },
   { id: "beatchain", label: "BeatChain" },
-  { id: "airbit", label: "Airbit" },
 ] as const;
+
+/**
+ * Площадки, где форму заполнять нечем: у Airbit своя вёрстка, а расширение
+ * про неё ничего не знает. Раньше здесь стоял тот же конфиг, что и для
+ * BeatStars, и кнопка обещала заполнение, которого не случилось бы.
+ */
+const COPY_PLATFORMS = [{ id: "airbit", label: "Airbit", url: "https://airbit.com/dashboard" }] as const;
 
 export function DistributionBlocks({
   beat,
@@ -182,6 +188,19 @@ export function DistributionBlocks({
                 <span className="max-w-[54ch] text-[11px] text-mute">{t(`fill.${platform.id}` as "fill.beatstars")}</span>
               </div>
               <FillWithExtension platform={platform.id} label={platform.label} beatId={beat.id} />
+            </li>
+          ))}
+
+          {COPY_PLATFORMS.map((platform) => (
+            <li key={platform.id} className="flex flex-wrap items-center justify-between gap-4 border border-line bg-ink-2 px-4 py-3.5">
+              <div className="flex flex-col gap-1">
+                <span className="font-display text-sm text-paper uppercase">{platform.label}</span>
+                <span className="max-w-[54ch] text-[11px] text-mute">{t("fill.airbit")}</span>
+              </div>
+              <Button href={platform.url} size="sm" variant="ink">
+                {t("fill.airbitOpen")}
+                <span aria-hidden>→</span>
+              </Button>
             </li>
           ))}
         </ul>
