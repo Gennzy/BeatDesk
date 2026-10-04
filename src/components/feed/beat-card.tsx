@@ -48,8 +48,8 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
   }
 
   return (
-    <article className="group flex gap-4 border border-line bg-ink-2 p-3 transition-colors duration-200 hover:border-line-2">
-      <div className="relative size-28 shrink-0 overflow-hidden sm:size-32">
+    <article className="group flex flex-col border border-line bg-ink-2 transition-colors duration-200 hover:border-line-2">
+      <div className="relative aspect-square overflow-hidden">
         <Cover beat={beat} noCoverLabel={t("feed.noCover")} />
 
         {playable ? (
@@ -75,7 +75,7 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
         ) : null}
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+      <div className="flex flex-1 flex-col gap-3 p-4">
         <div className="flex flex-col gap-1.5">
           <Link href={`/beats/${beat.id}`} className="group/title">
             <h3 className="font-display text-base leading-tight text-paper uppercase transition-colors group-hover/title:text-signal">

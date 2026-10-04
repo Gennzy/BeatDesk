@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { PostCard } from "@/components/posts/post-card";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,16 @@ export function ReplyThread({ rootId, initial, maxDepth, loggedIn = true }: Prop
 
   useRealtime("posts", () => void pull());
 
-  const all = [...live, ...initial, ...extra];
+  // Слияние с дедупликацией, а не при вставке. Ответ может прийти дважды:
+  // realtime успевает принести его раньше, чем сервер отдаст страницу с
+  // ответом в initial. Проверка при вставке от этого не спасает.
+  const all = useMemo(() => {
+    const merged = new Map<string, Post>();
+    for (const post of [...initial, ...live, ...extra]) {
+      if (!merged.has(post.id)) merged.set(post.id, post);
+    }
+    return [...merged.values()];
+  }, [initial, live, extra]);
   const byParent = new Map<string, Post[]>();
   for (const post of all) {
     if (!post.parentId) continue;
