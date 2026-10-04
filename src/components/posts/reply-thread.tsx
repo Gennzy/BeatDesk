@@ -12,13 +12,14 @@ type Props = {
   rootId: string;
   initial: Post[];
   maxDepth: number;
+  loggedIn?: boolean;
 };
 
 /**
  * Ответы внутри ветки. Глубокие уровни сворачиваются: без этого один
  * спорный ответ разворачивает на экране двадцать экранов текста.
  */
-export function ReplyThread({ rootId, initial, maxDepth }: Props) {
+export function ReplyThread({ rootId, initial, maxDepth, loggedIn = true }: Props) {
   const { t } = useI18n();
 
   const [extra, setExtra] = useState<Post[]>([]);
@@ -64,7 +65,7 @@ export function ReplyThread({ rootId, initial, maxDepth }: Props) {
 
       return (
         <div key={post.id}>
-          <PostCard post={post} depth={depth + 1} inThread />
+          <PostCard post={post} loggedIn={loggedIn} depth={depth + 1} inThread />
           {descendants}
         </div>
       );
@@ -106,7 +107,7 @@ export function ReplyThread({ rootId, initial, maxDepth }: Props) {
           <summary className="label cursor-pointer text-mute">{t("posts.collapsedReplies")}: {hidden.length}</summary>
           <div className="mt-3 flex flex-col gap-2">
             {hidden.map((post) => (
-              <PostCard key={post.id} post={post} depth={1} inThread />
+              <PostCard key={post.id} post={post} loggedIn={loggedIn} depth={1} inThread />
             ))}
           </div>
         </details>

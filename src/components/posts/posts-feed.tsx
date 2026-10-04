@@ -146,6 +146,23 @@ export function PostsFeed({ tab, initial, myBeats, loggedIn, myUsername, onTabCh
     }
   }
 
+  // Посты — это разговор, а не витрина. Гостю показываем вход, а не
+  // ленту с односложными тестовыми сообщениями.
+  if (!loggedIn) {
+    return (
+      <div className="flex flex-col items-start gap-5 border border-line bg-ink-2 p-6">
+        <div className="flex items-center gap-3">
+          <span aria-hidden className="size-1.5 bg-signal" />
+          <span className="label text-paper">{t("posts.gatedTitle")}</span>
+        </div>
+        <p className="max-w-[52ch] text-sub text-mute">{t("posts.gatedHint")}</p>
+        <Button href={`/login?next=${encodeURIComponent("/?view=posts")}`} size="md">
+          {t("posts.gatedCta")}
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PostComposer beats={myBeats} loggedIn={loggedIn} myUsername={myUsername} />
@@ -188,7 +205,7 @@ export function PostsFeed({ tab, initial, myBeats, loggedIn, myUsername, onTabCh
         <ul className="flex flex-col gap-4">
           {visible.map((post) => (
             <li key={post.id}>
-              <PostCard post={post} />
+              <PostCard post={post} loggedIn={loggedIn} />
             </li>
           ))}
         </ul>

@@ -9,19 +9,23 @@ import { cn } from "@/lib/cn";
 import { timeAgo } from "@/lib/dates";
 import { useI18n } from "@/lib/i18n/provider";
 import { beatToFeedCard, type Post } from "@/lib/posts";
+import { useAuthPrompt } from "@/components/posts/auth-prompt-provider";
 import { pluralEn, pluralRu } from "@/lib/plural";
 import { trackFromBeat } from "@/lib/player";
 
 type Props = {
   post: Post;
+  /** Гость лайкнуть не может: показываем плашку входа. */
+  loggedIn?: boolean;
   /** Глубина вложенности: корневой пост 0, ответ 1 и так далее. */
   depth?: number;
   /** Показывать линию ветки слева — только внутри страницы ветки. */
   inThread?: boolean;
 };
 
-export function PostCard({ post, depth = 0, inThread = false }: Props) {
+export function PostCard({ post, loggedIn = true, depth = 0, inThread = false }: Props) {
   const { t, locale } = useI18n();
+  const { requireAuth } = useAuthPrompt();
   const { track: playing, isPlaying, plays: playingPlays, play, toggle } = usePlayer();
 
   const [liked, setLiked] = useState(post.likedByMe);
@@ -41,6 +45,14 @@ export function PostCard({ post, depth = 0, inThread = false }: Props) {
 
   async function toggleLike() {
     if (busy) return;
+
+    // Гостю показываем плашку, а не зажигаем сердечко и тут же гасим:
+    // откат без объяснения выглядит как поломка.
+    if (!loggedIn) {
+      requireAuth("like", post.author.username);
+      return;
+    }
+
     setBusy(true);
 
     // Меняем счётчик сразу и откатываем при ошибке: так отклик ощущается

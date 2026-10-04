@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { PlayerBar } from "@/components/player/player-bar";
 import { PlayerProvider } from "@/components/player/player-provider";
+import { AuthPromptProvider } from "@/components/posts/auth-prompt-provider";
 import { I18nProvider } from "@/lib/i18n/provider";
 import { getLocale } from "@/lib/i18n/server";
 import { getSessionUser } from "@/lib/supabase/user";
@@ -74,14 +75,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={locale} className={`${unbounded.variable} ${manrope.variable} ${jetbrains.variable}`}>
       <body className="min-h-svh bg-ink text-paper">
         <I18nProvider locale={locale}>
-          <PlayerProvider>
+          <AuthPromptProvider loggedIn={Boolean(user)}>
+            <PlayerProvider>
             <div className="flex min-h-svh flex-col">
               <SiteHeader user={user} />
               <main className="flex-1 pb-20 pb-[calc(5rem+env(safe-area-inset-bottom))]">{children}</main>
               <SiteFooter />
               <PlayerBar />
             </div>
-          </PlayerProvider>
+            </PlayerProvider>
+          </AuthPromptProvider>
         </I18nProvider>
       </body>
     </html>

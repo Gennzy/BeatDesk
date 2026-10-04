@@ -39,7 +39,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
         </div>
 
         <div className="flex flex-col gap-6 pt-8">
-          <PostCard post={thread.root} />
+          <PostCard post={thread.root} loggedIn={Boolean(user)} />
 
           <PostComposer
             parentId={thread.root.id}
@@ -48,7 +48,8 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
             autoFocus
           />
 
-          <ReplyThread rootId={thread.root.id} initial={thread.replies} maxDepth={THREAD_RENDER_DEPTH} />
+          <ReplyThread rootId={thread.root.id} initial={thread.replies} maxDepth={THREAD_RENDER_DEPTH}
+            loggedIn={Boolean(user)} />
         </div>
       </Container>
     </section>
