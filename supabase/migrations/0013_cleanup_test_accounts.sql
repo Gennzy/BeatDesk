@@ -5,6 +5,12 @@
 --
 -- Сначала прогони 0012_cleanup_preview.sql и убедись, что в списке нет
 -- настоящих ников.
+--
+-- Файлы из storage.objects здесь НЕ трогаем: Supabase закрыл прямое
+-- удаление триггером protect_delete, и отключать эту защиту ради уборки
+-- неправильно. Осиротевшие файлы безвредны — они не связаны ни с одним
+-- битом и не попадают ни в ленту, ни в каталог. Сколько их осталось,
+-- показывает последний запрос.
 
 begin;
 
@@ -15,14 +21,11 @@ select u.id
 from auth.users u
 where u.email like '%@studio.ru';
 
--- Файлы лежат по папкам <user_id>/<beat_id>/файл. Чистим до удаления
--- пользователей, пока их id ещё можно получить.
-delete from storage.objects
-where bucket_id in ('beats', 'covers', 'masters')
-  and (storage.foldername(name))[1] in (select id::text from cleanup_users);
+-- Сколько именно удаляем.
+select count(*) as accounts_to_delete from cleanup_users;
 
--- posts, post_likes, follows, notifications и beats удалятся каскадом
--- через profiles.
+-- profiles, beats, posts, post_likes, follows и notifications исчезают
+-- каскадом по внешним ключам.
 delete from auth.users where id in (select id from cleanup_users);
 
 commit;
@@ -32,3 +35,11 @@ select (select count(*) from auth.users) as users_left,
        (select count(*) from public.profiles) as profiles_left,
        (select count(*) from public.beats) as beats_left,
        (select count(*) from public.posts) as posts_left;
+
+-- Осиротевшие файлы: не мешают, но посмотреть полезно. Удалить можно
+-- в кабинете Supabase → Storage, папками.
+select bucket_id, count(*) as orphan_objects
+from storage.objects
+where (storage.foldername(name))[1] not in (select id::text from public.profiles)
+group by bucket_id
+order by orphan_objects desc;
