@@ -6,27 +6,24 @@
 -- Сначала прогони 0012_cleanup_preview.sql и убедись, что в списке нет
 -- настоящих ников.
 --
--- Файлы из storage.objects здесь НЕ трогаем: Supabase закрыл прямое
--- удаление триггером protect_delete, и отключать эту защиту ради уборки
--- неправильно. Осиротевшие файлы безвредны — они не связаны ни с одним
--- битом и не попадают ни в ленту, ни в каталог. Сколько их осталось,
--- показывает последний запрос.
+-- Временных таблиц здесь намеренно нет: редактор Supabase выполняет
+-- операции по разным соединениям, а TEMP-таблица живёт только в своём
+-- соединении. Отбор прост, поэтому он просто повторяется текстом.
+--
+-- Файлы из storage.objects не трогаем: прямое удаление закрыто триггером
+-- protect_delete, и отключать эту защиту ради уборки неправильно.
+-- Осиротевшие файлы безвредны: они не связаны ни с одним битом и не
+-- видны ни в ленте, ни в каталоге.
+
+-- Сколько аккаунтов под удаление.
+select count(*) as accounts_to_delete
+from auth.users where email like '%@studio.ru';
 
 begin;
 
-create temporary table cleanup_users on commit drop as
--- Ника в auth.users нет: он лежит в public.profiles. Удалять надо
--- именно auth.users, иначе каскад в профиль не сработает.
-select u.id
-from auth.users u
-where u.email like '%@studio.ru';
-
--- Сколько именно удаляем.
-select count(*) as accounts_to_delete from cleanup_users;
-
 -- profiles, beats, posts, post_likes, follows и notifications исчезают
 -- каскадом по внешним ключам.
-delete from auth.users where id in (select id from cleanup_users);
+delete from auth.users where email like '%@studio.ru';
 
 commit;
 
