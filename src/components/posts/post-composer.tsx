@@ -14,7 +14,7 @@ type Props = {
   /** Куда отправить пост. Для ответа передаётся id родителя. */
   parentId?: string | null;
   beats: FeedBeat[];
-  loggedIn: boolean;
+  loggedIn?: boolean;
   /** Ник автора — для аватара в композере. */
   myUsername?: string | null;
   /** Показать поле бита. Для ответа прикрепление тоже разрешено. */
@@ -23,7 +23,7 @@ type Props = {
   onPosted?: () => void;
 };
 
-export function PostComposer({ parentId = null, beats, loggedIn, myUsername, withBeat = true, autoFocus = false, onPosted }: Props) {
+export function PostComposer({ parentId = null, beats, loggedIn = true, myUsername, withBeat = true, autoFocus = false, onPosted }: Props) {
   const { t } = useI18n();
   const router = useRouter();
 

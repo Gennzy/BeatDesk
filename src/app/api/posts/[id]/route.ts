@@ -13,7 +13,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     data: { user },
   } = await supabase.auth.getUser();
 
-  const thread = await fetchThread(supabase, id, user?.id ?? null);
+  if (!user) return NextResponse.json({ error: "Нужно войти" }, { status: 401 });
+
+  const thread = await fetchThread(supabase, id, user.id);
   if (!thread.root) return NextResponse.json({ error: "Пост не найден" }, { status: 404 });
 
   return NextResponse.json(thread);

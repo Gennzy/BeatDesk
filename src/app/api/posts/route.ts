@@ -12,12 +12,15 @@ export async function GET(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Лента закрыта: гостю показываем вход, а не пустоту.
+  if (!user) return NextResponse.json({ error: "Нужно войти" }, { status: 401 });
+
   const params = request.nextUrl.searchParams;
   const raw = Number(params.get("offset") ?? 0);
   const offset = Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 0;
   const tab = params.get("tab") === "following" ? "following" : "all";
 
-  const gate = rateLimit(clientKey(request, `posts-feed:${user?.id ?? "anon"}`), 120, 60_000);
+  const gate = rateLimit(clientKey(request, `posts-feed:${user.id}`), 120, 60_000);
   if (!gate.ok) {
     return NextResponse.json(
       { error: "Слишком много запросов" },
@@ -25,14 +28,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Подписки без входа смотреть не на что: показываем всех.
-  const followingOf = tab === "following" && user ? user.id : null;
-
   const posts = await fetchPosts(supabase, {
-    viewerId: user?.id ?? null,
+    viewerId: user.id,
     offset,
     limit: POSTS_PAGE_SIZE,
-    followingOf,
+    followingOf: tab === "following" ? user.id : null,
   });
 
   return NextResponse.json({

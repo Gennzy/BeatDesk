@@ -58,6 +58,7 @@ export function PostsFeed({ tab, initial, myBeats, loggedIn, myUsername, onTabCh
 
   /** Забирает свежие посты и решает: показать плашкой или добавить сразу. */
   const absorbNew = useCallback(async () => {
+    if (!loggedIn) return;
     const response = await fetch("/api/posts?tab=all&offset=0", { cache: "no-store" }).catch(() => null);
     if (!response?.ok) return;
 
@@ -72,9 +73,9 @@ export function PostsFeed({ tab, initial, myBeats, loggedIn, myUsername, onTabCh
     } else {
       setPending((prev) => [...fresh, ...prev]);
     }
-  }, [isAll, pending, visible]);
+  }, [isAll, loggedIn, pending, visible]);
 
-  useRealtime("posts", () => void absorbNew());
+  useRealtime("posts", () => void absorbNew(), loggedIn);
 
   // Страховка на случай, если таблица не добавлена в публикацию realtime:
   // событий не будет, но лента всё равно обновится сама, просто реже.
@@ -96,7 +97,7 @@ export function PostsFeed({ tab, initial, myBeats, loggedIn, myUsername, onTabCh
   }, []);
 
   useEffect(() => {
-    if (isAll) return;
+    if (isAll || !loggedIn) return;
 
     let alive = true;
     (async () => {
@@ -117,7 +118,7 @@ export function PostsFeed({ tab, initial, myBeats, loggedIn, myUsername, onTabCh
     return () => {
       alive = false;
     };
-  }, [isAll]);
+  }, [isAll, loggedIn]);
 
   async function loadMore() {
     if (loading) return;

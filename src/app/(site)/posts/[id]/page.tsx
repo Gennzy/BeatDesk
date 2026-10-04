@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { PostCard } from "@/components/posts/post-card";
 import { PostComposer } from "@/components/posts/post-composer";
@@ -12,20 +12,22 @@ import { fetchBeatsByOwner } from "@/lib/feed";
 
 export const metadata: Metadata = {
   title: "Ветка",
-  robots: { index: true, follow: true },
+  robots: { index: false, follow: false },
 };
 
 export default async function ThreadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [t, supabase] = await Promise.all([getT(), getSupabase()]);
 
-  const user = supabase ? (await supabase.auth.getUser()).data.user : null;
   if (!supabase) notFound();
 
-  const thread = await fetchThread(supabase, id, user?.id ?? null);
+  const user = (await supabase.auth.getUser()).data.user;
+  if (!user) redirect(`/login?next=/posts/${id}`);
+
+  const thread = await fetchThread(supabase, id, user.id);
   if (!thread.root) notFound();
 
-  const myBeats = user ? await fetchBeatsByOwner(supabase, user.id, true).catch(() => []) : [];
+  const myBeats = await fetchBeatsByOwner(supabase, user.id, true).catch(() => []);
 
   return (
     <section className="py-14 lg:py-20">
@@ -39,17 +41,11 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
         </div>
 
         <div className="flex flex-col gap-6 pt-8">
-          <PostCard post={thread.root} loggedIn={Boolean(user)} />
+          <PostCard post={thread.root} />
 
-          <PostComposer
-            parentId={thread.root.id}
-            beats={myBeats}
-            loggedIn={Boolean(user)}
-            autoFocus
-          />
+          <PostComposer parentId={thread.root.id} beats={myBeats} autoFocus />
 
-          <ReplyThread rootId={thread.root.id} initial={thread.replies} maxDepth={THREAD_RENDER_DEPTH}
-            loggedIn={Boolean(user)} />
+          <ReplyThread rootId={thread.root.id} initial={thread.replies} maxDepth={THREAD_RENDER_DEPTH} />
         </div>
       </Container>
     </section>
