@@ -9,6 +9,7 @@ import {
   typeBeatLine,
   type DistributionBeat,
 } from "@/lib/distribution";
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { getSupabase } from "@/lib/supabase/user";
 
 export const revalidate = 60;
@@ -17,7 +18,13 @@ export const revalidate = 60;
  * Готовые данные бита для формы маркетплейса. Открытый, но только для публичных битов:
  * расширение подставляет их в форму BeatStars или BeatChain и не нажимает «Опубликовать».
  */
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  // Открытый маршрут: ограничиваем, чтобы его не перебирали в цикле.
+  const gate = rateLimit(clientKey(request, "fill"), 60, 60_000);
+  if (!gate.ok) {
+    return NextResponse.json({ error: "Слишком много запросов" }, { status: 429 });
+  }
+
   const { id } = await params;
   const supabase = await getSupabase();
 

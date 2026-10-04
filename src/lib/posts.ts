@@ -43,7 +43,7 @@ export type Post = {
 // Без подсказки PostgREST отвечает PGRST201 и возвращает пустую выборку.
 const POST_COLUMNS = `
   id, author_id, parent_id, body, like_count, reply_count, created_at,
-  beats(id, title, bpm, key, tags, cover_url, mp3_url, prices),
+  beats(id, title, bpm, key, tags, cover_url, mp3_url, prices, is_public),
   profiles!posts_author_id_fkey(username, avatar_url)
 `;
 
@@ -68,6 +68,7 @@ type PostRowBeat = {
   cover_url: string | null;
   mp3_url: string | null;
   prices: PostBeat["prices"] | null;
+  is_public: boolean | null;
 };
 
 /** Supabase отдаёт вложенные связи объектом или массивом — нормализуем в один раз. */
@@ -79,6 +80,11 @@ function one<T>(value: T | T[] | null): T | null {
 function toBeat(value: PostRowBeat | PostRowBeat[] | null): PostBeat | null {
   const beat = one(value);
   if (!beat) return null;
+
+  // Триггер проверяет публичность бита только при вставке поста. Если позже
+  // сделать бит приватным, встроенный объект всё равно придёт из базы —
+  // и пост продолжит показывать название, BPM и обложку скрытого бита.
+  if (beat.is_public === false) return null;
 
   return {
     id: beat.id,
@@ -172,15 +178,15 @@ export async function fetchThread(
   rootId: string,
   viewerId: string | null,
   maxDepth = THREAD_RENDER_DEPTH,
-): Promise<{ root: Post | null; replies: Post[]; totalReplies: number }> {
+): Promise<{ root: Post | null; replies: Post[] }> {
   const { data, error } = await supabase.from("posts").select(POST_COLUMNS).eq("id", rootId).maybeSingle();
 
   if (error) {
     console.error("thread query failed", error);
-    return { root: null, replies: [], totalReplies: 0 };
+    return { root: null, replies: [] };
   }
 
-  if (!data) return { root: null, replies: [], totalReplies: 0 };
+  if (!data) return { root: null, replies: [] };
 
   const rootRow = data as PostRow;
 
@@ -188,7 +194,6 @@ export async function fetchThread(
   const replyRows: PostRow[] = [];
   const seen = new Set<string>([rootId]);
   let frontier = [rootId];
-  let total = 0;
 
   for (let depth = 0; depth < maxDepth && frontier.length > 0; depth += 1) {
     const { data: level } = await supabase
@@ -202,7 +207,6 @@ export async function fetchThread(
 
     for (const row of rows) seen.add(row.id);
     replyRows.push(...rows);
-    total += rows.length;
     frontier = rows.map((row) => row.id);
   }
 
@@ -211,7 +215,6 @@ export async function fetchThread(
   return {
     root: toPost(rootRow, liked),
     replies: replyRows.map((row) => toPost(row, liked)),
-    totalReplies: rootRow.reply_count ?? total,
   };
 }
 
@@ -264,13 +267,6 @@ export async function loadFollowState(
   }
 
   return { isFollowing, followerCount: followerCount ?? 0, followingCount: followingCount ?? 0 };
-}
-
-/** Только id постов, на которые этот пользователь уже лайкнул. */
-export async function loadLikedPostIds(supabase: SupabaseServerClient, viewerId: string | null): Promise<Set<string>> {
-  if (!viewerId) return new Set();
-  const { data } = await supabase.from("post_likes").select("post_id").eq("user_id", viewerId);
-  return new Set((data ?? []).map((row) => row.post_id as string));
 }
 
 /**

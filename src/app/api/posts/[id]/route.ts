@@ -35,9 +35,30 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     return NextResponse.json({ error: "Слишком много удалений подряд" }, { status: 429 });
   }
 
+  // Удаление поста каскадно сносит всех потомков: один клик по корню стирает
+  // переписку целиком и без возможности вернуть. Поэтому по умолчанию
+  // удаление ветки с ответами запрещено, а каскад требует явного намерения.
+  const { data: post } = await supabase
+    .from("posts")
+    .select("id, parent_id, reply_count")
+    .eq("id", id)
+    .eq("author_id", user.id)
+    .maybeSingle();
+
+  if (!post) return NextResponse.json({ error: "Пост не найден" }, { status: 404 });
+
+  const wantsCascade = request.nextUrl.searchParams.get("cascade") === "true";
+
+  if ((post.reply_count ?? 0) > 0 && !wantsCascade) {
+    return NextResponse.json(
+      { error: "На этот пост есть ответы. Удалить вместе со всей веткой?", hasReplies: true },
+      { status: 409 },
+    );
+  }
+
   const { error } = await supabase.from("posts").delete().eq("id", id).eq("author_id", user.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, deletedBranch: wantsCascade });
 }

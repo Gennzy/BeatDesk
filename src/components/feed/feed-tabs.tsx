@@ -56,7 +56,9 @@ export function FeedTabs({ beats, nextOffset, filters, posts, myBeats, loggedIn 
             key={item}
             type="button"
             role="tab"
+            id={`tab-${item}`}
             aria-selected={view === item}
+            aria-controls={`panel-${item}`}
             onClick={() => switchTo(item)}
             className={cn(
               "label border-b-2 px-4 py-3 transition-colors",
@@ -69,7 +71,7 @@ export function FeedTabs({ beats, nextOffset, filters, posts, myBeats, loggedIn 
       </div>
 
       {view === "beats" ? (
-        <div className="flex flex-col gap-6">
+        <div id="panel-beats" role="tabpanel" aria-labelledby="tab-beats" className="flex flex-col gap-6">
           <Suspense fallback={null}>
             <FeedFiltersBar resultCount={beats.length} />
           </Suspense>
@@ -78,6 +80,7 @@ export function FeedTabs({ beats, nextOffset, filters, posts, myBeats, loggedIn 
       ) : (
         // key по виду: при смене вкладки компонент пересоздаётся и не держит
         // посты прошлой вкладки в состоянии
+        <div id="panel-posts" role="tabpanel" aria-labelledby="tab-posts" className="flex flex-col gap-6">
         <PostsFeed
           key={view}
           tab={postsTab}
@@ -86,6 +89,7 @@ export function FeedTabs({ beats, nextOffset, filters, posts, myBeats, loggedIn 
           loggedIn={loggedIn}
           onTabChange={(next) => setPostsTab(next)}
         />
+        </div>
       )}
     </div>
   );

@@ -3,12 +3,13 @@ import type { FeedFilterState } from "@/components/feed/feed-filters";
 import { HeroVideo } from "@/components/media/hero-video";
 import { Button } from "@/components/ui/button";
 import { Container, SectionHead } from "@/components/ui/container";
+import { ErrorState } from "@/components/ui/states";
 import { HeroIntro } from "@/components/ui/hero-intro";
 import { Reveal } from "@/components/ui/reveal";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { fetchBeatsByOwner, fetchPublicBeats, type FeedFilters } from "@/lib/feed";
+import { fetchBeatsByOwner, fetchPublicBeats, type FeedBeat, type FeedFilters } from "@/lib/feed";
 import { getT } from "@/lib/i18n/server";
 import { fetchPosts } from "@/lib/posts";
 import { getSupabase } from "@/lib/supabase/user";
@@ -45,9 +46,19 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     bpmMax: numeric("bpmMax"),
   };
 
-  const feed = supabase
-    ? await fetchPublicBeats(supabase, 0, undefined, feedFilters).catch(() => ({ beats: [], nextOffset: null }))
-    : { beats: [], nextOffset: null };
+  // Пустой массив при ошибке неотличим от «битов пока нет». Разделяем явно:
+  // поломка запроса должна выглядеть поломкой, а не пустой витриной.
+  let feedError: string | null = null;
+  let feed: { beats: FeedBeat[]; nextOffset: number | null } = { beats: [], nextOffset: null };
+
+  if (supabase) {
+    try {
+      feed = await fetchPublicBeats(supabase, 0, undefined, feedFilters);
+    } catch (error) {
+      console.error("beat feed failed", error);
+      feedError = t("feed.error");
+    }
+  }
 
   // Ветки и композер нужны только для вошедшего, поэтому тянутся вместе с ним.
   const viewer = supabase ? (await supabase.auth.getUser()).data.user ?? null : null;
@@ -116,14 +127,18 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <Reveal delay={0.08}>
             <div className="mt-8">
               <Suspense fallback={null}>
-                <FeedTabs
-                  beats={feed.beats}
-                  nextOffset={feed.nextOffset}
-                  filters={filters}
-                  posts={posts}
-                  myBeats={myBeats}
-                  loggedIn={Boolean(viewer)}
-                />
+                {feedError && feed.beats.length === 0 ? (
+                  <ErrorState title={t("feed.errorTitle")} description={feedError} />
+                ) : (
+                  <FeedTabs
+                    beats={feed.beats}
+                    nextOffset={feed.nextOffset}
+                    filters={filters}
+                    posts={posts}
+                    myBeats={myBeats}
+                    loggedIn={Boolean(viewer)}
+                  />
+                )}
               </Suspense>
             </div>
           </Reveal>

@@ -22,6 +22,8 @@ const ru = {
   "hero.ctaSecondary": "Смотреть ленту",
   "hero.platforms": "Telegram · ВК · Discord · BeatStars · Airbit",
 
+  "feed.errorTitle": "Лента не загрузилась",
+  "feed.error": "Не удалось получить биты. Попробуй обновить страницу.",
   "feed.label": "Лента",
   "feed.hint": "Публичные биты битмейкеров",
   "feed.loading": "Загружаем ленту",
@@ -346,6 +348,8 @@ const en: Record<keyof typeof ru, string> = {
   "hero.ctaSecondary": "Open the feed",
   "hero.platforms": "Telegram · VK · Discord · BeatStars · Airbit",
 
+  "feed.errorTitle": "The feed failed to load",
+  "feed.error": "Could not fetch beats. Try refreshing the page.",
   "feed.label": "Feed",
   "feed.hint": "Public beats from beatmakers",
   "feed.loading": "Loading the feed",

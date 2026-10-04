@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { getSiteUrl } from "@/lib/site";
 import {
   getBotToken,
@@ -60,8 +61,19 @@ export async function POST(request: Request) {
 
   if (!token) return NextResponse.json({ error: "TELEGRAM_BOT_TOKEN не задан" }, { status: 503 });
 
-  if (secret && request.headers.get(SECRET_HEADER) !== secret) {
+  // Fail closed: без секрета эндпоинт не принимает ничего. Иначе незащищённая
+  // конфигурация молча превращалась в открытый на весь интернет приёмник,
+  // через который любой мог слать апдейты от имени Telegram.
+  if (!secret) return NextResponse.json({ error: "TELEGRAM_WEBHOOK_SECRET не задан" }, { status: 503 });
+
+  if (request.headers.get(SECRET_HEADER) !== secret) {
     return NextResponse.json({ error: "bad secret" }, { status: 401 });
+  }
+
+  // Без ключа у Telegram апдейты летели чаще, чем бот успевал отвечать.
+  const gate = rateLimit(clientKey(request, "telegram-webhook"), 120, 60_000);
+  if (!gate.ok) {
+    return NextResponse.json({ error: "Слишком много апдейтов" }, { status: 429 });
   }
 
   const update = (await request.json()) as Update;

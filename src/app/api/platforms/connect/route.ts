@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { encryptSecret } from "@/lib/crypto";
 import { isPlatformId, PLATFORM_MAP } from "@/lib/platforms/registry";
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 type Body = {
@@ -42,6 +43,15 @@ export async function POST(request: Request) {
 
 const { supabase, user } = await getUser();
   if (!user) return NextResponse.json({ error: "Нужно войти" }, { status: 401 });
+
+  // Маршрут пишет зашифрованные токены, поэтому лимит обязателен.
+  const gate = rateLimit(clientKey(request, `connect:${user.id}`), 20, 60_000);
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "Слишком много попыток подключения, подожди минуту" },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
+    );
+  }
 
   const meta = body.meta ?? {};
 
@@ -92,6 +102,11 @@ export async function DELETE(request: Request) {
 
   const { supabase, user } = await getUser();
   if (!user) return NextResponse.json({ error: "Нужно войти" }, { status: 401 });
+
+  const gate = rateLimit(clientKey(request, `disconnect:${user.id}`), 20, 60_000);
+  if (!gate.ok) {
+    return NextResponse.json({ error: "Слишком много попыток, подожди минуту" }, { status: 429 });
+  }
 
   const { error } = await supabase
     .from("platform_connections")

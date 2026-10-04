@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { MASTERS_BUCKET } from "@/lib/beats";
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 const SIGN_TTL_SECONDS = 300;
@@ -28,6 +29,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!beat) return NextResponse.json({ error: "Бит не найден" }, { status: 404 });
   if (beat.owner_id !== user.id) {
     return NextResponse.json({ error: "Мастера доступны только автору бита" }, { status: 403 });
+  }
+
+  // Подписанная ссылка — это фактически выдача доступа к файлу, лимит обязателен.
+  const gate = rateLimit(clientKey(request, `masters:${user.id}`), 30, 60_000);
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "Слишком много запросов, подожди минуту" },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
+    );
   }
 
   let paths: string[];
