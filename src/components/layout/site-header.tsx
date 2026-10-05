@@ -59,6 +59,7 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
   const links = [
     { href: "/", label: t("nav.feed") },
     ...(user ? [{ href: "/share", label: t("nav.share") }] : []),
+    { href: "/studio", label: t("nav.studio") },
     { href: "/upload", label: t("nav.upload") },
   ];
 

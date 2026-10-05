@@ -11,6 +11,10 @@
  *   pnpm test:e2e
  * Либо одной строкой: BASE_URL=https://beat-desk.vercel.app pnpm test:e2e
  */
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import puppeteer from "puppeteer-core";
 
 const BASE = (process.env.BASE_URL ?? "http://localhost:3161").replace(/\/$/, "");
@@ -24,6 +28,51 @@ const checks = [];
 function check(name, ok, detail = "") {
   checks.push({ name, ok, detail });
   console.log(`${ok ? "  ok  " : "  FAIL"} ${name}${detail && !ok ? ` — ${detail}` : ""}`);
+}
+
+/**
+ * WAV с кликами на 140 BPM.
+ *
+ * Генерируется прямо в прогоне, а не хранится файлом: так в тесте сразу
+ * видно, какой темп заложен, и его нельзя случайно испортить правкой бинаря.
+ */
+function makeClickFixture() {
+  const sampleRate = 44100;
+  const bpm = 140;
+  const seconds = 8;
+  const frames = sampleRate * seconds;
+  const data = new Int16Array(frames);
+  const secondsPerBeat = 60 / bpm;
+  const decay = Math.round(0.03 * sampleRate);
+
+  for (let beat = 0; beat * secondsPerBeat < seconds; beat += 1) {
+    const start = Math.round(beat * secondsPerBeat * sampleRate);
+
+    for (let i = 0; i < decay && start + i < frames; i += 1) {
+      const value = (1 - i / decay) * Math.sin((2 * Math.PI * 70 * (start + i)) / sampleRate) * 0.8;
+      data[start + i] = Math.max(-32767, Math.min(32767, Math.round(value * 32767)));
+    }
+  }
+
+  const header = Buffer.alloc(44);
+  header.write("RIFF", 0);
+  header.writeUInt32LE(36 + data.length * 2, 4);
+  header.write("WAVE", 8);
+  header.write("fmt ", 12);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(sampleRate * 2, 28);
+  header.writeUInt16LE(2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write("data", 36);
+  header.writeUInt32LE(data.length * 2, 40);
+
+  const path = join(mkdtempSync(join(tmpdir(), "beatdesk-e2e-")), `clicks-${bpm}bpm.wav`);
+  writeFileSync(path, Buffer.concat([header, Buffer.from(data.buffer)]));
+
+  return { path, bpm };
 }
 
 async function reachable() {
@@ -175,6 +224,44 @@ async function main() {
       check("Airbit предупреждает, что форма не поддержана", /Форму расширение не знает/i.test(text));
     }
     await anon.close();
+    // --- студия -------------------------------------------------------
+    console.log("\nСтудия");
+    const studio = await browser.newPage();
+    await studio.setViewport({ width: 1440, height: 1100 });
+    studio.on("pageerror", (error) => errors.push(`studio: ${error}`));
+
+    await studio.goto(`${BASE}/studio`, { waitUntil: "networkidle2", timeout: 60_000 });
+    await wait(1500);
+
+    const studioText = await studio.evaluate(() => document.body.innerText);
+    check("вкладка студии открывается гостю", /РАЗБОР БИТА/i.test(studioText));
+    check("студия обещает разбор на устройстве", /НЕ ЗАГРУЖАЕТСЯ НА СЕРВЕР/i.test(studioText));
+    check("в навигации есть студия", await studio.evaluate(() => !!document.querySelector('a[href="/studio"]')));
+
+    // Разбор настоящего файла: клики на 140 BPM, для которых ответ известен.
+    const fixture = makeClickFixture();
+    const input = await studio.$('input[type=file]');
+    await input.uploadFile(fixture.path);
+    await wait(6000);
+
+    const analyzed = await studio.evaluate(() => document.body.innerText);
+    const tempo = analyzed.match(/(\d+[.,]\d)\s*BPM/);
+
+    check("студия разбирает файл и находит темп", Boolean(tempo), "темп не показан");
+
+    if (tempo) {
+      const value = Number(tempo[1].replace(",", "."));
+      check(
+        `темп совпадает с реальными ${fixture.bpm} BPM`,
+        Math.abs(value - fixture.bpm) < 1,
+        `получено ${value}`,
+      );
+    }
+
+    check("студия показывает сильную долю", /СИЛЬНАЯ ДОЛЯ/i.test(analyzed));
+    check("студия не выдумывает свинг на ровном ритме", /нет,\s*ровно/i.test(analyzed));
+    check("студия показывает длительность файла", /ДЛИТЕЛЬНОСТЬ/i.test(analyzed));
+    await studio.close();
   } finally {
     await browser.close();
   }
