@@ -105,3 +105,27 @@ export function formatIdCard(input: { id: number; title?: string; username?: str
     "Вставь его в разделе «Площадки» на сайте — и посты будут приходить сюда.",
   ].join("\n");
 }
+
+/**
+ * Просят ли ID канала.
+ *
+ * Страница площадок говорит «напиши боту — он подскажет ID», а не «введи
+ * команду /id». Человек пишет «айди», «ID», «айди?» или «айдишник» — и
+ * раньше получал тишину, потому что бот ждал ровно «/id».
+ *
+ * Поэтому сравниваем по смыслу: убираем ведущую косую черту и хвост вида
+ * `@beatdesk_bot`, который Телеграм добавляет в группах.
+ */
+export function wantsId(text: string | undefined | null): boolean {
+  if (!text) return false;
+
+  const cleaned = text
+    .trim()
+    .toLowerCase()
+    .replace(/^\//, "")
+    .replace(/@[a-z0-9_]+$/, "")
+    .replace(/[?!.,]+$/, "")
+    .trim();
+
+  return /^(id|айди|ид|айдишник|айдишник?ка|channelid|channel id)$/.test(cleaned);
+}

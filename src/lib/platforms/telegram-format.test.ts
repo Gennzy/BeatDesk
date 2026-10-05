@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatIdCard } from "./telegram-format";
+import { formatIdCard, wantsId } from "./telegram-format";
 
 describe("карточка ID для телеграма", () => {
   it("отдаёт сам номер в моноширинном блоке", () => {
@@ -23,5 +23,28 @@ describe("карточка ID для телеграма", () => {
 
   it("подсказывает, куда вставить", () => {
     expect(formatIdCard({ id: 1 })).toContain("Площадки");
+  });
+});
+
+describe("понимание просьбы дать ID", () => {
+  it("ловит команду и обычный слово", () => {
+    expect(wantsId("/id")).toBe(true);
+    expect(wantsId("айди")).toBe(true);
+    expect(wantsId("ID")).toBe(true);
+    expect(wantsId("айди?")).toBe(true);
+    expect(wantsId("айдишник")).toBe(true);
+  });
+
+  it("ловит хвост с названием бота, который добавляет телеграм в группе", () => {
+    expect(wantsId("/id@beatdesk_bot")).toBe(true);
+  });
+
+  it("не ловит обычный разговор", () => {
+    // Иначе бот начнёт вставлять ID на каждое сообщение в канале.
+    expect(wantsId("привет")).toBe(false);
+    expect(wantsId("сделай бит")).toBe(false);
+    expect(wantsId("idbeats")).toBe(false);
+    expect(wantsId("")).toBe(false);
+    expect(wantsId(undefined)).toBe(false);
   });
 });
