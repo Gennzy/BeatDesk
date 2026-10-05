@@ -51,3 +51,4 @@ bench/audio/
 
 # Essentia копируется из node_modules при dev и build, в git не хранится.
 public/essentia/
+bench/corpus-baseline.json
