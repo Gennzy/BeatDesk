@@ -47,7 +47,11 @@ export async function telegramThumbnail(source: Buffer | ArrayBuffer | Uint8Arra
     }
 
     return candidate.byteLength <= MAX_BYTES ? candidate : null;
-  } catch {
+  } catch (error) {
+    // Молчать здесь нельзя: именно на этом молчании пост уезжал в канал без
+    // обложки, и никто не видел почему. Пишем в лог, где это видно сразу.
+    console.error("[telegram] обложку ужать не удалось:", error);
+
     return null;
   }
 }

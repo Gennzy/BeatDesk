@@ -12,6 +12,8 @@ import type { TelegramMessage } from "./telegram-client";
  */
 
 /** Применилась ли обложка: Telegram возвращает её в ответе, если всё в порядке. */
+export type PostVerdict = "done" | "cover" | "coverAndTitle";
+
 export function coverApplied(message: TelegramMessage | undefined): boolean {
   return Boolean(message?.audio?.thumbnail);
 }
@@ -36,9 +38,15 @@ export function titleApplied(message: TelegramMessage | undefined, expected: str
  * Раньше тут стоял только флаг успеха, и молчаливо кривой пост уезжал в
  * канал как годный.
  */
-export function inspectPost(message: TelegramMessage | undefined, expected: string): "done" | "cover" | "coverAndTitle" {
+export function inspectPost(message: TelegramMessage | undefined, expected: string): PostVerdict {
   const cover = coverApplied(message);
   const named = titleApplied(message, expected);
+
+  // Причина в лог: без неё «пустой» пост выглядит одинаково и без обложки,
+  // и с негодной обложкой — а чинить надо разное.
+  console.log(
+    `[telegram] принято: обложка ${cover ? "есть" : "нет"}, название ${named ? "наше" : "чужое"}, ожидали «${expected}»`,
+  );
 
   if (cover && named) return "done";
 

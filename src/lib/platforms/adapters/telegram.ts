@@ -69,6 +69,11 @@ export async function publishToTelegram(
     // почти всегда не влезает, и пост уходил совсем без картинки.
     const thumbnail = payload.coverUrl ? await telegramThumbnail(await fetchImage(payload.coverUrl)) : null;
 
+    // Видно в логах деплоя: ужалась обложка или нет.
+    console.log(
+      `[telegram] обложка: ${payload.coverUrl ? "исходник есть" : "нет у бита"}, ужата ${thumbnail ? `${thumbnail.byteLength} Б` : "нет"}`,
+    );
+
     /*
      * Telegram отвечает «принято», даже если обложку выкинул.
      *
