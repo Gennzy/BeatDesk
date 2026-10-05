@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { compressImage } from "@/lib/image";
 import { useI18n } from "@/lib/i18n/provider";
+import { parseCollaborators } from "@/lib/profile/collaborators";
 import { createClient } from "@/lib/supabase/client";
 import { SupabaseNotConfiguredError } from "@/lib/supabase/config";
 
@@ -15,6 +16,7 @@ export type ProfileData = {
   username: string;
   avatarUrl: string | null;
   bio: string | null;
+  collaborators: string[];
   links: Record<string, string>;
 };
 
@@ -37,6 +39,7 @@ export function ProfileForm({ userId, profile }: { userId: string; profile: Prof
 
   const [username, setUsername] = useState(profile.username);
   const [bio, setBio] = useState(profile.bio ?? "");
+  const [collaborators, setCollaborators] = useState(profile.collaborators.join(", "));
   const [links, setLinks] = useState<Record<string, string>>(profile.links);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatarUrl);
   const [avatarError, setAvatarError] = useState<string | null>(null);
@@ -126,6 +129,29 @@ export function ProfileForm({ userId, profile }: { userId: string; profile: Prof
         return;
       }
 
+      /*
+       * Список артистов перезаписываем целиком, а не добавляем по одному:
+       * иначе удалить артиста из профиля было бы невозможно.
+       */
+      const names = parseCollaborators(collaborators);
+
+      const { error: clearError } = await supabase.from("profile_collaborators").delete().eq("profile_id", userId);
+      if (clearError) {
+        setState("error");
+        return;
+      }
+
+      if (names.length > 0) {
+        const { error: insertError } = await supabase.from("profile_collaborators").insert(
+          names.map((name, index) => ({ profile_id: userId, name, position: index })),
+        );
+
+        if (insertError) {
+          setState("error");
+          return;
+        }
+      }
+
       setState("saved");
       router.refresh();
     } catch {
@@ -184,6 +210,15 @@ export function ProfileForm({ userId, profile }: { userId: string; profile: Prof
 
         <Field label={t("profile.bio")} hint={t("profile.bioHint")}>
           <Textarea name="bio" value={bio} onChange={(event) => setBio(event.target.value)} maxLength={300} />
+        </Field>
+
+        <Field label={t("profile.collaborators")} hint={t("profile.collaboratorsHint")}>
+          <Textarea
+            name="collaborators"
+            value={collaborators}
+            onChange={(event) => setCollaborators(event.target.value)}
+            rows={3}
+          />
         </Field>
       </div>
 

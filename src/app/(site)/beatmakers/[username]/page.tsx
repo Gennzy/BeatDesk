@@ -65,6 +65,15 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
     notFound();
   }
 
+  // Артисты, с которым работал автор: артист смотрит сюда в первую очередь.
+  const { data: collaboratorRows } = await supabase
+    .from("profile_collaborators")
+    .select("name")
+    .eq("profile_id", profile.id)
+    .order("position", { ascending: true });
+
+  const collaborators = (collaboratorRows ?? []).map((row) => row.name);
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -104,6 +113,22 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
               {profile.username}
             </h1>
             <p className="max-w-[58ch] text-sub text-mute">{profile.bio ?? t("profile.bioPlaceholder")}</p>
+
+            {collaborators.length > 0 ? (
+              <div className="flex flex-col gap-3 pt-4">
+                <span className="label text-mute">{t("profile.collaboratorsTitle")}</span>
+                <ul className="flex flex-wrap gap-2">
+                  {collaborators.map((name) => (
+                    <li
+                      key={name}
+                      className="border border-line-2 px-3 py-1 text-sm text-paper"
+                    >
+                      {name}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
 
             <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-2">
               <FollowButton

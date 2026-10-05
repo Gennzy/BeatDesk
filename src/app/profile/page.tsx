@@ -33,11 +33,17 @@ export default async function ProfilePage() {
     redirect("/login?next=/profile");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("username, avatar_url, bio, links")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [profileResult, collaboratorsResult] = await Promise.all([
+    supabase.from("profiles").select("username, avatar_url, bio, links").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("profile_collaborators")
+      .select("name")
+      .eq("profile_id", user.id)
+      .order("position", { ascending: true }),
+  ]);
+
+  const profile = profileResult.data;
+  const collaborators = (collaboratorsResult.data ?? []).map((row) => row.name);
 
   if (!profile) {
     redirect("/");
@@ -103,6 +109,7 @@ export default async function ProfilePage() {
                 avatarUrl: profile.avatar_url,
                 bio: profile.bio,
                 links: (profile.links ?? {}) as Record<string, string>,
+                collaborators,
               }}
             />
           </div>
