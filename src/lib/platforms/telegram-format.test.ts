@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { chatKind, formatIdCard, notConnected, wantsId } from "./telegram-format";
+import { captionForPost, chatKind, formatIdCard, notConnected, planPost, wantsId } from "./telegram-format";
 
 describe("карточка ID для телеграма", () => {
   it("отдаёт сам номер в моноширинном блоке", () => {
@@ -81,5 +81,37 @@ describe("пока канал не подключён", () => {
     expect(text).toContain("в личку");
     // Никаких цифр с минусом быть не должно.
     expect(text).not.toMatch(/-100\d+/);
+  });
+});
+
+describe("пост бита одним сообщением", () => {
+  it("трек идёт одним постом вместе со своей обложкой", () => {
+    // Раньше карточка и файл уходили двумя сообщениями — в канале это два поста.
+    expect(planPost({ audioUrl: "https://a/beat.mp3", coverUrl: "https://a/cover.jpg" })).toBe("audio");
+  });
+
+  it("приоритет у трека, а не у картинки", () => {
+    expect(planPost({ audioUrl: "https://a/beat.mp3" })).toBe("audio");
+    expect(planPost({ coverUrl: "https://a/cover.jpg" })).toBe("photo");
+    expect(planPost({})).toBe("text");
+  });
+});
+
+describe("подпись поста", () => {
+  it("короткая подпись не трогается", () => {
+    expect(captionForPost("short", 1024)).toBe("short");
+  });
+
+  it("длинная обрезается по лимиту", () => {
+    const cut = captionForPost("a".repeat(2000), 1024);
+
+    expect(cut.length).toBeLessThanOrEqual(1024);
+  });
+
+  it("обрезанная разметка остаётся закрытой", () => {
+    // Разорванный <b> Telegram отвергает целиком.
+    const cut = captionForPost(`<b>${"текст ".repeat(400)}`, 1024);
+
+    expect((cut.match(/<b>/g) ?? []).length).toBe((cut.match(/<\/b>/g) ?? []).length);
   });
 });

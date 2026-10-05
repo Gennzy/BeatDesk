@@ -79,7 +79,7 @@ export async function publishBeat(input: {
     const token = input.telegramToken;
     if (!token) return { ok: false, error: "TELEGRAM_BOT_TOKEN не задан на сервере" };
 
-    return publishToTelegram(toConnection(input.connection), payload, token, input.siteUrl);
+    return publishToTelegram(toConnection(input.connection), payload, token);
   }
 
   if (input.platform === "vk") {

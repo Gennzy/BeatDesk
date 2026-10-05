@@ -174,3 +174,44 @@ export function wantsId(text: string | undefined | null): boolean {
 
   return /^(id|айди|ид|айдишник|айдишник?ка|channelid|channel id)$/.test(cleaned);
 }
+
+/**
+ * Подпись поста в пределах лимита Telegram.
+ *
+ * У фото и аудио лимит 1024 символа, у обычного текста — 4096. Обрезаем
+ * по границе строки, чтобы не разорвать половину тега: иначе Telegram
+ * отклонит пост из-за кривой разметки.
+ */
+export function captionForPost(text: string, limit?: number): string {
+  if (!limit || text.length <= limit) return text;
+
+  const cut = text.slice(0, limit);
+  const lastBreak = cut.lastIndexOf("\n");
+  const body = lastBreak > limit * 0.5 ? cut.slice(0, lastBreak) : cut;
+
+  // Закрываем неоткрытый тег, иначе разметка останется незавершённой.
+  const opened = (body.match(/<b>/g) ?? []).length;
+  const closed = (body.match(/<\/b>/g) ?? []).length;
+
+  return body + (opened > closed ? "</b>" : "");
+}
+
+/** Как отправить пост: трек с обложкой, одна картинка или просто текст. */
+export type PostPlan = "audio" | "photo" | "text";
+
+/**
+ * Выбор способа отправки.
+ *
+ * Раньше карточка бита и сам файл уходили двумя сообщениями, и в канале это
+ * читалось как два поста. Теперь трек и его обложка живут в одном сообщении:
+ * Telegram показывает обложку прямо в плеере.
+ *
+ * Приоритет именно аудио, а не фото: обложка без трека — это просто
+ * картинка, а трек с обложкой в плеере — это и есть пост о бите.
+ */
+export function planPost(input: { audioUrl?: string | null; coverUrl?: string | null }): PostPlan {
+  if (input.audioUrl) return "audio";
+  if (input.coverUrl) return "photo";
+
+  return "text";
+}

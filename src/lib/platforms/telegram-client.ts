@@ -83,6 +83,14 @@ export async function sendTelegramAudio<T = TelegramMessage>(
     parse_mode?: "HTML";
     title?: string;
     performer?: string;
+    /**
+     * Обложка трека для плеера телеграма.
+     *
+     * Telegram жёстко ограничивает размер: до 200 КБ и не крупнее
+     * 200×200. Если картинка не проходит, отправка аудио падает целиком,
+     * поэтому поле всегда необязательное и проверяется на отказе.
+     */
+    thumbnail?: string;
     reply_markup?: unknown;
   },
 ): Promise<ApiResult<T>> {

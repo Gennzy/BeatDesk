@@ -3,9 +3,8 @@ import {
   sendTelegramAudio,
   sendTelegramMessage,
   sendTelegramPhoto,
-  type TelegramMessage,
 } from "../telegram-client";
-import { buildKeyboard, formatAudioCaption, formatBeatCaption } from "../telegram-format";
+import { buildKeyboard, captionForPost, formatBeatCaption, planPost } from "../telegram-format";
 import type { PlatformConnection } from "./vk";
 import type { PublishPayload, PublishResult } from "../payload";
 
@@ -29,7 +28,6 @@ export async function publishToTelegram(
   connection: PlatformConnection,
   payload: PublishPayload,
   token: string,
-  siteUrl: string,
 ): Promise<PublishResult> {
   const chatId = connection.meta?.chatId;
 
@@ -38,7 +36,7 @@ export async function publishToTelegram(
   }
 
   const chat = String(chatId);
-  const caption = formatBeatCaption({
+  const captionText = formatBeatCaption({
     title: payload.beat.title,
     artists: payload.beat.artists,
     bpm: payload.beat.bpm,
@@ -48,63 +46,83 @@ export async function publishToTelegram(
     username: payload.beat.username,
   });
 
-  const keyboard = buildKeyboard({
-    beatUrl: payload.beatUrl,
-    audioUrl: payload.audioUrl,
-    profileUrl: payload.beat.username ? `${siteUrl}/beatmakers/${payload.beat.username}` : null,
-  });
+  /*
+   * Один пост, без кнопок.
+   *
+   * Раньше здесь уходили два сообщения — карточка с обложкой и отдельный
+   * файл трека, — и в канале это выглядело как два поста. Теперь трек идёт
+   * одним сообщением вместе со своей обложкой в плеере.
+   *
+   * Кнопок («Слушать», «MP3», профиль) нет намеренно: нажатие на пост уже
+   * даёт прослушивание, а лишние кнопки в ленте только шумят.
+   */
+  const caption = captionForPost(captionText, payload.audioUrl ? 1024 : undefined);
+  const plan = planPost(payload);
+  let message: { message_id: number };
 
-  let mainMessage: TelegramMessage | undefined;
+  if (plan === "audio") {
+    // Обложка не проходит ограничениям Telegram (до 200 КБ и 200×200), и
+    // тогда отправка аудио падает целиком. Поэтому пробуем с обложкой, а
+    // при отказе — без неё: лучше пост без картинки, чем никакого поста.
+    const withCover = await sendTelegramAudio(token, {
+      chat_id: chat,
+      audio: payload.audioUrl!,
+      thumbnail: payload.coverUrl ?? undefined,
+      caption,
+      parse_mode: "HTML",
+      title: payload.beat.title,
+      performer: payload.beat.username,
+    });
 
-  if (payload.coverUrl) {
+    if (withCover.ok && withCover.result) {
+      message = withCover.result;
+    } else {
+      const bare = await sendTelegramAudio(token, {
+        chat_id: chat,
+        audio: payload.audioUrl!,
+        caption,
+        parse_mode: "HTML",
+        title: payload.beat.title,
+        performer: payload.beat.username,
+      });
+
+      if (!bare.ok || !bare.result) {
+        return { ok: false, error: bare.description ?? withCover.description ?? "Telegram не принял трек" };
+      }
+
+      message = bare.result;
+    }
+  } else if (plan === "photo") {
     const photo = await sendTelegramPhoto(token, {
       chat_id: chat,
-      photo: payload.coverUrl,
-      caption: caption.slice(0, 1024),
+      photo: payload.coverUrl!,
+      caption,
       parse_mode: "HTML",
-      reply_markup: keyboard,
     });
 
     if (!photo.ok || !photo.result) {
       return { ok: false, error: photo.description ?? "Telegram не принял обложку" };
     }
 
-    mainMessage = photo.result;
+    message = photo.result;
   } else {
-    const message = await sendTelegramMessage(token, {
+    const plain = await sendTelegramMessage(token, {
       chat_id: chat,
       text: caption,
       parse_mode: "HTML",
-      disable_web_page_preview: false,
-      reply_markup: keyboard,
     });
 
-    if (!message.ok || !message.result) {
-      return { ok: false, error: message.description ?? "Telegram не принял сообщение" };
+    if (!plain.ok || !plain.result) {
+      return { ok: false, error: plain.description ?? "Telegram не принял сообщение" };
     }
 
-    mainMessage = message.result;
-  }
-
-  const sent: number[] = [mainMessage.message_id];
-
-  if (payload.audioUrl) {
-    const audio = await sendTelegramAudio(token, {
-      chat_id: chat,
-      audio: payload.audioUrl,
-      caption: formatAudioCaption(payload.beat.title, payload.beat.username),
-      parse_mode: "HTML",
-      title: payload.beat.title,
-      performer: payload.beat.username,
-    });
-
-    if (audio.ok && audio.result) sent.push(audio.result.message_id);
+    message = plain.result;
   }
 
   return {
     ok: true,
-    externalUrl: chatLink(Number(chatId), mainMessage.message_id),
-    detail: { messages: sent, chatId },
+    externalUrl: chatLink(Number(chatId), message.message_id),
+    detail: { messages: [message.message_id], chatId },
   };
 }
 
