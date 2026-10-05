@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { chatKind, formatIdCard, wantsId } from "./telegram-format";
+import { chatKind, formatIdCard, notConnected, wantsId } from "./telegram-format";
 
 describe("карточка ID для телеграма", () => {
   it("отдаёт сам номер в моноширинном блоке", () => {
@@ -17,7 +17,6 @@ describe("карточка ID для телеграма", () => {
 
     expect(card).not.toContain("353507128");
     expect(card).toContain("в личке не отдаю");
-    expect(card).toContain("Подключить канал");
   });
 
   it("подпись канала не ломает разметку", () => {
@@ -71,5 +70,16 @@ describe("понимание просьбы дать ID", () => {
     expect(wantsId("idbeats")).toBe(false);
     expect(wantsId("")).toBe(false);
     expect(wantsId(undefined)).toBe(false);
+  });
+});
+
+describe("пока канал не подключён", () => {
+  it("объясняет шаги и не выдаёт никаких номеров", () => {
+    const text = notConnected();
+
+    expect(text).toContain("администратора");
+    expect(text).toContain("в личку");
+    // Никаких цифр с минусом быть не должно.
+    expect(text).not.toMatch(/-100\d+/);
   });
 });

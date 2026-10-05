@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { getSiteUrl } from "@/lib/site";
-import { chatKind, formatIdCard, wantsId } from "@/lib/platforms/telegram-format";
+import { chatKind, formatIdCard, notConnected, wantsId } from "@/lib/platforms/telegram-format";
+import { channelOf, rememberChannel } from "@/lib/platforms/telegram-channels";
 import {
   getBotToken,
   sendTelegramMessage,
@@ -24,7 +25,7 @@ type Chat = {
 
 type Update = {
   update_id: number;
-  message?: TelegramMessage & { text?: string; chat?: Chat };
+  message?: TelegramMessage & { text?: string; chat?: Chat; from?: { id: number; is_bot?: boolean } };
   callback_query?: CallbackQuery & { message?: { chat?: Chat } };
   /** Бота добавили в чат или выдали права: приходит без сообщения. */
   my_chat_member?: {
@@ -128,16 +129,25 @@ export async function POST(request: Request) {
     if (wantsId(update.message?.text)) {
       const chat = update.message!.chat;
 
-      await sendTelegramMessage(token, {
-        chat_id: chat.id,
-        text: formatIdCard({
-          id: chat.id,
-          title: chat.title,
-          username: chat.username,
-          kind: chatKind(chat),
-        }),
-        parse_mode: "HTML",
-      });
+      // В личке свой номер отдавать нельзя: его скопируют в «Площадки».
+      // Отдаём номер канала, который этот человек уже подключил.
+      if (chatKind(chat) === "личный чат") {
+        const channel = await channelOf(chat.id);
+
+        await sendTelegramMessage(token, {
+          chat_id: chat.id,
+          text: channel
+            ? formatIdCard({ id: channel.chatId, title: channel.title ?? undefined, kind: "канал" })
+            : notConnected(),
+          parse_mode: "HTML",
+        });
+      } else {
+        await sendTelegramMessage(token, {
+          chat_id: chat.id,
+          text: formatIdCard({ id: chat.id, title: chat.title, username: chat.username, kind: chatKind(chat) }),
+          parse_mode: "HTML",
+        });
+      }
     }
 
     // Нажатие «Подключить канал»: номер берём из чата, где нажали.
@@ -146,14 +156,15 @@ export async function POST(request: Request) {
       const kind = chatKind(chat);
 
       await answerCallback(token, update.callback_query.id, "Готовлю номер");
+      const saved = kind === "личный чат" ? await channelOf(update.callback_query.from.id) : null;
+
       await sendTelegramMessage(token, {
         chat_id: chat?.id ?? update.callback_query.from.id,
-        text: formatIdCard({
-          id: chat?.id ?? update.callback_query.from.id,
-          title: chat?.title,
-          username: chat?.username,
-          kind,
-        }),
+        text: saved
+          ? formatIdCard({ id: saved.chatId, title: saved.title ?? undefined, kind: "канал" })
+          : kind === "личный чат"
+            ? notConnected()
+            : formatIdCard({ id: chat!.id, title: chat!.title, username: chat!.username, kind }),
         parse_mode: "HTML",
       });
     }
@@ -163,14 +174,21 @@ export async function POST(request: Request) {
     }
 
     /*
-     * Бота добавили в канал администратором — молчим.
+     * Бота добавили в канал администратором: запоминаем канал и молчим.
      *
      * Раньше здесь отправлялась карточка с номером канала, и она уходила
      * в публичный канал целиком: номер увидели бы все подписчики. Номер
-     * канала не публичная информация, и публиковать его без просьбы нельзя.
-     * Канал подключается в личной переписке с ботом.
+     * канала не публичная информация, поэтому в канал не пишем ничего, а
+     * сам номер отдаём только в личной переписке.
      */
-    void update.my_chat_member;
+    if (update.my_chat_member) {
+      const member = update.my_chat_member;
+      const addedBy = update.message?.from?.id;
+
+      if (member.new_chat_member.user?.is_bot && addedBy && chatKind(member.chat) === "канал") {
+        await rememberChannel(addedBy, member.chat.id, member.chat.title);
+      }
+    }
 
     // На любой другой текст отвечаем меню, а не молчим: человек должен
     // понимать, что бот его услышал, даже если не понял.
