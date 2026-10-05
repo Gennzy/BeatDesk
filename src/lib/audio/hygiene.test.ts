@@ -38,8 +38,10 @@ describe("состав пакета", () => {
     expect(ids({ files: [{ name: "Пыль.wav", role: "wav" }] })).not.toContain("files.noMp3");
   });
 
-  it("BeatChain требует MP3, и его отсутствие — блокер", () => {
-    expect(checkPackage("beatchain", pack({ files: [{ name: "Пыль.wav", role: "wav" }] })).find((item) => item.id === "files.noMp3")?.severity).toBe("block");
+  it("BeatChain не требует MP3, потому что его требования не опубликованы", () => {
+    // Мы не видели форму загрузки, значит и требовать отдельный тегованный
+    // MP3 нельзя: это будет выдуманное правило.
+    expect(checkPackage("beatchain", pack({ files: [{ name: "Пыль.wav", role: "wav" }] })).map((item) => item.id)).not.toContain("files.noMp3");
   });
 
   it("больше четырёх файлов BeatStars не примет за одну загрузку", () => {

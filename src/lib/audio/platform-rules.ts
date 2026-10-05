@@ -235,7 +235,9 @@ export const PLATFORMS: PlatformRules[] = [
   {
     id: "beatchain",
     label: "BeatChain",
-    mp3: "required",
+    // Не выдумываем: пока мы не видели форму загрузки, нельзя утверждать,
+    // что площадка требует отдельный тегованный MP3.
+    mp3: "optional",
     fields: {
       wav: { trust: "unknown" },
       mp3: { trust: "unknown" },
