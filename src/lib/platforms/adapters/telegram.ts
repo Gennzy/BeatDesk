@@ -7,7 +7,7 @@ import {
 } from "../telegram-client";
 import { buildKeyboard, captionForPost, formatBeatCaption, planPost } from "../telegram-format";
 import { inspectPost } from "../post-check";
-import { sendMediaGroupWithCover } from "../album";
+import { buildAlbumMedia, sendMediaGroupWithCover } from "../album";
 import { telegramThumbnail } from "../thumbnail";
 import type { PlatformConnection } from "./vk";
 import type { PublishPayload, PublishResult } from "../payload";
@@ -111,10 +111,13 @@ export async function publishToTelegram(
 
       const state = inspectPost(attempt.result, payload.beat.title);
       if (state !== "done") {
-        // Плохой пост не оставляем в канале: удаляем и пересобираем
-        // альбомом, где картинку Telegram показать не может.
-        await deleteTelegramMessage(token, chat, message.message_id);
-
+        /*
+         * Сначала собираем альбом, и только потом удаляем первый пост.
+         *
+         * Раньше удаление шло первым, и при отказе Telegram канал оставался
+         * вовсе без поста: не «без обложки», а пустым. Худшая из поломок
+         * вместо мелкой.
+         */
         const album = await sendBeatAlbum(token, {
           chat,
           audioUrl: payload.audioUrl!,
@@ -124,7 +127,21 @@ export async function publishToTelegram(
           performer: payload.beat.username,
         });
 
-        if (!album.ok) return { ok: false, error: album.error };
+        if (!album.ok) {
+          // Альбом не собрался: оставляем первый пост. Он без картинки,
+          // но пост есть — иначе бит просто не опубликован.
+          return {
+            ok: true,
+            externalUrl: chatLink(Number(chatId), message.message_id),
+            detail: {
+              messages: [message.message_id],
+              chatId,
+              note: `обложка не показана: ${album.error}`,
+            },
+          };
+        }
+
+        await deleteTelegramMessage(token, chat, message.message_id);
         message = { message_id: album.messageId };
       }
     }
@@ -218,24 +235,12 @@ async function sendBeatAlbum(
     performer: string;
   },
 ): Promise<{ ok: true; messageId: number } | { ok: false; error: string }> {
-  const media: Record<string, unknown>[] = [];
-
-  if (input.cover) {
-    media.push({
-      type: "photo",
-      media: { attach: "cover.jpg" },
-      caption: input.caption,
-      parse_mode: "HTML",
-    });
-  }
-
-  media.push({
-    type: "audio",
-    media: input.audioUrl,
+  const media = buildAlbumMedia({
+    audioUrl: input.audioUrl,
+    cover: Boolean(input.cover),
+    caption: input.caption,
     title: input.title,
     performer: input.performer,
-    caption: input.cover ? undefined : input.caption,
-    parse_mode: "HTML",
   });
 
   // Байты обложки Telegram ждёт файлом, а не строкой, поэтому прикладываем

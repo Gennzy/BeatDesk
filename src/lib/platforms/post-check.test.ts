@@ -59,3 +59,38 @@ describe("что делать с принятым постом", () => {
     expect(inspectPost({ message_id: 1, chat: { id: -100, type: "channel" } }, "GET MONEY")).toBe("coverAndTitle");
   });
 });
+
+describe("альбом, когда обложку выкинули", () => {
+  it("ссылка на приложенный файл с префиксом attach", async () => {
+    // Без "attach://" Telegram отвергает весь альбом, и пост не уходит.
+    const { buildAlbumMedia } = await import("./album");
+    const [photo] = buildAlbumMedia({
+      audioUrl: "https://a/beat.mp3",
+      cover: true,
+      caption: "текст",
+      title: "GET MONEY",
+      performer: "gennzy",
+    });
+
+    expect(photo.media).toBe("attach://cover.jpg");
+    expect(photo.type).toBe("photo");
+  });
+
+  it("обложка и трек — два элемента одного поста", async () => {
+    const { buildAlbumMedia } = await import("./album");
+    const media = buildAlbumMedia({ audioUrl: "https://a/beat.mp3", cover: true, caption: "т", title: "M", performer: "g" });
+
+    expect(media).toHaveLength(2);
+    expect(media[1]).toMatchObject({ type: "audio", media: "https://a/beat.mp3", title: "M" });
+    // Подпись не дублируется на обоих элементах.
+    expect(media[1].caption).toBeUndefined();
+  });
+
+  it("без обложки остаётся один трек с подписью", async () => {
+    const { buildAlbumMedia } = await import("./album");
+    const media = buildAlbumMedia({ audioUrl: "https://a/beat.mp3", cover: false, caption: "т", title: "M", performer: "g" });
+
+    expect(media).toHaveLength(1);
+    expect(media[0]).toMatchObject({ type: "audio", caption: "т" });
+  });
+});
