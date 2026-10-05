@@ -1,4 +1,5 @@
 import { spectralFlux, toMono } from "./dsp";
+import { detectKeyWithEssentia } from "./essentia";
 import { chroma, detectKey, type KeyResult } from "./key";
 import { buildOnsetTrack, detectSwing, detectTempo, type Swing, type Tempo } from "./tempo";
 
@@ -20,6 +21,8 @@ export type Analysis = {
   tempo: Tempo;
   swing: Swing;
   key: KeyResult | null;
+  /** Откуда взята тональность: эталонный алгоритм или наш запасной код. */
+  keySource: "essentia" | "own" | null;
   /** Длительность в секундах — чтобы показать, что файл вообще разобран. */
   duration: number;
 };
@@ -34,6 +37,7 @@ export function analyzeChannels(channels: Float32Array[], sampleRate: number): A
       tempo: { bpm: 0, confidence: 0, downbeatOffset: 0, exact: false },
       swing: { amount: null, amountRatio: null },
       key: null,
+      keySource: null,
       duration: mono.length / sampleRate,
     };
   }
@@ -43,11 +47,47 @@ export function analyzeChannels(channels: Float32Array[], sampleRate: number): A
 
   const tempo = detectTempo(track);
 
+  const key = detectKey(chroma(mono, sampleRate, CHROMA_SIZE));
+
   return {
     tempo,
     swing: detectSwing(track, tempo.bpm),
-    key: detectKey(chroma(mono, sampleRate, CHROMA_SIZE)),
+    key,
+    keySource: key ? "own" : null,
     duration: mono.length / sampleRate,
+  };
+}
+
+/**
+ * Разбор для студии: тональность уточняется эталонным алгоритмом.
+ *
+ * Темп и свинг остаются нашими — на настоящем материале они попадают
+ * точнее. А тональность наш код на бите промахивался на четыре полутона,
+ * поэтому её считает Essentia, а наш результат уходит в кандидаты: он
+ * честно показывает, что ещё рассматривалось, но ответом выдаётся не он.
+ */
+export async function analyzeForStudio(channels: Float32Array[], sampleRate: number): Promise<Analysis> {
+  const base = analyzeChannels(channels, sampleRate);
+  if (base.duration < 1.5) return base;
+
+  const mono = toMono(channels);
+  const measured = await detectKeyWithEssentia(mono, sampleRate);
+  if (!measured) return base;
+
+  const previous = base.key;
+  const [note, mode] = measured.key.split(" ") as [string, string];
+
+  return {
+    ...base,
+    key: {
+      key: measured.key,
+      short: `${note}${mode === "minor" ? "m" : ""}`,
+      confidence: measured.strength,
+      // Кандидаты нашего анализа оставляем: они показывают, что кроме
+      // победителя рассматривались и другие тональности.
+      candidates: previous?.candidates ?? [{ key: measured.key, score: measured.strength }],
+    },
+    keySource: "essentia",
   };
 }
 

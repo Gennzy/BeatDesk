@@ -48,3 +48,6 @@ e2e/shots/
 
 # Стенд замера: аудио и отчёты, генерируются заново.
 bench/audio/
+
+# Essentia копируется из node_modules при dev и build, в git не хранится.
+public/essentia/

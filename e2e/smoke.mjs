@@ -11,7 +11,7 @@
  *   pnpm test:e2e
  * Либо одной строкой: BASE_URL=https://beat-desk.vercel.app pnpm test:e2e
  */
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -36,6 +36,29 @@ function check(name, ok, detail = "") {
  * Генерируется прямо в прогоне, а не хранится файлом: так в тесте сразу
  * видно, какой темп заложен, и его нельзя случайно испортить правкой бинаря.
  */
+/**
+ * Настоящий бит: 65 МБ файл не хранится в репозитории, поэтому путь или
+ * адрес передаётся снаружи. Без него проверка пропускается, а не падает.
+ *
+ * Ожидаемый ответ зашит в имя файла: 130 BPM и F# major.
+ */
+async function realBeatFixture() {
+  const local = process.env.BEAT_AUDIO_FILE;
+  if (local && existsSync(local)) return { path: local, bpm: 130, key: "F# major" };
+
+  const url = process.env.BEAT_AUDIO_URL;
+  if (!url) return null;
+
+  const response = await fetch(url);
+  if (!response.ok) return null;
+
+  const dir = mkdtempSync(join(tmpdir(), "beatdesk-e2e-real-"));
+  const path = join(dir, "beat.wav");
+  writeFileSync(path, Buffer.from(await response.arrayBuffer()));
+
+  return { path, bpm: 130, key: "F# major" };
+}
+
 function makeClickFixture() {
   const sampleRate = 44100;
   const bpm = 140;
@@ -262,6 +285,38 @@ async function main() {
     check("студия не выдумывает свинг на ровном ритме", /нет,\s*ровно/i.test(analyzed));
     check("студия показывает длительность файла", /ДЛИТЕЛЬНОСТЬ/i.test(analyzed));
     await studio.close();
+
+    // Настоящий бит: проверяем и темп, и тональность. Тональность считает
+    // Essentia, и если она не загрузится, студия честно покажет запасной
+    // ответ — тест это поймает.
+    const real = await realBeatFixture();
+
+    if (real) {
+      const page = await browser.newPage();
+      await page.setViewport({ width: 1440, height: 1100 });
+      page.on("pageerror", (error) => errors.push(`studio real: ${error}`));
+
+      await page.goto(`${BASE}/studio`, { waitUntil: "networkidle2", timeout: 60_000 });
+      // Essentia весит около двух мегабайт и грузится сам при открытии.
+      await wait(8000);
+
+      const fileInput = await page.$('input[type=file]');
+      await fileInput.uploadFile(real.path);
+      await wait(30000);
+
+      const text = await page.evaluate(() => document.body.innerText);
+      const bpm = Number((text.match(/(\d+[.,]\d)\s*BPM/) ?? ["0"])[1].replace(",", "."));
+      const key = (text.match(/[A-G]#?\s(?:MAJOR|MINOR)/) ?? [""])[0].toUpperCase().replace(/\s+/, " ");
+
+      check("на настоящем бите найден темп", Math.abs(bpm - real.bpm) / real.bpm < 0.02, `получено ${bpm}`);
+      check("на настоящем бите найдена тональность", key === real.key.toUpperCase(), `получено «${key}»`);
+      const note = (text.match(/[A-G]#?\s·\s[^\n]+/i) ?? ["-"])[0].trim();
+      check("тональность посчитана эталонным анализом", /ЭТАЛОННЫЙ АНАЛИЗ/i.test(text), `в карточке: «${note}»`);
+
+      await page.close();
+    } else {
+      console.log("BEAT_AUDIO_FILE или BEAT_AUDIO_URL не заданы: настоящий бит не проверен");
+    }
   } finally {
     await browser.close();
   }

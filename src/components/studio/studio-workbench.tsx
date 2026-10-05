@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { formatDownbeat, formatTempo } from "@/lib/audio/analyze";
@@ -15,13 +15,18 @@ const TARGET_KEYS = ["C minor", "F minor", "G minor", "D minor", "A minor", "C m
 
 export function StudioWorkbench() {
   const { t } = useI18n();
-  const { analyze, reset, state, error, result, fileName } = useAudioAnalysis();
+  const { analyze, reset, warmUp, state, error, result, fileName, essentiaLoading } = useAudioAnalysis();
 
   const [dragging, setDragging] = useState(false);
   const [target, setTarget] = useState("F minor");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const busy = state === "decoding" || state === "analyzing";
+
+  // Точность тональности держится на Essentia: пока он грузится, грузим.
+  useEffect(() => {
+    warmUp();
+  }, [warmUp]);
 
   async function take(file: File | undefined | null) {
     if (!file) return;
@@ -68,7 +73,10 @@ export function StudioWorkbench() {
           ) : null}
         </div>
 
-        <span className="label text-mute">{t("studio.localOnly")}</span>
+        <span className="label text-mute">
+          {t("studio.localOnly")}
+          {essentiaLoading ? ` · ${t("studio.tonalityLoading")}` : ""}
+        </span>
       </label>
 
       {error ? (
@@ -99,7 +107,7 @@ function Results({
   onTarget: (value: string) => void;
 }) {
   const { t } = useI18n();
-  const { tempo, swing, key, duration } = result;
+  const { tempo, swing, key, keySource, duration } = result;
 
   const shift = key ? transposeTo(target, key.key) : 0;
 
@@ -123,14 +131,23 @@ function Results({
       <Card
         label={t("studio.key")}
         value={key?.key ?? t("studio.unknown")}
-        note={key ? key.short : undefined}
+        note={key ? `${key.short} · ${t(keySource === "essentia" ? "studio.byEssentia" : "studio.byOwn")}` : undefined}
       >
         {key ? (
           <div className="flex flex-col gap-4">
             <ConfidenceBar value={key.confidence} label={t("studio.confidence")} />
 
             <div className="flex flex-col gap-2">
+              {/*
+                Кандидаты считает наш запасной определитель, а ответом стоит
+                Essentia. Без пометки список выглядел бы как альтернативы
+                эталонного алгоритма, а это неправда: на настоящем бите он
+                промахивался на четыре полутона.
+              */}
               <span className="label text-mute">{t("studio.candidates")}</span>
+              {keySource === "essentia" ? (
+                <span className="text-[11px] text-mute">{t("studio.candidatesSource")}</span>
+              ) : null}
               <ul className="flex flex-col gap-1.5">
                 {key.candidates.map((candidate) => (
                   <li key={candidate.key} className="flex items-center gap-3">

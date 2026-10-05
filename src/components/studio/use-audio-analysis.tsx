@@ -2,7 +2,8 @@
 
 import { useCallback, useRef, useState } from "react";
 
-import { analyzeChannels, type Analysis } from "@/lib/audio/analyze";
+import { analyzeForStudio, type Analysis } from "@/lib/audio/analyze";
+import { essentiaReady } from "@/lib/audio/essentia";
 import { useI18n } from "@/lib/i18n/provider";
 import { cn } from "@/lib/cn";
 
@@ -25,6 +26,9 @@ export function useAudioAnalysis() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Analysis | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  // Модуль Essentia весит около двух мегабайт и нужен только для тональности:
+  // его лучше начать качать заранее, пока пользователь выбирает файл.
+  const [essentiaLoading, setEssentiaLoading] = useState(false);
 
   const contextRef = useRef<AudioContext | null>(null);
 
@@ -60,7 +64,7 @@ export function useAudioAnalysis() {
 
         const channels = Array.from({ length: buffer.numberOfChannels }, (_, index) => buffer.getChannelData(index));
 
-        setResult(analyzeChannels(channels, buffer.sampleRate));
+        setResult(await analyzeForStudio(channels, buffer.sampleRate));
         setState("done");
       } catch {
         // Браузер умеет декодировать не всё, что названо .mp3: битый файл,
@@ -72,7 +76,17 @@ export function useAudioAnalysis() {
     [t],
   );
 
-  return { analyze, reset, state, error, result, fileName };
+  /** Прогреть Essentia заранее: разбор не должен ждать два мегабайта. */
+  function warmUp() {
+    if (essentiaReady() || essentiaLoading) return;
+    setEssentiaLoading(true);
+
+    void import("@/lib/audio/essentia")
+      .then((module) => module.loadEssentia())
+      .finally(() => setEssentiaLoading(false));
+  }
+
+  return { analyze, reset, warmUp, state, error, result, fileName, essentiaLoading };
 }
 
 /** Полоса уверенности: чем ближе к краю, тем честнее выглядит ответ. */

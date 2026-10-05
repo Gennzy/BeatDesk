@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next dev",
-    "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next build",
+    "dev": "node scripts/copy-essentia.mjs && cross-env NODE_OPTIONS=--max-old-space-size=4096 next dev",
+    "build": "node scripts/copy-essentia.mjs && cross-env NODE_OPTIONS=--max-old-space-size=4096 next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
@@ -13,7 +13,8 @@
     "verify": "tsc --noEmit && eslint && vitest run",
     "verify:extension": "pnpm --dir extension typecheck && pnpm --dir extension build",
     "verify:all": "pnpm verify && pnpm verify:extension",
-    "cleanup:test": "node scripts/cleanup-test-accounts.mjs"
+    "cleanup:test": "node scripts/cleanup-test-accounts.mjs",
+    "essentia:copy": "node scripts/copy-essentia.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
