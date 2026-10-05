@@ -61,24 +61,25 @@ describe("что делать с принятым постом", () => {
 });
 
 describe("альбом, когда обложку выкинули", () => {
-  it("ссылка на приложенный файл с префиксом attach", async () => {
-    // Без "attach://" Telegram отвергает весь альбом, и пост не уходит.
+  it("обложка идёт обычной ссылкой, без ужатия", async () => {
+    // Раньше мы ужимали обложку под 200 КБ и Telegram всё равно её выбрасывал.
+    // В альбоме лимит 10 МБ, поэтому картинку Telegram забирает сам.
     const { buildAlbumMedia } = await import("./album");
     const [photo] = buildAlbumMedia({
       audioUrl: "https://a/beat.mp3",
-      cover: true,
+      coverUrl: "https://a/cover.jpg",
       caption: "текст",
       title: "GET MONEY",
       performer: "gennzy",
     });
 
-    expect(photo.media).toBe("attach://cover.jpg");
+    expect(photo.media).toBe("https://a/cover.jpg");
     expect(photo.type).toBe("photo");
   });
 
   it("обложка и трек — два элемента одного поста", async () => {
     const { buildAlbumMedia } = await import("./album");
-    const media = buildAlbumMedia({ audioUrl: "https://a/beat.mp3", cover: true, caption: "т", title: "M", performer: "g" });
+    const media = buildAlbumMedia({ audioUrl: "https://a/beat.mp3", coverUrl: "https://a/cover.jpg", caption: "т", title: "M", performer: "g" });
 
     expect(media).toHaveLength(2);
     expect(media[1]).toMatchObject({ type: "audio", media: "https://a/beat.mp3", title: "M" });
@@ -88,7 +89,7 @@ describe("альбом, когда обложку выкинули", () => {
 
   it("без обложки остаётся один трек с подписью", async () => {
     const { buildAlbumMedia } = await import("./album");
-    const media = buildAlbumMedia({ audioUrl: "https://a/beat.mp3", cover: false, caption: "т", title: "M", performer: "g" });
+    const media = buildAlbumMedia({ audioUrl: "https://a/beat.mp3", coverUrl: null, caption: "т", title: "M", performer: "g" });
 
     expect(media).toHaveLength(1);
     expect(media[0]).toMatchObject({ type: "audio", caption: "т" });

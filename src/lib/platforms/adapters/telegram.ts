@@ -121,7 +121,7 @@ export async function publishToTelegram(
         const album = await sendBeatAlbum(token, {
           chat,
           audioUrl: payload.audioUrl!,
-          cover: thumbnail,
+          coverUrl: payload.coverUrl ?? null,
           caption,
           title: payload.beat.title,
           performer: payload.beat.username,
@@ -229,7 +229,7 @@ async function sendBeatAlbum(
   input: {
     chat: string;
     audioUrl: string;
-    cover: Buffer | null;
+    coverUrl: string | null;
     caption: string;
     title: string;
     performer: string;
@@ -237,7 +237,7 @@ async function sendBeatAlbum(
 ): Promise<{ ok: true; messageId: number } | { ok: false; error: string }> {
   const media = buildAlbumMedia({
     audioUrl: input.audioUrl,
-    cover: Boolean(input.cover),
+    coverUrl: input.coverUrl,
     caption: input.caption,
     title: input.title,
     performer: input.performer,
@@ -245,7 +245,7 @@ async function sendBeatAlbum(
 
   // Байты обложки Telegram ждёт файлом, а не строкой, поэтому прикладываем
   // их отдельным полем с тем же именем.
-  const group = await sendMediaGroupWithCover(token, input.chat, media, input.cover);
+  const group = await sendMediaGroupWithCover(token, input.chat, media);
 
   if (!group.ok) return { ok: false, error: group.error ?? "Telegram не принял альбом" };
 

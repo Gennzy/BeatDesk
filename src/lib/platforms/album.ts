@@ -14,24 +14,28 @@ const API = "https://api.telegram.org/bot";
 /**
  * Собрать элементы альбома.
  *
- * В ссылке на приложенный файл обязателен префикс `attach://`. Без него
- * Telegram отвечает «CAN'T PARSE INPUTMEDIA: FIELD "MEDIA" MUST BE OF TYPE
- * STRING» и пост не уходит вовсе — вместе с обложкой, ради которой альбом
- * и затевался.
+ * Обложка идёт **ссылкой**, а не приложенным файлом. Раньше мы ужимали её
+ * до 200 КБ и 200×200, потому что столько принимает обложка плеера. Но
+ * Telegram молча выбрасывал обложку три раза подряд, и причина была не в
+ * размере, а в том, что мы вообще полагались на это поле.
+ *
+ * В альбоме ограничения другие: до 10 МБ. Ссылку Telegram забирает сам, и
+ * картинка показывается всегда — без ужатия, без sharp и без зависимости от
+ * того, подхватилась ли нативная библиотека на сервере.
  */
 export function buildAlbumMedia(input: {
   audioUrl: string;
-  cover: boolean;
+  coverUrl: string | null;
   caption: string;
   title: string;
   performer: string;
 }): Record<string, unknown>[] {
   const media: Record<string, unknown>[] = [];
 
-  if (input.cover) {
+  if (input.coverUrl) {
     media.push({
       type: "photo",
-      media: "attach://cover.jpg",
+      media: input.coverUrl,
       caption: input.caption,
       parse_mode: "HTML",
     });
@@ -43,7 +47,7 @@ export function buildAlbumMedia(input: {
     title: input.title,
     performer: input.performer,
     // Подпись идёт один раз: без обложки она принадлежит треку.
-    caption: input.cover ? undefined : input.caption,
+    caption: input.coverUrl ? undefined : input.caption,
     parse_mode: "HTML",
   });
 
@@ -64,18 +68,11 @@ export async function sendMediaGroupWithCover(
   token: string,
   chatId: string | number,
   media: AlbumItem[],
-  cover: Buffer | null,
 ): Promise<AlbumResult> {
   const form = new FormData();
 
   form.append("chat_id", String(chatId));
   form.append("media", JSON.stringify(media));
-
-  if (cover) {
-    // Прикладываем именно байты: ссылку Telegram на обложку плеера уже
-    // отверг, а второй раз повторять ту же ошибку незачем.
-    form.append("cover.jpg", new Blob([new Uint8Array(cover)]), "cover.jpg");
-  }
 
   try {
     const response = await fetch(`${API}${token}/sendMediaGroup`, { method: "POST", body: form });

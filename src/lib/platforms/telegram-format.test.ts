@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { captionForPost, chatKind, formatIdCard, notConnected, planPost, wantsId } from "./telegram-format";
+import { captionForPost, chatKind, formatIdCard, notConnected, planPost, telegramTags, wantsId } from "./telegram-format";
 
 describe("карточка ID для телеграма", () => {
   it("отдаёт сам номер в моноширинном блоке", () => {
@@ -113,5 +113,40 @@ describe("подпись поста", () => {
     const cut = captionForPost(`<b>${"текст ".repeat(400)}`, 1024);
 
     expect((cut.match(/<b>/g) ?? []).length).toBe((cut.match(/<\/b>/g) ?? []).length);
+  });
+});
+
+describe("хештеги для телеграма", () => {
+  it("артисты из type beat в теги не попадают", () => {
+    // Раньше подпись повторяла артистов ещё раз тегами.
+    const line = telegramTags(["polo g", "lil durk", "dark"], ["Polo G", "Lil Durk"]);
+
+    expect(line).toBe("#dark");
+  });
+
+  it("лишние символы выкидываются, а не обрезают тег", () => {
+    // Телеграм режет тег по первому недопустимому символу: "#tikot.theceo"
+    // молча становился "#tikot".
+    expect(telegramTags(["tikot.theceo"])).toBe("#tikottheceo");
+    // Дефис телеграм в теге не держит и режет по нему: "#boom-bap" в разметке
+    // осталось бы "#boom". Поэтому дефис убираем, а не оставляем.
+    expect(telegramTags(["boom-bap!"])).toBe("#boombap");
+  });
+
+  it("однобуквенные теги не идут", () => {
+    expect(telegramTags(["g", "j", "trap"])).toBe("#trap");
+  });
+
+  it("повторы в разном регистре схлопываются", () => {
+    expect(telegramTags(["Dark", "dark", "DARK"])).toBe("#Dark");
+  });
+
+  it("хэши из названия не дублируются", () => {
+    expect(telegramTags(["#dark", "dark"])).toBe("#dark");
+  });
+
+  it("пусто не значит строка из запятых", () => {
+    expect(telegramTags([])).toBeNull();
+    expect(telegramTags(["###"])).toBeNull();
   });
 });

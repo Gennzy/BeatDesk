@@ -33,7 +33,7 @@ export function formatBeatCaption(input: {
     prices.length > 0 ? "" : null,
     prices.length > 0 ? escapeHtml(prices.join("  ·  ")) : null,
     input.tags.length > 0 ? "" : null,
-    input.tags.length > 0 ? input.tags.map((tag) => `#${escapeHtml(tag)}`).join(" ") : null,
+    telegramTags(input.tags, input.artists),
     "",
     `by @${escapeHtml(input.username)}`,
   ]
@@ -214,4 +214,29 @@ export function planPost(input: { audioUrl?: string | null; coverUrl?: string | 
   if (input.coverUrl) return "photo";
 
   return "text";
+}
+
+/**
+ * Теги для телеграма.
+ *
+ * Правила не косметические:
+ *
+ * - артисты из строки «type beat» в теги не идут — они уже названы выше, а
+ *   повтор превращает подпись в свалку имён;
+ * - в теге остаются только буквы, цифры и подчёркивание: телеграм обрезает
+ *   тег по первому недопустимому символу, и `#tikot.theceo` молча
+ *   превращается в `#tikot`;
+ * - тег из одной буквы бесполезен и засоряет выдачу.
+ */
+export function telegramTags(tags: string[], artists: string[] = []): string | null {
+  const known = new Set(artists.map((artist) => artist.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "")));
+
+  const clean = tags
+    .map((tag) => tag.trim().replace(/^#/, ""))
+    .map((tag) => tag.replace(/[^\p{L}\p{N}_]/gu, ""))
+    .filter((tag) => tag.length > 1)
+    .filter((tag) => !known.has(tag.toLowerCase()))
+    .filter((tag, index, all) => all.findIndex((item) => item.toLowerCase() === tag.toLowerCase()) === index);
+
+  return clean.length > 0 ? clean.map((tag) => `#${escapeHtml(tag)}`).join(" ") : null;
 }
