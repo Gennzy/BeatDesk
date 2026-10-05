@@ -79,3 +79,29 @@ export function buildStartMenu(buttons: { text: string; url?: string; callback?:
 
   return { inline_keyboard: rows };
 }
+
+/**
+ * Карточка с ID чата.
+ *
+ * Страница площадок просит вписать ID вручную, и человек вынужден угадывать
+ * его. Раз бот всё равно знает этот номер, отдать его проще, чем заставлять
+ * копировать из другого приложения.
+ *
+ * ID оборачивается в моноширинный блок: в Телеграме его нужно выделить и
+ * скопировать, а обычный текст копируется вместе с переносами строк.
+ */
+export function formatIdCard(input: { id: number; title?: string; username?: string }): string {
+  const where = [
+    input.title ? `канал: ${escapeHtml(input.title)}` : null,
+    input.username ? `@${escapeHtml(input.username)}` : null,
+  ].filter(Boolean);
+
+  return [
+    where.length > 0 ? `<b>${where.join(" · ")}</b>` : "<b>Это личный чат</b>",
+    "",
+    "Твой ID канала:",
+    `<code>${input.id}</code>`,
+    "",
+    "Вставь его в разделе «Площадки» на сайте — и посты будут приходить сюда.",
+  ].join("\n");
+}

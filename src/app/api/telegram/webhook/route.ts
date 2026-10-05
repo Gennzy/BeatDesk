@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { getSiteUrl } from "@/lib/site";
+import { formatIdCard } from "@/lib/platforms/telegram-format";
 import {
   getBotToken,
   sendTelegramMessage,
@@ -98,10 +99,22 @@ export async function POST(request: Request) {
           "",
           "/start — меню",
           "/help — что умеет бот",
-          "/link — ссылка на твой профиль в BeatDesk",
+          "/id — ID канала, вставь его в разделе «Площадки»",
         ].join("\n"),
         parse_mode: "HTML",
         reply_markup: menuMarkup(siteUrl),
+      });
+    }
+
+    // Страница площадок просит вписать ID вручную. Бот знает этот номер,
+    // поэтому отдаём его по команде, а не заставляем искать в другом окне.
+    if (/^\/id(\s|$)/.test(update.message?.text ?? "")) {
+      const chat = update.message!.chat;
+
+      await sendTelegramMessage(token, {
+        chat_id: chat.id,
+        text: formatIdCard({ id: chat.id, title: chat.title, username: chat.username }),
+        parse_mode: "HTML",
       });
     }
 
