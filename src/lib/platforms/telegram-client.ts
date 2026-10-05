@@ -19,6 +19,13 @@ async function call<T>(token: string, method: string, body?: Record<string, unkn
   const form = new FormData();
   for (const [key, value] of Object.entries(body ?? {})) {
     if (value === undefined || value === null) continue;
+    // Байты прикладываем файлом, всё остальное уходит строкой. Раньше
+    // байты уходили через String() и превращались в мусор вида "[object Blob]".
+    if (value instanceof Uint8Array) {
+      form.append(key, new Blob([value as BlobPart]), key);
+      continue;
+    }
+
     form.append(key, typeof value === "object" ? JSON.stringify(value) : String(value));
   }
 
@@ -78,7 +85,8 @@ export async function sendTelegramAudio<T = TelegramMessage>(
   token: string,
   payload: {
     chat_id: string | number;
-    audio: string;
+    /** Ссылка на файл либо готовые байты. */
+    audio: string | Buffer;
     caption?: string;
     parse_mode?: "HTML";
     title?: string;
@@ -90,7 +98,8 @@ export async function sendTelegramAudio<T = TelegramMessage>(
      * 200×200. Если картинка не проходит, отправка аудио падает целиком,
      * поэтому поле всегда необязательное и проверяется на отказе.
      */
-    thumbnail?: string;
+    /** Ссылка либо байты: Telegram не берёт обложку крупнее 200 КБ и 200×200. */
+    thumbnail?: string | Buffer;
     reply_markup?: unknown;
   },
 ): Promise<ApiResult<T>> {

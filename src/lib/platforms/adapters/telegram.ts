@@ -5,6 +5,7 @@ import {
   sendTelegramPhoto,
 } from "../telegram-client";
 import { buildKeyboard, captionForPost, formatBeatCaption, planPost } from "../telegram-format";
+import { telegramThumbnail } from "../thumbnail";
 import type { PlatformConnection } from "./vk";
 import type { PublishPayload, PublishResult } from "../payload";
 
@@ -61,13 +62,17 @@ export async function publishToTelegram(
   let message: { message_id: number };
 
   if (plan === "audio") {
+    // Обложку приводим к размеру, который Telegram принимает: исходная
+    // почти всегда не влезает, и пост уходил совсем без картинки.
+    const thumbnail = payload.coverUrl ? await telegramThumbnail(await fetchImage(payload.coverUrl)) : null;
+
     // Обложка не проходит ограничениям Telegram (до 200 КБ и 200×200), и
     // тогда отправка аудио падает целиком. Поэтому пробуем с обложкой, а
     // при отказе — без неё: лучше пост без картинки, чем никакого поста.
     const withCover = await sendTelegramAudio(token, {
       chat_id: chat,
       audio: payload.audioUrl!,
-      thumbnail: payload.coverUrl ?? undefined,
+      thumbnail: thumbnail ?? undefined,
       caption,
       parse_mode: "HTML",
       title: payload.beat.title,
@@ -147,4 +152,20 @@ export async function sendWelcome(token: string, chatId: string | number, siteUr
     parse_mode: "HTML",
     reply_markup: keyboard,
   });
+}
+
+/**
+ * Скачать обложку для пережатия.
+ *
+ * Telegram просит обложку не больше 200 КБ, поэтому передать её ссылкой
+ * нельзя: пришлось бы подгонять размер на стороне площадки.
+ */
+async function fetchImage(url: string): Promise<ArrayBuffer | null> {
+  try {
+    const response = await fetch(url);
+
+    return response.ok ? await response.arrayBuffer() : null;
+  } catch {
+    return null;
+  }
 }
