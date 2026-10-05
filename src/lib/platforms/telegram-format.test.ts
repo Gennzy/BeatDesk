@@ -1,28 +1,52 @@
 import { describe, expect, it } from "vitest";
 
-import { formatIdCard, wantsId } from "./telegram-format";
+import { chatKind, formatIdCard, wantsId } from "./telegram-format";
 
 describe("карточка ID для телеграма", () => {
   it("отдаёт сам номер в моноширинном блоке", () => {
     // Человек копирует это поле в форму, а не переписывает с экрана.
-    const card = formatIdCard({ id: -1001234567890, title: "Beat Store" });
+    const card = formatIdCard({ id: -1001234567890, title: "Beat Store", kind: "канал" });
 
     expect(card).toContain("<code>-1001234567890</code>");
     expect(card).toContain("Beat Store");
   });
 
   it("личному чату объясняет, что это не канал", () => {
-    expect(formatIdCard({ id: 42 })).toContain("личный чат");
+    expect(formatIdCard({ id: 42, kind: "личный чат" })).toContain("личный чат");
   });
 
   it("подпись канала не ломает разметку", () => {
-    const card = formatIdCard({ id: 1, title: "A & <b> B" });
+    const card = formatIdCard({ id: 1, title: "A & <b> B", kind: "канал" });
 
     expect(card).toContain("A &amp; &lt;b&gt; B");
   });
 
   it("подсказывает, куда вставить", () => {
-    expect(formatIdCard({ id: 1 })).toContain("Площадки");
+    expect(formatIdCard({ id: 1, kind: "канал" })).toContain("Площадки");
+  });
+
+  it("в личке честно говорит, что это не номер канала", () => {
+    // Главная пролема: в личке бот отдаёт номер человека, и вставка его в
+    // «Площадки» даёт ошибку без объяснения.
+    const card = formatIdCard({ id: 353507128, kind: "личный чат" });
+
+    expect(card).toContain("личный ID");
+    expect(card).toContain("вставлять нельзя");
+    expect(card).toContain("администратора");
+  });
+
+  it("в канале называет это номером канала", () => {
+    const card = formatIdCard({ id: -100123, kind: "канал" });
+
+    expect(card).toContain("ID канала");
+    expect(card).not.toContain("вставлять нельзя");
+  });
+
+  it("вид чата опознаётся по типу", () => {
+    expect(chatKind({ type: "channel" })).toBe("канал");
+    expect(chatKind({ type: "supergroup" })).toBe("группа");
+    expect(chatKind({ type: "private" })).toBe("личный чат");
+    expect(chatKind(undefined)).toBe("личный чат");
   });
 });
 

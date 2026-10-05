@@ -81,6 +81,28 @@ export function buildStartMenu(buttons: { text: string; url?: string; callback?:
 }
 
 /**
+ * Какого рода чат прислал апдейт.
+ *
+ * В личке номер принадлежит человеку, а не каналу: вставить его в «Площадки»
+ * нельзя, и человек получает ошибку без объяснения. Поэтому вид чата
+ * определяется явно и попадает в ответ.
+ */
+export type ChatKind = "личный чат" | "канал" | "группа";
+
+export function chatKind(chat: { type?: string } | undefined): ChatKind {
+  if (chat?.type === "channel") return "канал";
+  if (chat?.type === "group" || chat?.type === "supergroup") return "группа";
+
+  return "личный чат";
+}
+
+/** Пора объяснить, что для канала нужен админ, а не только личный ID. */
+export const needsChannelAdmin =
+  "В личке это твой личный номер — в «Площадки» его вставлять нельзя.\n\n" +
+  "Чтобы получить ID канала: добавь бота в канал и выдай права администратора с разрешением публиковать. " +
+  "Потом напиши в канале «айди» или нажми «Подключить канал» — бот отправит номер канала.";
+
+/**
  * Карточка с ID чата.
  *
  * Страница площадок просит вписать ID вручную, и человек вынужден угадывать
@@ -90,19 +112,21 @@ export function buildStartMenu(buttons: { text: string; url?: string; callback?:
  * ID оборачивается в моноширинный блок: в Телеграме его нужно выделить и
  * скопировать, а обычный текст копируется вместе с переносами строк.
  */
-export function formatIdCard(input: { id: number; title?: string; username?: string }): string {
+export function formatIdCard(input: { id: number; title?: string; username?: string; kind: ChatKind }): string {
   const where = [
     input.title ? `канал: ${escapeHtml(input.title)}` : null,
     input.username ? `@${escapeHtml(input.username)}` : null,
   ].filter(Boolean);
 
+  const personal = input.kind === "личный чат";
+
   return [
     where.length > 0 ? `<b>${where.join(" · ")}</b>` : "<b>Это личный чат</b>",
     "",
-    "Твой ID канала:",
+    `${personal ? "Твой личный ID" : "ID канала"}:`,
     `<code>${input.id}</code>`,
     "",
-    "Вставь его в разделе «Площадки» на сайте — и посты будут приходить сюда.",
+    personal ? needsChannelAdmin : "Вставь его в разделе «Площадки» на сайте — и посты будут приходить сюда.",
   ].join("\n");
 }
 

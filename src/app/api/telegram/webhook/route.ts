@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { getSiteUrl } from "@/lib/site";
-import { formatIdCard, wantsId } from "@/lib/platforms/telegram-format";
+import { chatKind, formatIdCard, wantsId } from "@/lib/platforms/telegram-format";
 import {
   getBotToken,
   sendTelegramMessage,
@@ -12,14 +12,29 @@ import {
 type CallbackQuery = {
   id: string;
   data?: string;
-  from: { first_name?: string; username?: string };
+  from: { id: number; first_name?: string; username?: string };
+};
+
+type Chat = {
+  id: number;
+  type?: string;
+  title?: string;
+  username?: string;
 };
 
 type Update = {
   update_id: number;
-  message?: TelegramMessage & { text?: string };
-  callback_query?: CallbackQuery;
+  message?: TelegramMessage & { text?: string; chat?: Chat };
+  callback_query?: CallbackQuery & { message?: { chat?: Chat } };
+  /** Бота добавили в чат или выдали права: приходит без сообщения. */
+  my_chat_member?: {
+    chat: Chat;
+    new_chat_member: { status: string; user?: { is_bot?: boolean } };
+  };
 };
+
+/** Кнопка, которая просит бот отдать номер канала. */
+const CONNECT_CHANNEL = "channel:id";
 
 const SECRET_HEADER = "x-telegram-bot-api-secret-token";
 
@@ -32,6 +47,8 @@ function menuMarkup(siteUrl: string) {
         { text: "Загрузить бит", url: `${siteUrl}/upload` },
       ],
       [{ text: "Моя лента", url: `${siteUrl}/` }],
+      // Всё через кнопки: команду надо помнить, кнопку — нажать.
+      [{ text: "🔗 Подключить канал", callback_data: CONNECT_CHANNEL }],
     ],
   };
 }
@@ -113,13 +130,63 @@ export async function POST(request: Request) {
 
       await sendTelegramMessage(token, {
         chat_id: chat.id,
-        text: formatIdCard({ id: chat.id, title: chat.title, username: chat.username }),
+        text: formatIdCard({
+          id: chat.id,
+          title: chat.title,
+          username: chat.username,
+          kind: chatKind(chat),
+        }),
         parse_mode: "HTML",
       });
     }
 
-    if (update.callback_query) {
+    // Нажатие «Подключить канал»: номер берём из чата, где нажали.
+    if (update.callback_query?.data === CONNECT_CHANNEL) {
+      const chat = update.callback_query.message?.chat;
+      const kind = chatKind(chat);
+
+      await answerCallback(token, update.callback_query.id, "Готовлю номер");
+      await sendTelegramMessage(token, {
+        chat_id: chat?.id ?? update.callback_query.from.id,
+        text: formatIdCard({
+          id: chat?.id ?? update.callback_query.from.id,
+          title: chat?.title,
+          username: chat?.username,
+          kind,
+        }),
+        parse_mode: "HTML",
+      });
+    }
+
+    if (update.callback_query && update.callback_query.data !== CONNECT_CHANNEL) {
       await answerCallback(token, update.callback_query.id, "Открываю BeatDesk");
+    }
+
+    // Бота добавили в канал администратором: сразу отдаём номер канала.
+    if (update.my_chat_member && update.my_chat_member.new_chat_member.user?.is_bot) {
+      const chat = update.my_chat_member.chat;
+
+      if (chatKind(chat) === "канал") {
+        await sendTelegramMessage(token, {
+          chat_id: chat.id,
+          text: formatIdCard({ id: chat.id, title: chat.title, username: chat.username, kind: "канал" }),
+          parse_mode: "HTML",
+        });
+      }
+    }
+
+    // На любой другой текст отвечаем меню, а не молчим: человек должен
+    // понимать, что бот его услышал, даже если не понял.
+    const text = update.message?.text;
+    const chat = update.message?.chat;
+
+    if (text && chat && !text.startsWith("/start") && !text.startsWith("/help") && !wantsId(text)) {
+      await sendTelegramMessage(token, {
+        chat_id: chat.id,
+        text: "Не понял, что сделать. Вот кнопки:",
+        parse_mode: "HTML",
+        reply_markup: menuMarkup(siteUrl),
+      });
     }
   } catch {
     // отвечаем Telegram 200, чтобы он не ретраил
