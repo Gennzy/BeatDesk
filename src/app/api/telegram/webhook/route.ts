@@ -162,18 +162,15 @@ export async function POST(request: Request) {
       await answerCallback(token, update.callback_query.id, "Открываю BeatDesk");
     }
 
-    // Бота добавили в канал администратором: сразу отдаём номер канала.
-    if (update.my_chat_member && update.my_chat_member.new_chat_member.user?.is_bot) {
-      const chat = update.my_chat_member.chat;
-
-      if (chatKind(chat) === "канал") {
-        await sendTelegramMessage(token, {
-          chat_id: chat.id,
-          text: formatIdCard({ id: chat.id, title: chat.title, username: chat.username, kind: "канал" }),
-          parse_mode: "HTML",
-        });
-      }
-    }
+    /*
+     * Бота добавили в канал администратором — молчим.
+     *
+     * Раньше здесь отправлялась карточка с номером канала, и она уходила
+     * в публичный канал целиком: номер увидели бы все подписчики. Номер
+     * канала не публичная информация, и публиковать его без просьбы нельзя.
+     * Канал подключается в личной переписке с ботом.
+     */
+    void update.my_chat_member;
 
     // На любой другой текст отвечаем меню, а не молчим: человек должен
     // понимать, что бот его услышал, даже если не понял.
