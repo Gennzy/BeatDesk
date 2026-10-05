@@ -31,19 +31,38 @@ const PROBLEM_LABELS: Record<string, string> = {
   unknown: "connections.problemUnknown",
 };
 
+/** Что Google сообщил на обратном пути: ?youtube=ok | error | denied. */
+type OAuthReturn = { youtube?: string; channel?: string; detail?: string };
+
 type Props = {
+  /** Параметры возврата из OAuth. Приходят один раз, сразу после входа. */
+  oauthReturn?: OAuthReturn;
   connected: ConnectionRow[];
   platforms: Platform[];
   groups: PlatformGroup[];
 };
 
-export function ConnectionsBoard({ connected, platforms, groups }: Props) {
+export function ConnectionsBoard({ connected, platforms, groups, oauthReturn }: Props) {
   const { t } = useI18n();
   const router = useRouter();
 
   const [busy, setBusy] = useState<string | null>(null);
   const [verdicts, setVerdicts] = useState<Record<string, Verdict>>({});
-  const [error, setError] = useState<string | null>(null);
+  /** Имя канала, которое вернула проверка: база может хранить старое. */
+  const [labels, setLabels] = useState<Record<string, string>>({});
+  /*
+   * Сообщение из OAuth ставим сразу при разборе страницы, а не в эффекте:
+   * эффект выполнился бы после отрисовки, и человек мигнул бы на пустое
+   * поле, решив, что подключение прошло молча.
+   */
+  const [error, setError] = useState<string | null>(() => {
+    if (!oauthReturn) return null;
+    if (oauthReturn.youtube === "denied") return "Доступ не выдан — это нормально, подключать было необязательно.";
+    if (oauthReturn.youtube === "error") return oauthReturn.detail ?? "Подключение не удалось";
+    if (oauthReturn.youtube === "ok" && oauthReturn.channel) return `Канал «${oauthReturn.channel}» подключён`;
+
+    return null;
+  });
   const [openId, setOpenId] = useState<string | null>(null);
 
   const byPlatform = new Map(connected.map((row) => [row.platform, row]));
@@ -102,19 +121,44 @@ export function ConnectionsBoard({ connected, platforms, groups }: Props) {
     setError(null);
 
     try {
-      const response = await fetch("/api/platforms/check", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platform: platformId }),
-      });
-      const data = (await response.json()) as Verdict & { error?: string };
+      /*
+       * У YouTube своя проверка с обновлением токена: общий маршрут не знает
+       * про refresh_token и через час после подключения называл бы канал
+       * сломанным, хотя подключение живое.
+       */
+      const isYoutube = platformId === "youtube";
 
-      if (!response.ok) {
-        setError(data.error ?? "Проверка не удалась");
+      const response = isYoutube
+        ? await fetch("/api/platforms/youtube/check", { method: "GET" })
+        : await fetch("/api/platforms/check", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ platform: platformId }),
+          });
+      const data = (await response.json()) as Verdict & { error?: string; ok?: boolean; detail?: string; label?: string };
+
+      // Отсутствие строки — это «не подключено», а не ошибка проверки.
+      if (response.status === 404) {
+        setError(t("connections.notConnectedYet"));
         return;
       }
 
-      setVerdicts((prev) => ({ ...prev, [platformId]: data }));
+      if (!response.ok) {
+        setError(data.error ?? data.detail ?? "Проверка не удалась");
+        return;
+      }
+
+      if (data.ok === false) {
+        setError(data.detail ?? t("connections.problemNoToken"));
+        return;
+      }
+
+      setVerdicts((prev) => ({ ...prev, [platformId]: { ok: true } }));
+
+      // Канал мог смениться: показываем новое имя, а не старое из базы.
+      if (data.label) {
+        setLabels((prev) => ({ ...prev, [platformId]: data.label! }));
+      }
     } catch {
       setError("Сеть недоступна");
     } finally {
@@ -178,7 +222,7 @@ export function ConnectionsBoard({ connected, platforms, groups }: Props) {
                           </p>
 
                           {verdict?.detail ? <p className="mono text-xs text-paper">{verdict.detail}</p> : null}
-                          {row && !verdict?.detail ? <p className="mono text-xs text-mute">{metaSummary(row, t)}</p> : null}
+                          {row && !verdict?.detail ? <p className="mono text-xs text-mute">{metaSummary(row, t, labels[platform.id])}</p> : null}
                           {row && !isConnected(platform, row) ? (
                             <p className="text-xs text-amber">{t("connections.notConnectedYet")}</p>
                           ) : null}
@@ -212,7 +256,7 @@ export function ConnectionsBoard({ connected, platforms, groups }: Props) {
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                disabled={busy === platform.id}
+                                disabled={busy === platform.id || platform.level === "oauth"}
                                 onClick={() => (isOpen ? setOpenId(null) : setOpenId(platform.id))}
                               >
                                 {t("connections.update")}
@@ -228,14 +272,22 @@ export function ConnectionsBoard({ connected, platforms, groups }: Props) {
                               </Button>
                             </>
                           ) : isApi ? (
-                            <Button
-                              type="button"
-                              variant="signal"
-                              size="sm"
-                              onClick={() => (isOpen ? setOpenId(null) : setOpenId(platform.id))}
-                            >
-                              {t("connections.connect")}
-                            </Button>
+                            platform.level === "oauth" ? (
+                              <a href={platform.oauthPath ?? `/api/platforms/${platform.id}/authorize`}>
+                                <Button type="button" variant="signal" size="sm">
+                                  {t("connections.connect")}
+                                </Button>
+                              </a>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="signal"
+                                size="sm"
+                                onClick={() => (isOpen ? setOpenId(null) : setOpenId(platform.id))}
+                              >
+                                {t("connections.connect")}
+                              </Button>
+                            )
                           ) : null}
                         </div>
                       </div>
@@ -264,13 +316,14 @@ export function ConnectionsBoard({ connected, platforms, groups }: Props) {
 }
 
 /** Показать, куда подключено: ID канала, сообщества или имя подключения. */
-function metaSummary(row: ConnectionRow, t: (key: TranslationKey) => string): string {
+function metaSummary(row: ConnectionRow, t: (key: TranslationKey) => string, fresh?: string): string {
   const meta = row.meta ?? {};
   const parts: string[] = [];
 
   if (meta.chatId) parts.push(String(meta.chatId));
   if (meta.groupId) parts.push(String(meta.groupId));
-  if (row.label) parts.push(row.label);
+  if (fresh) parts.push(fresh);
+  if (!fresh && row.label) parts.push(row.label);
 
   if (parts.length > 0) return parts.join(" · ");
   return row.hasToken ? t("connections.secretStored") : t("connections.secretMissing");

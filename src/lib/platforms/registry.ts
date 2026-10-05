@@ -31,6 +31,14 @@ export type Platform = {
   /** куда открываться в ручном режиме */
   openUrl?: string;
   docsUrl?: string;
+  /**
+   * Адрес входа для площадок с OAuth.
+   *
+   * Отдельное поле, а не переиспользование openUrl: openUrl — это куда
+   * человек идёт менять настройки руками, а здесь мы отправляем его
+   * согласовывать доступ.
+   */
+  oauthPath?: string;
   /** что именно делаем с площадкой */
   note: string;
   /** автопост в этот канал не включаем */
@@ -91,6 +99,9 @@ export const PLATFORMS: Platform[] = [
     sendsFile: false,
     noAutoPublish: true,
     note: "Нужен свой Google OAuth-клиент: в .env добавляешь YOUTUBE_CLIENT_ID и YOUTUBE_CLIENT_SECRET. Плюс видеофайл — тип-биты выкладывают видео. Пока копируй заголовок, описание и теги из блока на странице бита.",
+    // Кнопка «Подключить» ведёт в Google, а не открывает форму с полями:
+    // у OAuth-площадок поля вообще не заполняются руками.
+    oauthPath: "/api/platforms/youtube/authorize",
     docsUrl: "https://developers.google.com/youtube/v3/docs/videos/insert",
   },
   {

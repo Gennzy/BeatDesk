@@ -15,8 +15,8 @@ export const metadata: Metadata = {
 
 const GROUPS: PlatformGroup[] = ["broadcast", "market", "distribution"];
 
-export default async function ConnectionsPage() {
-  const [t, supabase] = await Promise.all([getT(), getSupabase()]);
+export default async function ConnectionsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const [t, supabase, params] = await Promise.all([getT(), getSupabase(), searchParams]);
 
   if (!supabase) redirect("/login?next=/settings/connections");
 
@@ -54,6 +54,7 @@ export default async function ConnectionsPage() {
           connected={connected}
           platforms={GROUPS.flatMap((group) => platformsByGroup(group))}
           groups={GROUPS}
+          oauthReturn={{ youtube: params.youtube, channel: params.channel, detail: params.detail }}
         />
       </Container>
     </section>
