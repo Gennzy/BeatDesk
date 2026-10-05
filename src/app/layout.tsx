@@ -9,6 +9,7 @@ import { AuthPromptProvider } from "@/components/posts/auth-prompt-provider";
 import { I18nProvider } from "@/lib/i18n/provider";
 import { getLocale } from "@/lib/i18n/server";
 import { getSessionUser } from "@/lib/supabase/user";
+import { evaluateGate } from "@/lib/release";
 import { getSiteUrl, SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 
 import "./globals.css";
@@ -71,22 +72,64 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [locale, user] = await Promise.all([getLocale(), getSessionUser()]);
 
+  /*
+   * Пока сервис в разработке, наружу показываем заглушку.
+   *
+   * Проверка идёт после получения сессии, иначе владелец тоже увидит
+   * заглушку и не сможет проверить правку.
+   */
+  const gate = evaluateGate({
+    gate: process.env.BEATDESK_GATE,
+    email: user?.email,
+    production: process.env.VERCEL_ENV === "production",
+  });
+
   return (
     <html lang={locale} className={`${unbounded.variable} ${manrope.variable} ${jetbrains.variable}`}>
       <body className="min-h-svh bg-ink text-paper">
         <I18nProvider locale={locale}>
           <AuthPromptProvider loggedIn={Boolean(user)}>
-            <PlayerProvider>
-            <div className="flex min-h-svh flex-col">
-              <SiteHeader user={user} />
-              <main className="flex-1 pb-20 pb-[calc(5rem+env(safe-area-inset-bottom))]">{children}</main>
-              <SiteFooter />
-              <PlayerBar />
-            </div>
-            </PlayerProvider>
+            {gate.open ? (
+              <PlayerProvider>
+                <div className="flex min-h-svh flex-col">
+                  <SiteHeader user={user} />
+                  <main className="flex-1 pb-20 pb-[calc(5rem+env(safe-area-inset-bottom))]">{children}</main>
+                  <SiteFooter />
+                  <PlayerBar />
+                </div>
+              </PlayerProvider>
+            ) : (
+              <ComingSoon />
+            )}
           </AuthPromptProvider>
         </I18nProvider>
       </body>
     </html>
+  );
+}
+
+/**
+ * Заглушка на время разработки.
+ *
+ * Показывает, что сервис скоро открывается, и ничего лишнего: ссылок на
+ * разделы нет, чтобы человек не попал в недостроенный интерфейс.
+ */
+function ComingSoon() {
+  return (
+    <div className="flex min-h-svh flex-col">
+      <SiteHeader user={null} />
+      <main className="flex flex-1 items-center justify-center px-6 pb-24">
+        <div className="flex max-w-[54ch] flex-col gap-6 text-center">
+          <span className="label text-mute">скоро</span>
+          <h1 className="font-display text-[clamp(2rem,6vw,3.5rem)] leading-[1.05] font-black tracking-tight text-paper uppercase">
+            BeatDesk <span className="text-signal">в разработке</span>
+          </h1>
+          <p className="text-sm leading-relaxed text-mute">
+            Сервис почти готов. Пока мы его доводим, площадки для битов закрыты — заходите позже, мы напишем.
+          </p>
+        </div>
+      </main>
+      <SiteFooter />
+    </div>
   );
 }

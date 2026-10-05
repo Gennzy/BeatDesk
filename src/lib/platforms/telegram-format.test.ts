@@ -11,8 +11,13 @@ describe("карточка ID для телеграма", () => {
     expect(card).toContain("Beat Store");
   });
 
-  it("личному чату объясняет, что это не канал", () => {
-    expect(formatIdCard({ id: 42, kind: "личный чат" })).toContain("личный чат");
+  it("в личке не показывает никакого номера", () => {
+    // Главная ошибка прежней версии: человек копировал свой ID в «Площадки».
+    const card = formatIdCard({ id: 353507128, kind: "личный чат" });
+
+    expect(card).not.toContain("353507128");
+    expect(card).toContain("в личке не отдаю");
+    expect(card).toContain("Подключить канал");
   });
 
   it("подпись канала не ломает разметку", () => {
@@ -25,14 +30,10 @@ describe("карточка ID для телеграма", () => {
     expect(formatIdCard({ id: 1, kind: "канал" })).toContain("Площадки");
   });
 
-  it("в личке честно говорит, что это не номер канала", () => {
-    // Главная пролема: в личке бот отдаёт номер человека, и вставка его в
-    // «Площадки» даёт ошибку без объяснения.
-    const card = formatIdCard({ id: 353507128, kind: "личный чат" });
+  it("группа получает номер и объяснение про админа", () => {
+    const card = formatIdCard({ id: -100, kind: "группа" });
 
-    expect(card).toContain("личный ID");
-    expect(card).toContain("вставлять нельзя");
-    expect(card).toContain("администратора");
+    expect(card).toContain("<code>-100</code>");
   });
 
   it("в канале называет это номером канала", () => {
