@@ -1,10 +1,13 @@
 import {
+  deleteTelegramMessage,
   fetchUpdates,
   sendTelegramAudio,
   sendTelegramMessage,
   sendTelegramPhoto,
 } from "../telegram-client";
 import { buildKeyboard, captionForPost, formatBeatCaption, planPost } from "../telegram-format";
+import { inspectPost } from "../post-check";
+import { sendMediaGroupWithCover } from "../album";
 import { telegramThumbnail } from "../thumbnail";
 import type { PlatformConnection } from "./vk";
 import type { PublishPayload, PublishResult } from "../payload";
@@ -66,10 +69,14 @@ export async function publishToTelegram(
     // почти всегда не влезает, и пост уходил совсем без картинки.
     const thumbnail = payload.coverUrl ? await telegramThumbnail(await fetchImage(payload.coverUrl)) : null;
 
-    // Обложка не проходит ограничениям Telegram (до 200 КБ и 200×200), и
-    // тогда отправка аудио падает целиком. Поэтому пробуем с обложкой, а
-    // при отказе — без неё: лучше пост без картинки, чем никакого поста.
-    const withCover = await sendTelegramAudio(token, {
+    /*
+     * Telegram отвечает «принято», даже если обложку выкинул.
+     *
+     * Раньше мы судили только по флагу успеха, запасной путь не запускался,
+     * и в канал уезжал пост без картинки. Теперь смотрим, что реально
+     * вернулось в ответе, и если картинки нет — добиваем её альбомом.
+     */
+    const attempt = await sendTelegramAudio(token, {
       chat_id: chat,
       audio: payload.audioUrl!,
       thumbnail: thumbnail ?? undefined,
@@ -79,9 +86,7 @@ export async function publishToTelegram(
       performer: payload.beat.username,
     });
 
-    if (withCover.ok && withCover.result) {
-      message = withCover.result;
-    } else {
+    if (!attempt.ok || !attempt.result) {
       const bare = await sendTelegramAudio(token, {
         chat_id: chat,
         audio: payload.audioUrl!,
@@ -92,10 +97,31 @@ export async function publishToTelegram(
       });
 
       if (!bare.ok || !bare.result) {
-        return { ok: false, error: bare.description ?? withCover.description ?? "Telegram не принял трек" };
+        return { ok: false, error: bare.description ?? attempt.description ?? "Telegram не принял трек" };
       }
 
       message = bare.result;
+    } else {
+      message = attempt.result;
+
+      const state = inspectPost(attempt.result, payload.beat.title);
+      if (state !== "done") {
+        // Плохой пост не оставляем в канале: удаляем и пересобираем
+        // альбомом, где картинку Telegram показать не может.
+        await deleteTelegramMessage(token, chat, message.message_id);
+
+        const album = await sendBeatAlbum(token, {
+          chat,
+          audioUrl: payload.audioUrl!,
+          cover: thumbnail,
+          caption,
+          title: payload.beat.title,
+          performer: payload.beat.username,
+        });
+
+        if (!album.ok) return { ok: false, error: album.error };
+        message = { message_id: album.messageId };
+      }
     }
   } else if (plan === "photo") {
     const photo = await sendTelegramPhoto(token, {
@@ -168,4 +194,52 @@ async function fetchImage(url: string): Promise<ArrayBuffer | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Пересобрать пост альбомом: обложка и трек в одном сообщении.
+ *
+ * Запасной путь для случая, когда Telegram принял трек, но обложку
+ * выбросил. Отдельные сообщения тут не годились бы — это снова два поста.
+ */
+async function sendBeatAlbum(
+  token: string,
+  input: {
+    chat: string;
+    audioUrl: string;
+    cover: Buffer | null;
+    caption: string;
+    title: string;
+    performer: string;
+  },
+): Promise<{ ok: true; messageId: number } | { ok: false; error: string }> {
+  const media: Record<string, unknown>[] = [];
+
+  if (input.cover) {
+    media.push({
+      type: "photo",
+      media: { attach: "cover.jpg" },
+      caption: input.caption,
+      parse_mode: "HTML",
+    });
+  }
+
+  media.push({
+    type: "audio",
+    media: input.audioUrl,
+    title: input.title,
+    performer: input.performer,
+    caption: input.cover ? undefined : input.caption,
+    parse_mode: "HTML",
+  });
+
+  // Байты обложки Telegram ждёт файлом, а не строкой, поэтому прикладываем
+  // их отдельным полем с тем же именем.
+  const group = await sendMediaGroupWithCover(token, input.chat, media, input.cover);
+
+  if (!group.ok) return { ok: false, error: group.error ?? "Telegram не принял альбом" };
+
+  const first = group.messages[0];
+
+  return { ok: true, messageId: first?.message_id ?? 0 };
 }

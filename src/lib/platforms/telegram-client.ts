@@ -1,6 +1,22 @@
 const API_BASE = "https://api.telegram.org/bot";
 
-export type TelegramMessage = { message_id: number; chat: { id: number; type: string; title?: string; username?: string } };
+export type TelegramThumbnail = { file_id: string; file_unique_id: string };
+
+/**
+ * Ответ Telegram на сообщение.
+ *
+ * `audio.thumbnail` и `audio.title` заполняются только если обложка и
+ * название действительно применились. Это единственный честный признак:
+ * при негодной обложке Telegram отвечает `ok: true`, но картинку молча
+ * выбрасывает — судить по флагу успеха нельзя.
+ */
+export type TelegramMessage = {
+  message_id: number;
+  chat: { id: number; type: string; title?: string; username?: string };
+  audio?: { file_id: string; title?: string; performer?: string; thumbnail?: TelegramThumbnail };
+  photo?: { file_id: string }[];
+  document?: { file_id: string; file_name?: string };
+};
 export type TelegramUpdate = { update_id: number; message?: TelegramMessage };
 
 export type BotInfo = { id: number; username: string; first_name: string };
@@ -35,6 +51,36 @@ async function call<T>(token: string, method: string, body?: Record<string, unkn
   });
 
   return (await response.json()) as ApiResult<T>;
+}
+
+/**
+ * Удалить сообщение: пост, который Telegram принял, но показал неверно.
+ *
+ * Без удаления в канале останутся два поста — кривой и правильный.
+ */
+export async function deleteTelegramMessage(
+  token: string,
+  chatId: string | number,
+  messageId: number,
+): Promise<boolean> {
+  const response = await call<boolean>(token, "deleteMessage", { chat_id: chatId, message_id: messageId });
+
+  return response.ok;
+}
+
+/**
+ * Альбом из обложки и трека.
+ *
+ * Один пост, где картинку Telegram показать не может: обложка идёт отдельной
+ * картинкой, трек — вторым элементом. Обложка видна всегда, независимо от
+ * того, принял ли Telegram её как обложку плеера.
+ */
+export async function sendMediaGroup(
+  token: string,
+  chatId: string | number,
+  media: Record<string, unknown>[],
+): Promise<ApiResult<TelegramMessage[]>> {
+  return call<TelegramMessage[]>(token, "sendMediaGroup", { chat_id: chatId, media });
 }
 
 export async function getBotInfo(token = getBotToken()): Promise<BotInfo | null> {
