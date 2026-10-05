@@ -3,7 +3,6 @@ export type PlatformId =
   | "discord"
   | "vk"
   | "youtube"
-  | "soundcloud"
   | "beatchain"
   | "beatstars"
   | "airbit"
@@ -93,18 +92,6 @@ export const PLATFORMS: Platform[] = [
     noAutoPublish: true,
     note: "Нужен свой Google OAuth-клиент: в .env добавляешь YOUTUBE_CLIENT_ID и YOUTUBE_CLIENT_SECRET. Плюс видеофайл — тип-биты выкладывают видео. Пока копируй заголовок, описание и теги из блока на странице бита.",
     docsUrl: "https://developers.google.com/youtube/v3/docs/videos/insert",
-  },
-  {
-    id: "soundcloud",
-    label: "SoundCloud",
-    group: "broadcast",
-    level: "oauth",
-    kind: "api",
-    auth: "oauth",
-    sendsFile: true,
-    noAutoPublish: true,
-    note: "Загрузка треков через API доступна только по белому списку для приложений. Без одобрения — загружай файл вручную, тексты и имена файлов уже готовы.",
-    docsUrl: "https://developers.soundcloud.com/docs/guide",
   },
   {
     id: "beatstars",

@@ -99,14 +99,8 @@ export async function publishBeat(input: {
     );
   }
 
-  if (input.platform === "soundcloud" || input.platform === "youtube") {
-    return {
-      ok: false,
-      error:
-        input.platform === "youtube"
-          ? "Для YouTube нужен видеофайл: подключи OAuth и приложи видео"
-          : "Подключи SoundCloud через OAuth, чтобы выкладывать треки",
-    };
+  if (input.platform === "youtube") {
+    return { ok: false, error: "Для YouTube нужен видеофайл: подключи OAuth и приложи видео" };
   }
 
   return { ok: false, error: "Площадка пока не поддерживается" };

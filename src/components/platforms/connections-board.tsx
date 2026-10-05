@@ -8,6 +8,7 @@ import { Badge, Card } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n/provider";
 import type { TranslationKey } from "@/lib/i18n/dictionaries";
+import { isConnected } from "@/lib/platforms/connection-state";
 import { GROUP_LABELS, type Platform, type PlatformGroup } from "@/lib/platforms/registry";
 
 export type ConnectionRow = {
@@ -163,7 +164,9 @@ export function ConnectionsBoard({ connected, platforms, groups }: Props) {
                                   ? verdict.ok
                                     ? t("connections.statusOk")
                                     : t((PROBLEM_LABELS[verdict.problem ?? "unknown"] ?? "connections.problemUnknown") as "connections.problemUnknown")
-                                  : t("connections.statusConnected")}
+                                  : isConnected(platform, row)
+                                    ? t("connections.statusConnected")
+                                    : t("connections.statusNotSaved")}
                               </Badge>
                             ) : (
                               <Badge tone="outline">{t("connections.statusNone")}</Badge>
@@ -176,6 +179,9 @@ export function ConnectionsBoard({ connected, platforms, groups }: Props) {
 
                           {verdict?.detail ? <p className="mono text-xs text-paper">{verdict.detail}</p> : null}
                           {row && !verdict?.detail ? <p className="mono text-xs text-mute">{metaSummary(row, t)}</p> : null}
+                          {row && !isConnected(platform, row) ? (
+                            <p className="text-xs text-amber">{t("connections.notConnectedYet")}</p>
+                          ) : null}
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">
