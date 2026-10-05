@@ -35,6 +35,35 @@ export async function rememberChannel(ownerTelegramId: number, chatId: number, t
   return !error;
 }
 
+/**
+ * Что запомнить из апдейта Telegram.
+ *
+ * Автор события лежит в `my_chat_member.from`, а не в `message`: у этого
+ * апдейта поля с сообщением вообще нет. Раньше автор брался из message, и
+ * канал не записывался никогда — бот отвечал «не подключён» при живом
+ * подключённом канале.
+ */
+export function channelToRemember(update: {
+  message?: { from?: { id?: number; is_bot?: boolean } };
+  my_chat_member?: {
+    chat: { id: number; type?: string; title?: string };
+    from?: { id?: number; is_bot?: boolean };
+    new_chat_member?: { status?: string; user?: { is_bot?: boolean } };
+  };
+}): { ownerId: number; chatId: number; title?: string } | null {
+  const member = update.my_chat_member;
+  if (!member?.chat || member.chat.type !== "channel") return null;
+
+  // Новый участник — бот. Иначе событие к нашей задаче не относится.
+  if (!member.new_chat_member?.user?.is_bot) return null;
+
+  // Привязывать канал должен человек: если событие вызвал бот, привязывать нечего.
+  const ownerId = member.from?.id;
+  if (!ownerId || member.from?.is_bot) return null;
+
+  return { ownerId, chatId: member.chat.id, title: member.chat.title };
+}
+
 /** Канал, подключённый этим человеком. */
 export async function channelOf(ownerTelegramId: number): Promise<TelegramChannel | null> {
   const supabase = client();

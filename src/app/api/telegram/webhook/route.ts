@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { getSiteUrl } from "@/lib/site";
 import { chatKind, formatIdCard, notConnected, wantsId } from "@/lib/platforms/telegram-format";
-import { channelOf, rememberChannel } from "@/lib/platforms/telegram-channels";
+import { channelOf, channelToRemember, rememberChannel } from "@/lib/platforms/telegram-channels";
 import {
   getBotToken,
   sendTelegramMessage,
@@ -28,8 +28,16 @@ type Update = {
   message?: TelegramMessage & { text?: string; chat?: Chat; from?: { id: number; is_bot?: boolean } };
   callback_query?: CallbackQuery & { message?: { chat?: Chat } };
   /** Бота добавили в чат или выдали права: приходит без сообщения. */
+  /**
+   * Бота добавили в чат или сменили его права.
+   *
+   * Автор события лежит здесь, а не в `message`: у этого апдейта поля с
+   * сообщением нет вообще. Раньше автор брался из message, из-за чего канал
+   * не запоминался никогда.
+   */
   my_chat_member?: {
     chat: Chat;
+    from: { id: number; is_bot?: boolean };
     new_chat_member: { status: string; user?: { is_bot?: boolean } };
   };
 };
@@ -182,11 +190,10 @@ export async function POST(request: Request) {
      * сам номер отдаём только в личной переписке.
      */
     if (update.my_chat_member) {
-      const member = update.my_chat_member;
-      const addedBy = update.message?.from?.id;
+      const remember = channelToRemember(update);
 
-      if (member.new_chat_member.user?.is_bot && addedBy && chatKind(member.chat) === "канал") {
-        await rememberChannel(addedBy, member.chat.id, member.chat.title);
+      if (remember) {
+        await rememberChannel(remember.ownerId, remember.chatId, remember.title);
       }
     }
 
