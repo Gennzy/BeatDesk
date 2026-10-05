@@ -183,6 +183,61 @@ function refineLag(auto: Float32Array, lag: number): number {
   return lag + shift;
 }
 
+/**
+ * Насколько сильны удары, попавшие на сетку.
+ *
+ * Это то, что отличает 70 от 140 на бум-бэпе. Кик и снейр несут основную
+ * энергию и стоят на долях, хэты слабее и стоят на восьмых. Значит у сетки
+ * в 70 BPM средняя энергия ударов заметно выше, чем у сетки вдвое короче.
+ *
+ * Первый вариант сравнивал сетку с промежутками и оказался вырожденным:
+ * между восьмыми тихо, поэтому удачно выглядела любая сетка с шагом в
+ * восьмые. Сравнивать надо с абсолютной силой удара, а не с пустотой рядом.
+ */
+export function accentStrength(envelope: Float32Array, lagInFrames: number): number {
+  if (lagInFrames < 4) return 0;
+
+  const anchor = strongestOnset(envelope);
+  const last = envelope.length - 1;
+  const values: number[] = [];
+
+  for (let step = 0; ; step += 1) {
+    const on = anchor + step * lagInFrames;
+    if (on > last) break;
+
+    // Берём максимум в узком окне вокруг позиции: удар занимает
+    // несколько кадров огибающей, а не один.
+    let best = 0;
+    for (let offset = -1; offset <= 2; offset += 1) {
+      const at = on + offset;
+      if (at < 0 || at > last) continue;
+      best = Math.max(best, envelope[at]!);
+    }
+    values.push(best);
+  }
+
+  if (values.length < 4) return 0;
+
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+
+  // Нормируем на громкость самой сильной части трека: удар в тихом бите
+  // и в громком — один и тот же ритм, а абсолютные значения разные.
+  const sorted = Float32Array.from(envelope).sort();
+  const ceiling = sorted[Math.floor(sorted.length * 0.98)] || 1;
+
+  return Math.max(0, Math.min(1, mean / ceiling));
+}
+
+function strongestOnset(envelope: Float32Array): number {
+  let best = 0;
+
+  for (let i = 1; i < envelope.length; i += 1) {
+    if (envelope[i]! > envelope[best]!) best = i;
+  }
+
+  return best;
+}
+
 export function detectTempo(track: OnsetTrack): Tempo {
   const { envelope, rate } = track;
   const nothing: Tempo = { bpm: 0, confidence: 0, downbeatOffset: 0, exact: false };
@@ -215,38 +270,40 @@ export function detectTempo(track: OnsetTrack): Tempo {
   let chosenLag = refineLag(auto, bestLag);
 
   /*
-   * Ошибка октавы.
+   * Ошибка октавы в сторону быстрого темпа.
    *
    * У клика на 174 BPM корреляция высока и на самой доле, и на её половине:
-   * ритм одинаковый, просто считать можно быстрее. Приоритет темпа в этом
-   * не помогает — 87 и 174 одинаково круглые. Поэтому проверяем, есть ли
-   * половина или треть с сопоставимой корреляцией, и если да, берём её:
-   * битмейкер, вбивший 174, ждёт 174, а не половину.
+   * ритм тот же, просто считать можно быстрее, и приоритет жанрового
+   * диапазона их не различает. Поэтому проверяем половину и треть: если
+   * там корреляция сопоставима, берём её.
+   *
+   * Этот же регулятор — источник известной ошибки в другую сторону: на
+   * бум-бэпе 70 BPM с хэтами на восьмых он даёт 140. Оба случая — один и
+   * тот же параметр, поэтому настройкой его не исправить, нужно разбирать
+   * октаву отдельным решением в слое продукта.
    */
   for (const divisor of [2, 3]) {
     const shorter = chosenLag / divisor;
-    if (shorter < 1) continue;
+    if (shorter < 4) continue;
 
     const bpmCandidate = (60 * rate) / shorter;
-    if (bpmCandidate > MAX_BPM) continue;
+    if (bpmCandidate > MAX_BPM || bpmCandidate < MIN_BPM) continue;
 
     const shorterScore = Math.max(0, auto[Math.round(shorter)] ?? 0);
-    // chosenLag после уточнения дробный: обращаться к массиву им нельзя,
-    // undefined превращал сравнение в NaN и коррекция октавы не срабатывала.
     const chosenScore = Math.max(0, auto[Math.round(chosenLag)] ?? 0);
     if (shorterScore >= chosenScore * 0.5) chosenLag = shorter;
   }
 
+  if (chosenLag === 0) return nothing;
+
+  chosenLag = refineLag(auto, Math.round(chosenLag));
   const bpm = (60 * rate) / chosenLag;
 
-  // Уверенность: насколько пик выделяется на фоне задержек рядом с ним.
-  // Сравнивать со всеми остальными бессмысленно: короткие задержки у
-  // гладкой огибающей всегда высокие, и уверенность всегда выходила бы
-  // нулевой. Кратные длины доли — тоже не фон, их пропускаем.
-  const peak = auto[Math.round(chosenLag)] ?? auto[bestLag]!;
+  // Уверенность: во сколько раз пик выделяется на фоне задержек рядом.
+  const peak = auto[Math.round(chosenLag)] ?? 0;
   const neighbours: number[] = [];
-  for (let lag = Math.floor(bestLag * 0.6); lag <= Math.ceil(bestLag * 1.5); lag += 1) {
-    if (Math.abs(lag - bestLag) <= 2) continue;
+  for (let lag = Math.floor(chosenLag * 0.6); lag <= Math.ceil(chosenLag * 1.5); lag += 1) {
+    if (Math.abs(lag - chosenLag) <= 2) continue;
     neighbours.push(auto[lag]!);
   }
   const floor = median(neighbours);
