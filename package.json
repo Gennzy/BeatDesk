@@ -12,7 +12,8 @@
     "test:e2e": "node e2e/smoke.mjs",
     "verify": "tsc --noEmit && eslint && vitest run",
     "verify:extension": "pnpm --dir extension typecheck && pnpm --dir extension build",
-    "verify:all": "pnpm verify && pnpm verify:extension"
+    "verify:all": "pnpm verify && pnpm verify:extension",
+    "cleanup:test": "node scripts/cleanup-test-accounts.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
