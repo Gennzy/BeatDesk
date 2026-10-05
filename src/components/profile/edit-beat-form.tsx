@@ -5,6 +5,7 @@ import { CURRENCIES, DEFAULT_CURRENCY, isCurrency, type CurrencyCode } from "@/l
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import { BeatAssistant } from "@/components/beats/beat-assistant";
 import { CurrencyPicker } from "@/components/profile/currency-picker";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
@@ -25,6 +26,9 @@ type Props = {
     prices: FeedBeat["prices"];
     isPublic: boolean;
     coverUrl: string | null;
+    /** Есть ли стемы и WAV: подсказка упоминает их в описании. */
+    hasStems: boolean;
+    hasWav: boolean;
   };
 };
 
@@ -39,6 +43,14 @@ export function EditBeatForm({ beat }: Props) {
   const storedCurrency = (beat as { currency?: unknown }).currency;
   const [currency, setCurrency] = useState<CurrencyCode>(isCurrency(storedCurrency) ? storedCurrency : DEFAULT_CURRENCY);
   const currencyHint = CURRENCIES.find((item) => item.code === currency)?.symbol ?? "₽";
+  /*
+   * Название и теги — контролируемые поля: подсказка AI должна уметь
+   * подставить в них своё. Раньше стоял defaultValue, и подставить было
+   * некуда: input игнорирует попытки изменить себя после первого рендера.
+   */
+  const [title, setTitle] = useState(beat.title);
+  const [tags, setTags] = useState(beat.tags.join(", "));
+
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
 
@@ -50,11 +62,11 @@ export function EditBeatForm({ beat }: Props) {
     const form = new FormData(event.currentTarget);
 
     const payload = new FormData();
-    payload.set("title", String(form.get("title") ?? ""));
+    payload.set("title", title.trim());
     payload.set("typeBeat", String(form.get("typeBeat") ?? ""));
     payload.set("bpm", String(form.get("bpm") ?? ""));
     payload.set("key", String(form.get("key") ?? ""));
-    payload.set("tags", String(form.get("tags") ?? ""));
+    payload.set("tags", tags);
     payload.set("isPublic", form.get("isPublic") === "on" ? "true" : "false");
     payload.set("currency", String(form.get("currency") ?? "RUB"));
     payload.set(
@@ -66,13 +78,15 @@ export function EditBeatForm({ beat }: Props) {
       }),
     );
 
-    const tags = String(form.get("tags") ?? "")
+    const tagList = tags
       .split(/[\s,]+/)
       .map((tag) => tag.replace(/^#/, "").trim())
       .filter(Boolean);
 
+    // Строку тегов убираем: сервер ждёт массив, и без этого поле уходило
+    // дважды — сначала текстом, потом списком.
     payload.delete("tags");
-    payload.set("tags", JSON.stringify(tags));
+    payload.set("tags", JSON.stringify(tagList));
 
     if (cover) payload.set("coverFile", cover);
 
@@ -127,7 +141,7 @@ export function EditBeatForm({ beat }: Props) {
 
       <div className="grid gap-6">
         <Field label={t("upload.title_field")}>
-          <Input name="title" defaultValue={beat.title} required maxLength={80} />
+          <Input name="title" value={title} onChange={(event) => setTitle(event.target.value)} required maxLength={80} />
         </Field>
 
         <div className="grid gap-6 sm:grid-cols-2">
@@ -144,10 +158,28 @@ export function EditBeatForm({ beat }: Props) {
             <KeyPicker defaultValue={beat.musicalKey} />
           </Field>
           <Field label={t("upload.tags")} hint={t("upload.tagsHint")}>
-            <Input name="tags" defaultValue={beat.tags.join(", ")} className="font-mono" />
+            <Input name="tags" value={tags} onChange={(event) => setTags(event.target.value)} className="font-mono" />
           </Field>
         </div>
       </div>
+
+      <BeatAssistant
+        beat={{
+          id: beat.id,
+          title,
+          bpm: beat.bpm,
+          musicalKey: beat.musicalKey,
+          // В форме теги живут строкой, а в подсказке нужны списком.
+          tags: tags.split(/[\s,]+/).filter(Boolean),
+          artists: beat.artists,
+        }}
+        hasStems={beat.hasStems}
+        hasWav={beat.hasWav}
+        onApply={(patch) => {
+          if (patch.title) setTitle(patch.title);
+          if (patch.tags) setTags(patch.tags);
+        }}
+      />
 
       <div className="flex flex-col gap-4">
         <Field label={t("upload.currency")}>
