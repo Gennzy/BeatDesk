@@ -73,6 +73,13 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
 
   return (
     <>
+      {/* Переход по несуществующей короткой ссылке: человек должен понять, что делать. */}
+      {one("shortlink") === "notfound" ? (
+        <div className="border-b border-line bg-ink-2 px-4 py-3 text-sm text-amber">
+          {t("shortLink.notFound")}
+        </div>
+      ) : null}
+
       <section className="relative overflow-hidden border-b border-line">
         <HeroVideo src="/media/hero.mp4" />
         <div aria-hidden className="guide-grid pointer-events-none absolute inset-0 opacity-40" />

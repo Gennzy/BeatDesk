@@ -7,6 +7,7 @@ import { usePlayer } from "@/components/player/player-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
+import { ShortLinkButton } from "@/components/beats/short-link-button";
 import { formatMoney } from "@/lib/currency";
 import { useI18n } from "@/lib/i18n/provider";
 
@@ -168,6 +169,8 @@ export function BeatHero({ beat, isOwner }: { beat: BeatHeroData; isOwner: boole
           ) : null}
           <span className="label ml-auto hidden text-mute sm:inline">{t("share.hintPlatforms")}</span>
         </div>
+
+        {isOwner ? <ShortLinkButton path={`/beats/${beat.id}`} /> : null}
 
         {tiers.length > 0 ? (
           <div className="flex flex-col gap-3">
