@@ -86,11 +86,12 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         <Container>
           <HeroIntro>
             <div className="relative z-10 pt-10 pb-14 lg:pt-14 lg:pb-20">
+              {/* На телефоне строка площадок не помещалась в одну линию и упиралась в края. */}
               <div
                 data-fade
-                className="flex items-center justify-end border-b border-line pb-4"
+                className="flex items-center justify-center border-b border-line pb-4 text-center lg:justify-end lg:text-right"
               >
-                <span className="label text-mute">{t("hero.platforms")}</span>
+                <span className="label text-balance text-mute">{t("hero.platforms")}</span>
               </div>
 
               <h1 className="mt-9 font-display text-hero font-black text-balance text-paper uppercase lg:mt-12">
@@ -112,12 +113,13 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
                   {t("hero.note")}
                 </p>
 
-                <div data-fade className="mt-2 flex flex-wrap items-center gap-3">
-                  <Button href="/upload" size="lg">
+                {/* Кнопки на телефоне тянулись по содержимому и получались разной ширины. */}
+                <div data-fade className="mt-2 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                  <Button href="/upload" size="lg" className="w-full sm:w-auto">
                     {t("hero.ctaPrimary")}
                     <span aria-hidden>→</span>
                   </Button>
-                  <Button href="#feed" variant="ink" size="lg">
+                  <Button href="#feed" variant="ink" size="lg" className="w-full sm:w-auto">
                     {t("hero.ctaSecondary")}
                   </Button>
                 </div>
