@@ -1,7 +1,9 @@
 import { isCurrency, type CurrencyCode } from "@/lib/currency";
 import { MUSICAL_KEYS } from "./keys";
 
-export type Prices = { mp3: number | null; bundle: number | null; exclusive: number | null };
+import { emptyPrices, type Prices } from "@/lib/prices";
+
+export type { Prices };
 
 export const MAX_TITLE_LENGTH = 120;
 export const MAX_TAGS = 12;
@@ -81,14 +83,18 @@ export function normalizeTags(input: unknown): string[] {
   return [...seen];
 }
 
+/**
+ * Привести цены к виду.
+ *
+ * Правила проверки остаются здесь, а не в prices.ts: там только форма,
+ * а потолок цены — это правило валидации бита.
+ */
 export function normalizePrices(input: unknown): Prices {
-  if (typeof input !== "object" || input === null) {
-    return { mp3: null, bundle: null, exclusive: null };
-  }
+  if (typeof input !== "object" || input === null) return emptyPrices();
 
   const source = input as Record<string, unknown>;
 
-  const read = (key: keyof Prices): number | null => {
+  const read = (key: string): number | null => {
     const value = source[key];
     if (value === null || value === undefined || value === "") return null;
 
@@ -98,7 +104,13 @@ export function normalizePrices(input: unknown): Prices {
     return parsed === 0 ? null : parsed;
   };
 
-  return { mp3: read("mp3"), bundle: read("bundle"), exclusive: read("exclusive") };
+  return {
+    mp3: read("mp3"),
+    // bundle — историческое имя уровня WAV.
+    wav: read("wav") ?? read("bundle"),
+    trackout: read("trackout"),
+    exclusive: read("exclusive"),
+  };
 }
 
 /**

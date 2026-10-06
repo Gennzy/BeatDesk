@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { MAX_COVER_BYTES, extensionOf, validateCoverFile } from "@/lib/beats";
 import { createClient } from "@/lib/supabase/server";
+import { pricesForDb } from "@/lib/prices";
 
 async function requireOwner(beatId: string) {
   const supabase = await createClient();
@@ -95,11 +96,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       const parsed = Number(value);
       return value !== null && value !== "" && Number.isFinite(parsed) ? parsed : null;
     };
-    patch.prices = {
+    patch.prices = pricesForDb({
       mp3: toNumber(prices.mp3),
-      bundle: toNumber(prices.bundle),
+      // bundle — историческое имя колонки для уровня WAV.
+      wav: toNumber(prices.wav) ?? toNumber(prices.bundle),
+      trackout: toNumber(prices.trackout),
       exclusive: toNumber(prices.exclusive),
-    };
+    });
   }
 
   const isPublic = text("isPublic");

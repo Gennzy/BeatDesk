@@ -1,5 +1,7 @@
+import { normalizePrices } from "@/lib/prices";
 import type { SupabaseServerClient } from "@/lib/supabase/server";
 import type { FeedBeat } from "@/lib/feed";
+import type { Prices } from "@/lib/prices";
 
 export const POSTS_PAGE_SIZE = 10;
 export const REPLIES_PAGE_SIZE = 30;
@@ -22,7 +24,7 @@ export type PostBeat = {
   coverUrl: string | null;
   mp3Url: string | null;
   plays: number;
-  prices: { mp3: number | null; bundle: number | null; exclusive: number | null };
+  prices: Prices;
   currency: string;
 };
 
@@ -99,7 +101,7 @@ function toBeat(value: PostRowBeat | PostRowBeat[] | null): PostBeat | null {
     coverUrl: beat.cover_url,
     mp3Url: beat.mp3_url,
     plays: beat.plays ?? 0,
-    prices: beat.prices ?? { mp3: null, bundle: null, exclusive: null },
+    prices: normalizePrices(beat.prices),
     currency: beat.currency ?? "RUB",
   };
 }

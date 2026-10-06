@@ -73,7 +73,8 @@ export function EditBeatForm({ beat }: Props) {
       "prices",
       JSON.stringify({
         mp3: form.get("priceMp3"),
-        bundle: form.get("priceBundle"),
+        wav: form.get("priceBundle"),
+        trackout: form.get("priceTrackout"),
         exclusive: form.get("priceExclusive"),
       }),
     );
@@ -187,7 +188,7 @@ export function EditBeatForm({ beat }: Props) {
         </Field>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <Field label={t("upload.priceMp3")} optional={currencyHint}>
           <Input
             name="priceMp3"
@@ -202,7 +203,16 @@ export function EditBeatForm({ beat }: Props) {
             name="priceBundle"
             type="number"
             inputMode="numeric"
-            defaultValue={beat.prices.bundle ?? ""}
+            defaultValue={beat.prices.wav ?? ""}
+            className="font-mono"
+          />
+        </Field>
+        <Field label={t("upload.priceTrackout")} hint={t("upload.priceTrackoutHint")} optional={currencyHint}>
+          <Input
+            name="priceTrackout"
+            type="number"
+            inputMode="numeric"
+            defaultValue={beat.prices.trackout ?? ""}
             className="font-mono"
           />
         </Field>

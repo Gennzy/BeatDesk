@@ -6,6 +6,7 @@ import { EditBeatForm } from "@/components/profile/edit-beat-form";
 import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/ui/container";
 import { getT } from "@/lib/i18n/server";
+import { normalizePrices } from "@/lib/prices";
 import { getSupabase } from "@/lib/supabase/user";
 
 export const metadata: Metadata = {
@@ -27,7 +28,7 @@ export default async function EditBeatPage({ params }: { params: Promise<{ id: s
 
   const { data: beat } = await supabase
     .from("beats")
-    .select("id, title, type_beat_artists, bpm, key, tags, prices, is_public, cover_url, owner_id, wav_url, zip_url")
+    .select("id, title, type_beat_artists, bpm, key, tags, prices, is_public, cover_url, owner_id, wav_url, zip_url, trackout_url")
     .eq("id", id)
     .maybeSingle();
 
@@ -69,14 +70,10 @@ export default async function EditBeatPage({ params }: { params: Promise<{ id: s
               bpm: beat.bpm,
               musicalKey: beat.key,
               tags: beat.tags ?? [],
-              prices: (beat.prices ?? { mp3: null, bundle: null, exclusive: null }) as {
-                mp3: number | null;
-                bundle: number | null;
-                exclusive: number | null;
-              },
+              prices: normalizePrices(beat.prices),
               isPublic: beat.is_public,
               coverUrl: beat.cover_url,
-              hasStems: Boolean(beat.zip_url),
+              hasStems: Boolean(beat.zip_url ?? beat.trackout_url),
               hasWav: Boolean(beat.wav_url),
             }}
           />

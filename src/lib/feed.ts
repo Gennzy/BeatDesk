@@ -1,4 +1,6 @@
+import { normalizePrices } from "@/lib/prices";
 import type { SupabaseServerClient } from "@/lib/supabase/server";
+import type { Prices } from "@/lib/prices";
 
 export const FEED_PAGE_SIZE = 12;
 
@@ -20,7 +22,7 @@ export type FeedBeat = {
   tags: string[];
   coverUrl: string | null;
   mp3Url: string | null;
-  prices: { mp3: number | null; bundle: number | null; exclusive: number | null };
+  prices: Prices;
   currency: string;
   username: string;
   avatarUrl: string | null;
@@ -65,7 +67,7 @@ function serialize(row: BeatRow): FeedBeat {
     tags: row.tags ?? [],
     coverUrl: row.cover_url,
     mp3Url: row.mp3_url,
-    prices: row.prices ?? { mp3: null, bundle: null, exclusive: null },
+    prices: normalizePrices(row.prices),
     currency: row.currency ?? "RUB",
     username: profile?.username ?? "unknown",
     avatarUrl: profile?.avatar_url ?? null,

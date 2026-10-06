@@ -1,4 +1,5 @@
 import { formatMoney } from "@/lib/currency";
+import type { Prices } from "@/lib/prices";
 export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -13,7 +14,7 @@ export function formatBeatCaption(input: {
   bpm: number;
   musicalKey: string;
   tags: string[];
-  prices: { mp3: number | null; bundle: number | null; exclusive: number | null };
+  prices: Prices;
   currency?: string;
   username: string;
 }): string {
@@ -21,7 +22,8 @@ export function formatBeatCaption(input: {
 
   const prices = [
     input.prices.mp3 ? `MP3 ${formatMoney(input.prices.mp3, input.currency)}` : null,
-    input.prices.bundle ? `MP3+WAV ${formatMoney(input.prices.bundle, input.currency)}` : null,
+    input.prices.wav ? `MP3+WAV ${formatMoney(input.prices.wav, input.currency)}` : null,
+    input.prices.trackout ? `Track Out ${formatMoney(input.prices.trackout, input.currency)}` : null,
     input.prices.exclusive ? `эксклюзив ${formatMoney(input.prices.exclusive, input.currency)}` : null,
   ].filter(Boolean) as string[];
 

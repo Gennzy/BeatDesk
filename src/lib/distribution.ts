@@ -1,11 +1,12 @@
 import { formatMoney } from "@/lib/currency";
+import type { Prices } from "@/lib/prices";
 /** Общая часть бита, нужная генератору текстов и публикаций. */
 export type BeatMeta = {
   artists: string[];
   bpm: number;
   musicalKey: string;
   tags: string[];
-  prices: { mp3: number | null; bundle: number | null; exclusive: number | null };
+  prices: Prices;
   currency?: string;
 };
 
@@ -77,7 +78,10 @@ function formatPrice(value: number | null, currency: string): string | null {
 export function priceLine(beat: BeatMeta): string {
   const parts = [
     formatPrice(beat.prices.mp3, beat.currency ?? "RUB") ? `MP3 ${formatPrice(beat.prices.mp3, beat.currency ?? "RUB")}` : null,
-    formatPrice(beat.prices.bundle, beat.currency ?? "RUB") ? `MP3+WAV ${formatPrice(beat.prices.bundle, beat.currency ?? "RUB")}` : null,
+    formatPrice(beat.prices.wav, beat.currency ?? "RUB") ? `MP3+WAV ${formatPrice(beat.prices.wav, beat.currency ?? "RUB")}` : null,
+    formatPrice(beat.prices.trackout, beat.currency ?? "RUB")
+      ? `Track Out ${formatPrice(beat.prices.trackout, beat.currency ?? "RUB")}`
+      : null,
     formatPrice(beat.prices.exclusive, beat.currency ?? "RUB")
       ? `Эксклюзив ${formatPrice(beat.prices.exclusive, beat.currency ?? "RUB")}`
       : null,

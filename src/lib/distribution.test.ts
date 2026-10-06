@@ -24,7 +24,7 @@ const beat = (over: Partial<DistributionBeat> = {}): DistributionBeat => ({
   bpm: 130,
   musicalKey: "F# minor",
   tags: ["dark", "trap"],
-  prices: { mp3: 500, bundle: 1500, exclusive: 3500 },
+  prices: { mp3: 500, wav: 1500, trackout: null, exclusive: 3500 },
   currency: "RUB",
   audioUrl: "https://beat-desk.vercel.app/api/audio/1",
   ownerUsername: "gennzy",
@@ -105,13 +105,13 @@ describe("priceLine", () => {
   });
 
   it("пустые цены не печатаются мусором", () => {
-    expect(priceLine(beat({ prices: { mp3: 500, bundle: null, exclusive: null } }))).toBe("MP3 500 ₽");
-    expect(priceLine(beat({ prices: { mp3: null, bundle: null, exclusive: null } }))).toBe("");
+    expect(priceLine(beat({ prices: { mp3: 500, wav: null, trackout: null, exclusive: null } }))).toBe("MP3 500 ₽");
+    expect(priceLine(beat({ prices: { mp3: null, wav: null, trackout: null, exclusive: null } }))).toBe("");
   });
 
   it("валюта бита попадает в текст, а не рубли по умолчанию", () => {
-    expect(priceLine(beat({ currency: "USD", prices: { mp3: 25, bundle: null, exclusive: null } }))).toBe("MP3 25 $");
-    expect(priceLine(beat({ currency: "EUR", prices: { mp3: 20, bundle: null, exclusive: null } }))).toContain("€");
+    expect(priceLine(beat({ currency: "USD", prices: { mp3: 25, wav: null, trackout: null, exclusive: null } }))).toBe("MP3 25 $");
+    expect(priceLine(beat({ currency: "EUR", prices: { mp3: 20, wav: null, trackout: null, exclusive: null } }))).toContain("€");
   });
 
   it("бит без валюты считается рублёвым", () => {
@@ -147,7 +147,7 @@ describe("блоки площадок", () => {
   });
 
   it("BeatChain опускает пустые строки, а не печатает «null»", () => {
-    const block = beatchainBlock(beat({ artists: [], tags: [], prices: { mp3: null, bundle: null, exclusive: null } }));
+    const block = beatchainBlock(beat({ artists: [], tags: [], prices: { mp3: null, wav: null, trackout: null, exclusive: null } }));
     expect(block.text).not.toMatch(/null|undefined/i);
     expect(block.text).not.toContain("Артисты:");
     expect(block.text).not.toContain("Теги:");

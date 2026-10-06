@@ -1,6 +1,7 @@
 import type { CurrencyCode } from "@/lib/currency";
 import { LegacyMasterMissingError, MastersBucketMissingError } from "@/lib/supabase/config";
 import type { SupabaseBrowserClient } from "@/lib/supabase/client";
+import type { Prices } from "@/lib/prices";
 
 export type BeatFileKind = "mp3" | "wav" | "zip" | "rar";
 export type BeatFiles = Partial<Record<BeatFileKind, File>>;
@@ -293,7 +294,7 @@ export type BeatInsert = {
   mp3_url: string | null;
   cover_url: string | null;
   files: BeatFilesColumn;
-  prices: { mp3: number | null; bundle: number | null; exclusive: number | null };
+  prices: Prices;
   is_public: boolean;
 };
 

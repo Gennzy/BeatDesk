@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { validateBeat, type Prices } from "@/lib/beat-validation";
+import { validateBeat } from "@/lib/beat-validation";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
+import { pricesForDb } from "@/lib/prices";
 
 type Body = {
   title?: unknown;
@@ -84,7 +85,7 @@ export async function POST(request: Request) {
       bpm: validated.value.bpm,
       key: validated.value.key,
       tags: validated.value.tags,
-      prices: validated.value.prices satisfies Prices,
+      prices: pricesForDb(validated.value.prices) satisfies Record<string, number | null>,
       currency: validated.value.currency,
       mp3_url: mp3Url,
       cover_url: coverUrl,

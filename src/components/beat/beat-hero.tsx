@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { ShortLinkButton } from "@/components/beats/short-link-button";
 import { formatMoney } from "@/lib/currency";
+import { PRICE_KEYS, priceHint, priceLabel } from "@/lib/prices";
 import { useI18n } from "@/lib/i18n/provider";
+import type { Prices } from "@/lib/prices";
 
 export type BeatHeroData = {
   id: string;
@@ -21,16 +23,17 @@ export type BeatHeroData = {
   bpm: number;
   musicalKey: string;
   tags: string[];
-  prices: { mp3: number | null; bundle: number | null; exclusive: number | null };
+  prices: Prices;
   currency?: string;
   formats: string[];
 };
 
-const TIERS = [
-  { key: "mp3", label: "MP3", hint: "Бит + теги" },
-  { key: "bundle", label: "MP3 + WAV", hint: "Бит и волна" },
-  { key: "exclusive", label: "Эксклюзив", hint: "Все файлы, права" },
-] as const;
+/**
+ * Уровни берём из общего списка цен, а не пишем здесь свои.
+ *
+ * Список был продублирован, и когда появился Track Out, карточка продолжила
+ * бы показывать три уровня из четырёх — тихо и без ошибок.
+ */
 
 function money(value: number, currency?: string): string {
   return formatMoney(value, currency);
@@ -44,9 +47,12 @@ export function BeatHero({ beat, isOwner }: { beat: BeatHeroData; isOwner: boole
 
   const active = track?.id === beat.id && isPlaying;
   const playable = Boolean(beat.audioUrl);
-  const tiers = TIERS.map((tier) => ({ ...tier, value: beat.prices[tier.key] })).filter(
-    (tier) => tier.value !== null,
-  );
+  const tiers = PRICE_KEYS.map((key) => ({
+    key,
+    label: priceLabel[key],
+    hint: priceHint[key],
+    value: beat.prices[key],
+  })).filter((tier) => tier.value !== null);
 
   async function copyPrices() {
     const line = tiers.map((tier) => `${tier.label} ${money(tier.value as number, currency)}`).join(" · ");

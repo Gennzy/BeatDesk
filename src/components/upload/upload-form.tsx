@@ -139,7 +139,8 @@ export function UploadForm({ userId }: { userId: string }) {
       files: {},
       prices: {
         mp3: toNumber(form.get("priceMp3")),
-        bundle: toNumber(form.get("priceBundle")),
+        wav: toNumber(form.get("priceBundle")),
+        trackout: toNumber(form.get("priceTrackout")),
         exclusive: toNumber(form.get("priceExclusive")),
       },
       // Форма хранит валюту в состоянии и кладёт в hidden-поле, но берём
@@ -254,7 +255,7 @@ export function UploadForm({ userId }: { userId: string }) {
         <div className="flex flex-col gap-8">
           <SectionHead label={t("upload.sectionPrices")} hint={t("upload.pricesNote")} />
 
-          <div className="grid gap-6 sm:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <Field label={t("upload.currency")}>
               <CurrencyPicker name="currency" value={currency} onChange={setCurrency} />
             </Field>
@@ -264,6 +265,9 @@ export function UploadForm({ userId }: { userId: string }) {
             </Field>
             <Field label={t("upload.priceBundle")} optional={currencyHint}>
               <Input name="priceBundle" type="number" inputMode="numeric" placeholder="1500" className="font-mono" />
+            </Field>
+            <Field label={t("upload.priceTrackout")} hint={t("upload.priceTrackoutHint")} optional={currencyHint}>
+              <Input name="priceTrackout" type="number" inputMode="numeric" placeholder="2500" className="font-mono" />
             </Field>
             <Field label={t("upload.priceExclusive")} optional={currencyHint}>
               <Input name="priceExclusive" type="number" inputMode="numeric" placeholder="5000" className="font-mono" />

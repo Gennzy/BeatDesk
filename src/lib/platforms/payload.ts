@@ -1,4 +1,5 @@
 import { hashtagList, priceLine, typeBeatLine } from "@/lib/distribution";
+import type { Prices } from "@/lib/prices";
 
 export type PublishBeat = {
   id: string;
@@ -7,7 +8,7 @@ export type PublishBeat = {
   bpm: number;
   musicalKey: string;
   tags: string[];
-  prices: { mp3: number | null; bundle: number | null; exclusive: number | null };
+  prices: Prices;
   currency?: string;
   username: string;
   mp3Url: string | null;

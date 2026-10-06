@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/avatar";
 import type { FeedBeat } from "@/lib/feed";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/currency";
+import { PRICE_KEYS } from "@/lib/prices";
 import { trackFromBeat } from "@/lib/player";
 import { useI18n } from "@/lib/i18n/provider";
 
@@ -40,6 +41,11 @@ function Cover({ beat, noCoverLabel }: { beat: FeedBeat; noCoverLabel: string })
 export function BeatCard({ beat }: { beat: FeedBeat }) {
   const { t } = useI18n();
   const { track, isPlaying, play, toggle, plays } = usePlayer();
+
+  // Остальные уровни, кроме MP3: он вынесен крупно отдельной строкой.
+  const rest = PRICE_KEYS.map((key) => ({ key, value: beat.prices[key], short: key === "trackout" ? "TRACKOUT" : key === "wav" ? "WAV" : "EXCL" })).filter(
+    (tier) => tier.value !== null && tier.key !== "mp3",
+  );
 
   const active = track?.id === beat.id && isPlaying;
   const playable = Boolean(beat.mp3Url);
@@ -140,11 +146,14 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
             </span>
           ) : null}
 
-          {beat.prices.bundle || beat.prices.exclusive ? (
+          {/*
+           * Уровни показываем через общий список, иначе новый Track Out
+           * пришлось бы дописывать сюда вторым списком — и он однажды
+           * тихо пропадёт с карточки.
+           */}
+          {rest.length > 0 ? (
             <span className="mono text-[11px] text-mute">
-              {beat.prices.bundle ? `WAV ${beat.prices.bundle}` : null}
-              {beat.prices.bundle && beat.prices.exclusive ? " · " : null}
-              {beat.prices.exclusive ? `EXCL ${beat.prices.exclusive}` : null}
+              {rest.map((tier) => `${tier.short} ${formatMoney(tier.value, beat.currency)}`).join(" · ")}
             </span>
           ) : null}
         </div>
