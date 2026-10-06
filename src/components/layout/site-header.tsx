@@ -101,16 +101,36 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
                   </form>
                 </>
               ) : (
+                /*
+                 * В шапке одна главная кнопка, а не две.
+                 *
+                 * Раньше рядом стояли залитые «Войти» и «Регистрация»: взгляд
+                 * цеплялся за обе и не решал, куда нажимать. Регистрация живёт
+                 * на странице входа, тут она тихая ссылка.
+                 */
                 <>
-                  <Link href="/login" className={buttonClass({ variant: "ghost", size: "sm" })}>
-                    {t("nav.login")}
+                  <Link href="/login" className="label text-mute transition-colors hover:text-paper">
+                    {t("nav.signup")}
                   </Link>
                   <Link href="/login" className={buttonClass({ variant: "signal", size: "sm" })}>
-                    {t("nav.signup")}
+                    {t("nav.login")}
                   </Link>
                 </>
               )}
             </div>
+
+            {/*
+             * Гость на телефоне получает ту же одну кнопку входа, что и на
+             * широком экране: раньше здесь была только «Войти», а рядом на
+             * странице входа ждала «Регистрация» — путь различался.
+             */}
+            {!user ? (
+              <div className="sm:hidden">
+                <Link href="/login" className={buttonClass({ variant: "signal", size: "sm" })}>
+                  {t("nav.login")}
+                </Link>
+              </div>
+            ) : null}
 
             <div className="flex items-center gap-3 sm:hidden">
               {user ? (
@@ -120,11 +140,7 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
                     <Avatar user={user} size="md" />
                   </Link>
                 </>
-              ) : (
-                <Link href="/login" className={buttonClass({ variant: "ghost", size: "sm" })}>
-                  {t("nav.login")}
-                </Link>
-              )}
+              ) : null}
             </div>
 
             <button
