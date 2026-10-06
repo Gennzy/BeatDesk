@@ -7,6 +7,14 @@ export type { Prices };
 
 export const MAX_TITLE_LENGTH = 120;
 export const MAX_TAGS = 12;
+
+/**
+ * Короче двух символов тега нет.
+ *
+ * На карточке «#G» стоял рядом с настоящими тегами: он ничего не ищет, но
+ * площадка показывает его как жанр и размывает выдачу.
+ */
+export const MIN_TAG_LENGTH = 2;
 export const MAX_TAG_LENGTH = 24;
 export const MAX_ARTISTS = 10;
 export const MAX_PRICE = 10_000_000;
@@ -50,7 +58,12 @@ export function normalizeKey(input: unknown): string | null {
     .replace(/♯/g, "#")
     .replace(/♭/g, "b");
 
-  const match = /^([A-Ga-g])\s*(#|b)?\s*([a-zа-я]{1,7})?$/.exec(raw);
+  /*
+   * Лад принимаем в любом регистре: дальше он всё равно приводится к
+   * нижнему. Раньше класс был только строчный, и «F# MAJOR» не разбирался
+   * вовсе — человек терял тональность молча, без всякой ошибки.
+   */
+  const match = /^([A-Ga-g])\s*(#|b)?\s*([A-Za-zа-яЁё]{1,7})?$/.exec(raw);
   if (!match) return null;
 
   const root = match[1].toUpperCase();
@@ -66,7 +79,14 @@ export function normalizeKey(input: unknown): string | null {
   return MUSICAL_KEYS.includes(key) ? key : null;
 }
 
-/** Теги живут без решётки: #140 из свободного ввода — это не тег, а темп. */
+/**
+ * Теги живут без решётки: #140 из свободного ввода — это не тег, а темп.
+ *
+ * Отсеиваем и однобуквенные: в карточке бита «#G» занимает место рядом с
+ * настоящими тегами и ничего не ищет. Площадка покажет его как отдельный
+ * жанр, и выдача станет чуть менее точной. Раньше такое отсеивали только
+ * при отправке в телеграм, а в самой карточке мусор оставался.
+ */
 export function normalizeTags(input: unknown): string[] {
   if (!Array.isArray(input)) return [];
 
@@ -76,6 +96,8 @@ export function normalizeTags(input: unknown): string[] {
     const tag = String(raw).replace(/^#/, "").trim().toLowerCase().slice(0, MAX_TAG_LENGTH);
     if (!tag || !TAG_PATTERN.test(tag)) continue;
     if (/^\d{1,3}$/.test(tag)) continue;
+    // Одна буква — это опечатка или остаток имени артиста, а не тег.
+    if (tag.length < MIN_TAG_LENGTH) continue;
     seen.add(tag);
     if (seen.size >= MAX_TAGS) break;
   }
