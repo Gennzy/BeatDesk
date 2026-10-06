@@ -4,6 +4,11 @@ export type PlatformId =
   | "vk"
   | "youtube"
   | "beatchain"
+  | "beatmakertv"
+  | "tiktok"
+  | "instagram"
+  | "splice"
+  | "tracklib"
   | "beatstars"
   | "airbit"
   | "bandcamp"
@@ -127,6 +132,66 @@ export const PLATFORMS: Platform[] = [
     openUrl: "https://airbit.com/dashboard",
     note: "Маркетплейс битов с лицензиями и контрактами. Загрузка только через Dashboard, открытого API для автозагрузки нет. Поля и имена файлов — в блоке ниже.",
     docsUrl: "https://help.airbit.com/hc/en-us/articles/24166105043865-How-to-Upload-Beats",
+  },
+  {
+    id: "beatmakertv",
+    label: "Beatmaker.tv",
+    group: "market",
+    level: "manual",
+    kind: "manual",
+    auth: "none",
+    sendsFile: false,
+    openUrl: "https://beatmaker.tv/panel/add-beat",
+    note: "Главная площадка битов в СНГ: около 20 тысяч битмейкеров и 95 тысяч битов в продаже, цены в рублях. Публичного API для загрузки нет, поэтому мы собираем всё для вставки: название, артистов, BPM, тональность, теги и имена файлов.",
+    docsUrl: "https://beatmaker.tv/beats/tag/trap",
+  },
+  {
+    id: "tiktok",
+    label: "TikTok",
+    group: "broadcast",
+    level: "manual",
+    kind: "manual",
+    auth: "none",
+    sendsFile: true,
+    openUrl: "https://www.tiktok.com/upload",
+    note: "У TikTok есть свой API для публикации видео, но он открыт только после проверки приложения и отдельного согласия пользователя. Пока доступа нет — загружай видео сам, а заголовок, описание и теги мы уже собрали.",
+    docsUrl: "https://developers.tiktok.com/doc/content-posting-api-get-started",
+  },
+  {
+    id: "instagram",
+    label: "Instagram",
+    group: "broadcast",
+    level: "manual",
+    kind: "manual",
+    auth: "none",
+    sendsFile: true,
+    openUrl: "https://www.instagram.com/",
+    note: "Публиковать от имени аккаунта можно через Facebook Graph API, но только для бизнес-аккаунта и после проверки приложения. Пока вход ручной: текст и имена файлов готовы.",
+    docsUrl: "https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login",
+  },
+  {
+    id: "splice",
+    label: "Splice",
+    group: "market",
+    level: "manual",
+    kind: "manual",
+    auth: "none",
+    sendsFile: false,
+    openUrl: "https://www.splice.com/profile/sounds",
+    note: "Библиотека сэмплов и лупов, а не маркетплейс битов. Публичного API для выкладки нет. Помещается сюда разбор на стемы: из бита получаются файлы по дорожкам.",
+    docsUrl: "https://support.splice.com/hc/en-us",
+  },
+  {
+    id: "tracklib",
+    label: "Tracklib",
+    group: "market",
+    level: "manual",
+    kind: "manual",
+    auth: "none",
+    sendsFile: false,
+    openUrl: "https://www.tracklib.com/my/samples",
+    note: "Библиотека звуков для продакшена. Открытого API для загрузки нет, загрузка через кабинет. Поля и имена файлов — в блоке ниже.",
+    docsUrl: "https://www.tracklib.com/terms",
   },
   {
     id: "beatchain",
