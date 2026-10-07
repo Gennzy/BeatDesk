@@ -14,6 +14,8 @@ export type FeedFilters = {
   bpmMax?: number;
 };
 
+import type { SaleState } from "@/lib/sales/state";
+
 export type FeedBeat = {
   id: string;
   title: string;
@@ -29,6 +31,11 @@ export type FeedBeat = {
   username: string;
   avatarUrl: string | null;
   isPublic: boolean;
+  /**
+   * Состояние продажи. Отдельное от is_public: бит может лежать на витрине
+   * публично, но быть уже продан или забронирован другим покупателем.
+   */
+  saleState: SaleState;
   plays: number;
   createdAt: string;
   updatedAt: string | null;
@@ -46,6 +53,7 @@ type BeatRow = {
   prices: FeedBeat["prices"] | null;
   currency: string | null;
   is_public: boolean;
+  sale_state?: SaleState | null;
   plays?: number;
   created_at: string;
   updated_at?: string | null;
@@ -53,7 +61,7 @@ type BeatRow = {
 };
 
 const BEAT_COLUMNS =
-  "id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, plays, created_at, updated_at, profiles(username, avatar_url)";
+  "id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, created_at, updated_at, profiles(username, avatar_url)";
 
 /** Пока не применена миграция 0007, колонок plays и updated_at ещё нет в базе. */
 const LEGACY_BEAT_COLUMNS =
@@ -76,6 +84,7 @@ function serialize(row: BeatRow): FeedBeat {
     username: profile?.username ?? "unknown",
     avatarUrl: profile?.avatar_url ?? null,
     isPublic: row.is_public,
+    saleState: (row.sale_state ?? "draft") as SaleState,
     plays: row.plays ?? 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? null,

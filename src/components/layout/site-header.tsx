@@ -57,10 +57,14 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
   const close = () => setOpen(false);
 
   const links = [
+    /*
+     * Публичную навигацию видят и гости, поэтому инструменты продавца в ней
+     * стояли зря: «Загрузить бит» и «Студия» вели в личные инструменты,
+     * а «Каналы» вообще требовали входа. Для вошедшего остаётся лента и
+     * кабинет, где собрано всё остальное.
+     */
     { href: "/", label: t("nav.feed") },
-    ...(user ? [{ href: "/share", label: t("nav.share") }] : []),
-    { href: "/studio", label: t("nav.studio") },
-    { href: "/upload", label: t("nav.upload") },
+    ...(user ? [{ href: "/cabinet", label: t("nav.cabinet") }] : []),
   ];
 
   return (

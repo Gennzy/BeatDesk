@@ -343,7 +343,24 @@ const guestOrder = await guestContext.newPage();
     const studioText = await studio.evaluate(() => document.body.innerText);
     check("вкладка студии открывается гостю", /РАЗБОР БИТА/i.test(studioText));
     check("студия обещает разбор на устройстве", /НЕ ЗАГРУЖАЕТСЯ НА СЕРВЕР/i.test(studioText));
-    check("в навигации есть студия", await studio.evaluate(() => !!document.querySelector('a[href="/studio"]')));
+    /*
+     * Инструменты битмейкера убраны из общей навигации: гостю они не нужны,
+     * а «Студия» вела в личный инструмент. Проверяем новое правило — в шапке
+     * их нет, и вместо них гостю не предлагается кабинет, который требует
+     * входа.
+     */
+    check(
+      "инструментов продавца в навигации нет",
+      await studio.evaluate(
+        () => !document.querySelector('a[href="/studio"]') && !document.querySelector('a[href="/upload"]'),
+      ),
+    );
+    // Сессия к этому моменту уже создана регистрацией, поэтому вошедший
+    // битмейкер видит в шапке кабинет вместо инструментов.
+    check(
+      "вошедшему в навигации есть кабинет",
+      await studio.evaluate(() => !!document.querySelector('a[href="/cabinet"]')),
+    );
 
     // Разбор настоящего файла: клики на 140 BPM, для которых ответ известен.
     const fixture = makeClickFixture();

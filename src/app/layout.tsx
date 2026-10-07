@@ -84,7 +84,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <div className="flex min-h-svh flex-col">
                   <SiteHeader user={user} />
                   <main className="flex-1 pb-20 pb-[calc(5rem+env(safe-area-inset-bottom))]">{children}</main>
-                  <SiteFooter />
+                  <SiteFooter user={user} />
                   <PlayerBar />
                 </div>
               </ToastProvider>

@@ -3,8 +3,9 @@ import Link from "next/link";
 import { Logo } from "@/components/layout/logo";
 import { Container } from "@/components/ui/container";
 import { getT } from "@/lib/i18n/server";
+import type { SessionUser } from "@/lib/supabase/user";
 
-export async function SiteFooter() {
+export async function SiteFooter({ user }: { user: SessionUser | null }) {
   const t = await getT();
 
   return (
@@ -21,12 +22,14 @@ export async function SiteFooter() {
             <Link href="/" className="text-sm text-paper transition-colors hover:text-signal">
               {t("nav.feed")}
             </Link>
-            <Link href="/upload" className="text-sm text-paper transition-colors hover:text-signal">
-              {t("nav.upload")}
+            <Link href="/cabinet" className="text-sm text-paper transition-colors hover:text-signal">
+              {t("nav.cabinet")}
             </Link>
-            <Link href="/login" className="text-sm text-paper transition-colors hover:text-signal">
-              {t("nav.login")}
-            </Link>
+            {!user ? (
+              <Link href="/login" className="text-sm text-paper transition-colors hover:text-signal">
+                {t("nav.login")}
+              </Link>
+            ) : null}
           </div>
 
           <div className="flex flex-col gap-4 md:items-end md:text-right">

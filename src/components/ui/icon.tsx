@@ -12,6 +12,9 @@ import { cn } from "@/lib/cn";
  */
 export type IconName =
   | "bell"
+  | "upload"
+  | "waveform"
+  | "broadcast"
   | "heart"
   | "reply"
   | "follow"
@@ -49,6 +52,15 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M8 4h8v4a4 4 0 0 1-8 0V4Z" />
       <path d="M8 5.5H5.5A2.5 2.5 0 0 0 8 8M16 5.5h2.5A2.5 2.5 0 0 1 16 8" />
       <path d="M12 12v3.5M9 20h6M10 20l.8-4.5h2.4L14 20" />
+    </>
+  ),
+  upload: <path d="M12 20V10m0 0 3.5 3.5M12 10 8.5 13.5M5 7V5.5A1.5 1.5 0 0 1 6.5 4h11A1.5 1.5 0 0 1 19 5.5V7" />,
+  waveform: <path d="M3 12h2m2-4v8m3-11v14m3-10v6m3-9v12m3-8v4m2-3h2" />,
+  broadcast: (
+    <>
+      <path d="M12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
+      <path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 16.2a6 6 0 0 0 0-8.4" />
+      <path d="M4.9 4.9a10 10 0 0 0 0 14.2M19.1 19.1a10 10 0 0 0 0-14.2" />
     </>
   ),
   download: <path d="M12 4v10m0 0 3.5-3.5M12 14 8.5 10.5M5 17v1.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V17" />,

@@ -1,4 +1,5 @@
 import { SiteFooter } from "@/components/layout/site-footer";
+import type { SessionUser } from "@/lib/supabase/user";
 
 /**
  * Заглушка на время разработки.
@@ -6,7 +7,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
  * Показывает, что сервис скоро открывается, и ничего лишнего: ссылок на
  * разделы нет, чтобы человек не попал в недостроенный интерфейс.
  */
-export function ComingSoon() {
+export function ComingSoon({ user }: { user: SessionUser | null }) {
   return (
     <div className="flex min-h-svh flex-col">
       {/*
@@ -33,7 +34,7 @@ export function ComingSoon() {
         </div>
       </main>
 
-      <SiteFooter />
+      <SiteFooter user={user} />
     </div>
   );
 }
