@@ -2,21 +2,37 @@ import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
-const control =
-  "w-full rounded-xs border border-line bg-ink-2 px-3 text-paper transition-colors duration-150 hover:border-line-2 focus:border-signal focus-visible:border-signal focus-visible:ring-2 focus-visible:ring-signal/25 focus-visible:outline-none disabled:opacity-50";
-
-export function Input({ className, ...rest }: ComponentPropsWithoutRef<"input">) {
-  return <input className={cn(control, "h-12 text-base sm:text-sm", className)} {...rest} />;
+/**
+ * Поля ввода.
+ *
+ * Стиль поля живёт в globals.css как .control: семь компонентов рисовали поля
+ * сами и делали это по-разному — высотой, рамкой, поведением при фокусе.
+ * Здесь только размеры: крупный для форм, компактный для панелей и подборок.
+ */
+export function Input({
+  className,
+  scale = "md",
+  ...rest
+}: /*
+ * `size` у нативного input уже означает ширину в символах, поэтому размер
+ * примитива назван scale: иначе пересечение типов даёт never, и любая
+ * передача размера ломает сборку.
+ */
+Omit<ComponentPropsWithoutRef<"input">, "size"> & { scale?: "sm" | "md" }) {
+  return <input className={cn("control", scale === "sm" ? "control-sm" : "h-12 text-base sm:text-sm", className)} {...rest} />;
 }
 
-export function Textarea({ className, ...rest }: ComponentPropsWithoutRef<"textarea">) {
-  return <textarea className={cn(control, "min-h-32 resize-y py-3 text-sm leading-relaxed", className)} {...rest} />;
+export function Textarea({
+  className,
+  ...rest
+}: ComponentPropsWithoutRef<"textarea">) {
+  return <textarea className={cn("control min-h-32 resize-y py-3 text-sm leading-relaxed", className)} {...rest} />;
 }
 
 export function Select({ className, children, ...rest }: ComponentPropsWithoutRef<"select">) {
   return (
     <div className="relative">
-      <select className={cn(control, "h-12 cursor-pointer pr-10 text-sm", className)} {...rest}>
+      <select className={cn("control h-12 cursor-pointer pr-10 text-sm", className)} {...rest}>
         {children}
       </select>
       <svg
@@ -37,6 +53,7 @@ export function Field({
   optional,
   children,
   className,
+  htmlFor,
 }: {
   label: string;
   hint?: string;
@@ -44,11 +61,21 @@ export function Field({
   optional?: string;
   children: ReactNode;
   className?: string;
+  /**
+   * Связь подписи с полем.
+   *
+   * Без неё клик по подписи не ставит курсор, а программа чтения с экрана
+   * читает «поле» вместо названия. Проставить id в разметке забывают
+   * почти всегда, поэтому связь передаётся явно.
+   */
+  htmlFor?: string;
 }) {
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       <div className="flex items-baseline justify-between gap-4">
-        <span className="label text-paper">{label}</span>
+        <label htmlFor={htmlFor} className="label text-paper">
+          {label}
+        </label>
         {optional ? <span className="label text-mute">{optional}</span> : null}
       </div>
       {children}

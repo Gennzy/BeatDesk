@@ -51,6 +51,13 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
   return (
     <article className={cn("surface surface-interactive group flex h-full flex-col", active && "border-signal/50")}>
       <div className="relative aspect-square overflow-hidden bg-ink-3">
+        {/*
+          Ссылка на обложке идёт выше картинки намеренно. При наведении картинка
+          получает transform, а такой элемент рисуется поверх соседей без
+          z-index: клик по обложке переставал попадать в ссылку ровно в тот
+          момент, когда человек наводил мышь.
+        */}
+        <Link href={`/beats/${beat.id}`} tabIndex={-1} aria-hidden className="absolute inset-0 z-10 focusable" />
         {beat.coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -81,7 +88,7 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
             aria-label={active ? t("player.pause") : t("player.play")}
             aria-pressed={active}
             className={cn(
-              "absolute bottom-3 left-3 grid size-12 place-items-center rounded-full border backdrop-blur-sm transition-colors duration-200",
+              "absolute bottom-3 left-3 z-20 grid size-12 place-items-center rounded-full border backdrop-blur-sm transition-colors duration-200",
               active
                 ? "border-signal bg-signal text-ink"
                 : "border-line-2 bg-ink/80 text-paper hover:border-signal hover:bg-signal hover:text-ink",
@@ -98,13 +105,13 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
             )}
           </button>
         ) : (
-          <span className="label absolute bottom-3 left-3 rounded-full border border-line bg-ink/85 px-3 py-1.5 text-mute">
+          <span className="label absolute bottom-3 left-3 z-20 rounded-full border border-line bg-ink/85 px-3 py-1.5 text-mute">
             {t("feed.noAudio")}
           </span>
         )}
 
         {active ? (
-          <span className="absolute inset-x-0 bottom-0 block">
+          <span className="absolute inset-x-0 bottom-0 z-20 block">
             <ProgressLine value={duration > 0 ? currentTime / duration : 0} label={t("player.progress")} />
           </span>
         ) : null}
@@ -131,7 +138,7 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
           <span>{beat.bpm} BPM</span>
           {beat.musicalKey ? (
             <>
-              <span aria-hidden className="text-line-2">
+              <span aria-hidden className="text-mute/50">
                 /
               </span>
               <span>{beat.musicalKey}</span>
@@ -139,7 +146,7 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
           ) : null}
           {ownPlays > 0 ? (
             <>
-              <span aria-hidden className="text-line-2">
+              <span aria-hidden className="text-mute/50">
                 /
               </span>
               <span>

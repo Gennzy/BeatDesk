@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n/provider";
 import type { Platform } from "@/lib/platforms/registry";
 
@@ -22,13 +23,14 @@ export function ConnectForm({ platform, busy = false, onConnect }: Props) {
       {(platform.fields ?? []).map((field) => (
         <label key={field.key} className="flex flex-col gap-1.5">
           <span className="label text-paper">{field.label}</span>
-          <input
+          <Input
+            scale="sm"
             value={values[field.key] ?? ""}
             onChange={(event) => setValues((prev) => ({ ...prev, [field.key]: event.target.value }))}
             placeholder={field.placeholder}
             autoComplete="off"
             spellCheck={false}
-            className="mono h-10 rounded-xs border border-line bg-ink px-3 text-sm text-paper"
+            className="mono"
           />
           {field.hint ? <span className="text-[11px] text-mute">{field.hint}</span> : null}
         </label>

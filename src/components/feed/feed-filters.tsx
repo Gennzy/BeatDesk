@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
+import { Input, Select } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n/provider";
 import { MUSICAL_KEYS } from "@/lib/keys";
@@ -74,9 +75,6 @@ function FiltersBar({ search, resultCount }: { search: string; resultCount: numb
       ? `${resultCount} ${pluralRu(resultCount, "бит", "бита", "битов")}`
       : `${resultCount} ${pluralEn(resultCount, "beat", "beats")}`;
 
-  const inputClass =
-    "h-9 min-w-0 flex-1 border border-line bg-ink px-3 text-base text-paper placeholder:text-mute/60 sm:text-sm";
-
   return (
     <div className="sticky top-[4.5rem] z-20 -mx-4 border-b border-line bg-ink/90 px-4 backdrop-blur-md sm:mx-0 sm:px-0">
       <div className="flex flex-wrap items-center gap-2 py-3">
@@ -102,18 +100,22 @@ function FiltersBar({ search, resultCount }: { search: string; resultCount: numb
           ))}
         </div>
 
-        <select
-          value={filters.sort}
-          onChange={(event) => apply({ ...filters, sort: event.target.value as FeedFilterState["sort"] })}
-          aria-label={t("feed.sort")}
-          className="label h-9 shrink-0 cursor-pointer border border-line bg-ink px-2 text-mute sm:hidden"
-        >
-          <option value="new">{t("feed.new")}</option>
-          <option value="popular">{t("feed.popular")}</option>
-        </select>
+        <div className="sm:hidden">
+          <Select
+            value={filters.sort}
+            onChange={(event) => apply({ ...filters, sort: event.target.value as FeedFilterState["sort"] })}
+            aria-label={t("feed.sort")}
+            className="control-sm label w-auto shrink-0 text-mute"
+          >
+            <option value="new">{t("feed.new")}</option>
+            <option value="popular">{t("feed.popular")}</option>
+          </Select>
+        </div>
 
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <input
+          <Input
+            id="feed-search"
+            scale="sm"
             value={filters.query}
             onChange={(event) => setFilters({ ...filters, query: event.target.value })}
             onKeyDown={(event) => {
@@ -121,7 +123,7 @@ function FiltersBar({ search, resultCount }: { search: string; resultCount: numb
             }}
             placeholder={t("feed.search")}
             aria-label={t("feed.search")}
-            className={cn(inputClass, "font-mono")}
+            className="font-mono"
           />
 
           <button
@@ -153,10 +155,10 @@ function FiltersBar({ search, resultCount }: { search: string; resultCount: numb
         <div className="flex flex-wrap items-end gap-3 pb-4">
           <label className="flex flex-col gap-1.5">
             <span className="label text-paper">{t("feed.key")}</span>
-            <select
+            <Select
               value={filters.key}
               onChange={(event) => apply({ ...filters, key: event.target.value })}
-              className="h-9 cursor-pointer border border-line bg-ink px-3 text-sm text-paper"
+              className="control-sm"
             >
               <option value="">{t("feed.anyKey")}</option>
               {MUSICAL_KEYS.map((musicalKey) => (
@@ -164,32 +166,36 @@ function FiltersBar({ search, resultCount }: { search: string; resultCount: numb
                   {musicalKey}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
 
           <label className="flex flex-col gap-1.5">
             <span className="label text-paper">{t("feed.bpmMin")}</span>
-            <input
+            <Input
               type="number"
               inputMode="numeric"
+              scale="sm"
               value={filters.bpmMin}
               onChange={(event) => setFilters({ ...filters, bpmMin: event.target.value })}
               onBlur={() => apply(filters)}
               placeholder="40"
-              className="h-9 w-24 border border-line bg-ink px-3 font-mono text-sm text-paper"
+              aria-label={t("feed.bpmMin")}
+              className="w-24 font-mono"
             />
           </label>
 
           <label className="flex flex-col gap-1.5">
             <span className="label text-paper">{t("feed.bpmMax")}</span>
-            <input
+            <Input
               type="number"
               inputMode="numeric"
+              scale="sm"
               value={filters.bpmMax}
               onChange={(event) => setFilters({ ...filters, bpmMax: event.target.value })}
               onBlur={() => apply(filters)}
               placeholder="300"
-              className="h-9 w-24 border border-line bg-ink px-3 font-mono text-sm text-paper"
+              aria-label={t("feed.bpmMax")}
+              className="w-24 font-mono"
             />
           </label>
 
