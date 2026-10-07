@@ -1,3 +1,5 @@
+import type { TierId } from "./delivery-rules";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -9,6 +11,8 @@ import {
   tempoRelation,
   TEMPO_TOLERANCE,
 } from "./metadata";
+
+const TIERS_SOLD: TierId[] = ["mp3", "bundle", "trackout", "exclusive"];
 
 describe("разбор тональности", () => {
   it("читает обычную запись", () => {
@@ -99,11 +103,11 @@ describe("checkMetadata: темп", () => {
   const measured = { bpm: 140, key: "F# major", keyConfidence: 0.8 };
 
   it("совпадение не даёт замечаний", () => {
-    expect(checkMetadata("beatstars", { bpm: 140, key: "F# major", title: "Пыль" }, measured)).toEqual([]);
+    expect(checkMetadata(TIERS_SOLD, { bpm: 140, key: "F# major", title: "Пыль" }, measured)).toEqual([]);
   });
 
-  it("настоящее расхождение на BeatStars мешает выкладке", () => {
-    const findings = checkMetadata("beatstars", { bpm: 90, key: "F# major", title: "Пыль" }, measured);
+  it("настоящее расхождение мешает продаже", () => {
+    const findings = checkMetadata(TIERS_SOLD, { bpm: 90, key: "F# major", title: "Пыль" }, measured);
     const tempo = findings.find((item) => item.id === "tempo");
 
     expect(tempo?.severity).toBe("block");
@@ -111,14 +115,22 @@ describe("checkMetadata: темп", () => {
     expect(tempo?.suggestion).toContain("140");
   });
 
-  it("на площадке без строгих правил то же расхождение — предупреждение", () => {
-    expect(checkMetadata("beatchain", { bpm: 90, key: "F# major", title: "Пыль" }, measured).find((item) => item.id === "tempo")?.severity).toBe("warn");
+  it("когда ничего не продаётся, то же расхождение — предупреждение", () => {
+    // Спорить не о чем, но и промолчать нельзя: к моменту продажи расхождение
+    // надо убрать, иначе покупатель получит не тот бит.
+    expect(checkMetadata([], { bpm: 90, key: "F# major", title: "Пыль" }, measured).find((item) => item.id === "tempo")?.severity).toBe("warn");
+  });
+
+  it("любой проданный уровень делает расхождение блокером", () => {
+    for (const tiers of [["mp3"], ["bundle"], ["trackout"], ["exclusive"]] as TierId[][]) {
+      expect(checkMetadata(tiers, { bpm: 90, key: "F# major", title: "Пыль" }, measured).find((item) => item.id === "tempo")?.severity, tiers.join()).toBe("block");
+    }
   });
 
   it("70 и 140 не называются ошибкой, а разбираются как два темпа одного бита", () => {
     // Ключевой случай: бит, записанный в половинном темпе, — не ошибка,
     // а два варианта одного и того же.
-    const findings = checkMetadata("beatstars", { bpm: 70, key: "F# major", title: "Пыль" }, measured);
+    const findings = checkMetadata(TIERS_SOLD, { bpm: 70, key: "F# major", title: "Пыль" }, measured);
     const tempo = findings.find((item) => item.id === "tempo");
 
     expect(tempo?.severity).toBe("warn");
@@ -127,7 +139,7 @@ describe("checkMetadata: темп", () => {
   });
 
   it("и обратный случай тоже разбирается", () => {
-    const findings = checkMetadata("beatstars", { bpm: 280, key: "F# major", title: "Пыль" }, measured);
+    const findings = checkMetadata(TIERS_SOLD, { bpm: 280, key: "F# major", title: "Пыль" }, measured);
 
     expect(findings.find((item) => item.id === "tempo")?.message).toContain("удвоенный");
   });
@@ -136,8 +148,8 @@ describe("checkMetadata: темп", () => {
 describe("checkMetadata: тональность", () => {
   const measured = { bpm: 140, key: "F# major", keyConfidence: 0.8 };
 
-  it("другая тональность — блокер на BeatStars", () => {
-    const findings = checkMetadata("beatstars", { bpm: 140, key: "C# major", title: "Пыль" }, measured);
+  it("другая тональность — блокер", () => {
+    const findings = checkMetadata(TIERS_SOLD, { bpm: 140, key: "C# major", title: "Пыль" }, measured);
     const key = findings.find((item) => item.id === "key");
 
     expect(key?.severity).toBe("block");
@@ -147,7 +159,7 @@ describe("checkMetadata: тональность", () => {
 
   it("тот же аккорд плоским письмом — предупреждение, а не блокер", () => {
     // Db major и F# major — одна тональность. Объявлять ошибкой нельзя.
-    const findings = checkMetadata("beatstars", { bpm: 140, key: "Gb major", title: "Пыль" }, measured);
+    const findings = checkMetadata(TIERS_SOLD, { bpm: 140, key: "Gb major", title: "Пыль" }, measured);
     const key = findings.find((item) => item.id === "key");
 
     expect(key?.severity).toBe("warn");
@@ -156,11 +168,11 @@ describe("checkMetadata: тональность", () => {
   });
 
   it("минор не путается с мажором", () => {
-    expect(checkMetadata("beatstars", { bpm: 140, key: "F# minor", title: "Пыль" }, measured).some((item) => item.id === "key")).toBe(true);
+    expect(checkMetadata(TIERS_SOLD, { bpm: 140, key: "F# minor", title: "Пыль" }, measured).some((item) => item.id === "key")).toBe(true);
   });
 
   it("неуверенная тональность запрещает публиковать догадку", () => {
-    const findings = checkMetadata("beatstars", { bpm: 140, key: "F# major", title: "Пыль" }, {
+    const findings = checkMetadata(TIERS_SOLD, { bpm: 140, key: "F# major", title: "Пыль" }, {
       ...measured,
       keyConfidence: 0.2,
     });
@@ -170,35 +182,35 @@ describe("checkMetadata: тональность", () => {
   });
 
   it("разные лады при одной ноте — тоже расхождение", () => {
-    const key = checkMetadata("beatstars", { bpm: 140, key: "F# minor", title: "Пыль" }, measured).find((item) => item.id === "key");
+    const key = checkMetadata(TIERS_SOLD, { bpm: 140, key: "F# minor", title: "Пыль" }, measured).find((item) => item.id === "key");
 
     expect(key?.message).toContain("разные");
   });
 
   it("неразобранная тональность не превращается в претензию", () => {
-    expect(checkMetadata("beatstars", { bpm: 140, key: "што-то", title: "Пыль" }, measured).some((item) => item.id === "key")).toBe(false);
+    expect(checkMetadata(TIERS_SOLD, { bpm: 140, key: "што-то", title: "Пыль" }, measured).some((item) => item.id === "key")).toBe(false);
   });
 });
 
 describe("checkMetadata: название", () => {
   const measured = { bpm: 140, key: "F# major", keyConfidence: 0.8 };
 
-  it("пустое название мешает на BeatStars", () => {
-    expect(checkMetadata("beatstars", { bpm: 140, key: "F# major" }, measured).find((item) => item.id === "title")?.severity).toBe("block");
+  it("пустое название мешает продаже", () => {
+    expect(checkMetadata(TIERS_SOLD, { bpm: 140, key: "F# major" }, measured).find((item) => item.id === "title")?.severity).toBe("block");
   });
 
   it("пробелы считаются пустым названием", () => {
-    expect(checkMetadata("beatstars", { bpm: 140, key: "F# major", title: "   " }, measured).some((item) => item.id === "title")).toBe(true);
+    expect(checkMetadata(TIERS_SOLD, { bpm: 140, key: "F# major", title: "   " }, measured).some((item) => item.id === "title")).toBe(true);
   });
 
   it("имя файла в названии — предупреждение, а не блокер", () => {
-    const title = checkMetadata("beatstars", { bpm: 140, key: "F# major", title: "Mimosa.wav" }, measured).find((item) => item.id === "title");
+    const title = checkMetadata(TIERS_SOLD, { bpm: 140, key: "F# major", title: "Mimosa.wav" }, measured).find((item) => item.id === "title");
 
     expect(title?.severity).toBe("warn");
     expect(title?.suggestion).toContain("расширение");
   });
 
   it("нормальное название не вызывает замечаний", () => {
-    expect(checkMetadata("beatstars", { bpm: 140, key: "F# major", title: "Mimosa" }, measured)).toEqual([]);
+    expect(checkMetadata(TIERS_SOLD, { bpm: 140, key: "F# major", title: "Mimosa" }, measured)).toEqual([]);
   });
 });

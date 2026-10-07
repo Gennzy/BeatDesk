@@ -1,14 +1,22 @@
-import { PLATFORMS, type PlatformId } from "./platform-rules";
+import { TAG_LIMITS, TIERS, type TierId } from "./delivery-rules";
 
 /**
  * «Выходной контроль», слой гигиены пакета.
  *
- * Формат проходит по формату, но выкладка всё равно летит в корзину.
- * Здесь живут вещи, о которых площадка молчит, а виноват всегда битмейкер:
- * стемы в тощем битре, обложка в триста пикселей, теги не в том поле.
+ * Формат проходит по формату, а заказ всё равно невыполним. Здесь живут
+ * вещи, из-за которых покупатель получает деньги назад:
+ *
+ * - уровень выставлен на продажу, а файла для него нет;
+ * - архив со стемами положен, но это не он;
+ * - в названии бита имя файла, и в выдаче оно выглядит мусором;
+ * - в тегах файла одно, в карточке другое.
+ *
+ * Главная проверка здесь — первая. Раньше её не было вовсе: битмейкер
+ * мог поставить цену на Track Out, не положив дорожки, и узнать об этом
+ * только когда покупатель оплатит.
  */
 
-/** Что лежит в пакете, как это видит человек перед отправкой. */
+/** Что лежит в бите, как это видит человек перед выкладкой. */
 export type PackageFacts = {
   title: string;
   bpm?: number;
@@ -17,9 +25,9 @@ export type PackageFacts = {
   genre?: string;
   mood?: string;
   tags?: string[];
-  /** Названия файлов, которые поедут на площадку. */
+  /** Какие файлы лежат в бите. */
   files: { name: string; role: "wav" | "mp3" | "stems" | "artwork" | "other" }[];
-  /** Что записано в самом WAV: читаем теги файла. */
+  /** Что записано в самом файле: читаем теги. */
   embedded?: { title?: string; artist?: string; bpm?: number; key?: string };
 };
 
@@ -30,7 +38,7 @@ export type HygieneFinding = {
   suggestion: string;
 };
 
-const EXTENSION: Record<string, string> = {
+const EXTENSION: Record<string, "wav" | "mp3" | "stems" | "artwork"> = {
   ".wav": "wav",
   ".mp3": "mp3",
   ".zip": "stems",
@@ -45,70 +53,112 @@ const EXTENSION: Record<string, string> = {
 /** Имя файла без пути: расширение у браузера отрезано не всегда. */
 const baseName = (name: string) => name.split(/[\\/]/).pop() ?? name;
 
-export function checkPackage(platform: PlatformId, pack: PackageFacts): HygieneFinding[] {
-  const rules = PLATFORMS.find((item) => item.id === platform);
-  const findings: HygieneFinding[] = [];
-  const harsh = platform === "beatstars" ? "block" : "warn";
+const roleOf = (name: string): PackageFacts["files"][number]["role"] => {
+  const lower = baseName(name).toLowerCase();
+  const dot = lower.lastIndexOf(".");
 
-  const roles = new Set(
-    pack.files.map((file) => file.role !== "other" ? file.role : (EXTENSION[baseName(file.name).toLowerCase().slice(baseName(file.name).toLowerCase().lastIndexOf("."))] as PackageFacts["files"][number]["role"]) ?? "other"),
-  );
+  return (dot < 0 ? undefined : EXTENSION[lower.slice(dot)]) ?? "other";
+};
+
+/**
+ * Требования уровней, которые битмейкер выставил на продажу.
+ *
+ * Пустой массив — это не «всё хорошо»: значит, продавать пока нечего, и
+ * об этом тоже нужно сказать, иначе отчёт покажет пустой зелёный список.
+ */
+export function checkPackage(tiers: TierId[], pack: PackageFacts): HygieneFinding[] {
+  const findings: HygieneFinding[] = [];
+  const sold = TIERS.filter((tier) => tiers.includes(tier.id));
+
+  const roles = new Set(pack.files.map((file) => (file.role === "other" ? roleOf(file.name) : file.role)));
+
+  if (tiers.length === 0) {
+    findings.push({
+      id: "tiers.none",
+      severity: "warn",
+      message: "Ни один уровень лицензии не выставлен на продажу",
+      suggestion: "Поставьте хотя бы цену на MP3: без цены бит нельзя купить.",
+    });
+  }
 
   if (pack.files.length === 0) {
     findings.push({
       id: "files.empty",
       severity: "block",
-      message: "В пакете нет ни одного файла",
-      suggestion: "Добавьте мастер: без аудиофайла площадка не создаст карточку.",
+      message: "В бите нет ни одного файла",
+      suggestion: "Добавьте превью в MP3: без аудиофайла карточку нечего слушать.",
     });
   }
 
-  if (rules && pack.files.length > (rules.maxFilesPerUpload ?? Infinity)) {
-    findings.push({
-      id: "files.tooMany",
-      severity: "block",
-      message: `Файлов ${pack.files.length}, а площадка принимает за одну загрузку ${rules.maxFilesPerUpload}`,
-      suggestion: "Разделите пакет на две выкладки и не меняйте название бита между ними.",
-    });
+  /**
+   * Уровень продаётся, а обязательного файла нет.
+   *
+   * Это самый дорогой класс проблем: деньги за него уже можно получить.
+   */
+  for (const tier of sold) {
+    for (const [need, role] of [
+      [tier.requires.wav, "wav"],
+      [tier.requires.mp3, "mp3"],
+      [tier.requires.stems, "stems"],
+    ] as const) {
+      if (!need || roles.has(role)) continue;
+
+      findings.push({
+        id: `tier.${tier.id}.no-${role}`,
+        severity: "block",
+        message: `Уровень «${tier.label}» выставлен на продажу, а ${role === "stems" ? "архива со стемами" : role === "wav" ? "мастера в WAV" : "превью в MP3"} нет`,
+        suggestion: `Либо добавьте файл — уровень обещает «${tier.delivers}», — либо снимите цену и уберите его из карточки.`,
+      });
+    }
   }
 
-  if (rules && !roles.has("wav")) {
+  if (sold.some((tier) => tier.master) && !roles.has("wav")) {
     findings.push({
       id: "files.noMaster",
-      severity: platform === "airbit" ? "block" : "warn",
-      message: "В пакете нет WAV",
-      suggestion: rules
-        ? "Мастер нужен как источник: площадка собирает из него MP3 и превью."
-        : "Добавьте WAV, чтобы площадка могла собрать превью сама.",
+      severity: "block",
+      message: "Мастер в WAV не загружен",
+      suggestion: "Без мастера покупатель не получит ни MP3+WAV, ни Track Out, ни эксклюзив.",
     });
   }
 
-  // BeatStars сам помечает MP3, поэтому требовать его — значит гонять
-  // битмейкера делать лишний рендер.
-  if (rules && rules.mp3 === "required" && !roles.has("mp3")) {
+  // Превью нужно всем уровням: покупатель выбирает бит по нему, а не по мастеру.
+  if (tiers.length > 0 && !roles.has("mp3") && roles.size > 0) {
     findings.push({
       id: "files.noMp3",
-      severity: "block",
-      message: "Площадка требует отдельный MP3",
-      suggestion: "Сделайте превью из мастера и положите его рядом: площадка не генерирует его сама.",
-    });
-  }
-
-  if (rules && roles.has("stems")) {
-    findings.push({
-      id: "stems.lowBitDepth",
       severity: "warn",
-      message: "Стемы отправляются в пакете, но их разрядность мы не проверяли",
-      suggestion: "Проверьте, что стемы не ниже 24 бит: покупатель их содит, и квантование слышно.",
+      message: "Нет превью в MP3",
+      suggestion: "Превью слушают в ленте и в карточке. Из мастера его делает любой конвертер.",
     });
   }
 
-  if (!roles.has("artwork") && rules?.fields.artwork?.trust === "documented") {
+  if (!roles.has("artwork")) {
     findings.push({
       id: "artwork.missing",
       severity: "warn",
-      message: "Обложка не приложена",
-      suggestion: "Без обложки карточка теряется в ленте: у площадки нечего показать.",
+      message: "Обложка не загружена",
+      suggestion: "Без обложки карточка теряется в ленте: вместо превью — пустое место.",
+    });
+  }
+
+  const stems = pack.files.filter((file) => (file.role === "other" ? roleOf(file.name) : file.role) === "stems");
+
+  if (stems.length > 1) {
+    findings.push({
+      id: "stems.ambiguous",
+      severity: "warn",
+      message: `В бите ${stems.length} архива со стемами`,
+      suggestion: "Покупатель получит архив, который вы не имели в виду. Оставьте один.",
+    });
+  }
+
+  const masters = pack.files.filter((file) => (file.role === "other" ? roleOf(file.name) : file.role) === "wav");
+
+  if (masters.length > 1) {
+    findings.push({
+      id: "files.ambiguousMaster",
+      severity: "warn",
+      message: `В бите ${masters.length} файла WAV`,
+      suggestion: "Отдаём первый по порядку. Переименуйте лишние в tagged и untagged или уберите.",
     });
   }
 
@@ -119,7 +169,7 @@ export function checkPackage(platform: PlatformId, pack: PackageFacts): HygieneF
       id: "title.symbols",
       severity: "warn",
       message: `В названии «${name}» есть необычные символы`,
-      suggestion: "Оставьте буквы, цифры и простые знаки: часть площадок режет такие названия.",
+      suggestion: "Оставьте буквы, цифры и простые знаки: часть каналов режет такие названия при вставке ссылки.",
     });
   }
 
@@ -127,7 +177,7 @@ export function checkPackage(platform: PlatformId, pack: PackageFacts): HygieneF
     findings.push({
       id: "title.long",
       severity: "warn",
-      message: `Название из ${name.length} символов обрежется в выдаче`,
+      message: `Название из ${name.length} символов обрежется в ленте`,
       suggestion: "Сократите до 40 символов: дальше текст всё равно не читается.",
     });
   }
@@ -141,28 +191,24 @@ export function checkPackage(platform: PlatformId, pack: PackageFacts): HygieneF
     });
   }
 
-  const limits = rules?.tagLimits;
+  const tags = (pack.tags ?? []).map((tag) => tag.trim()).filter(Boolean);
 
-  if (limits) {
-    const tags = (pack.tags ?? []).map((tag) => tag.trim()).filter(Boolean);
+  if (tags.length > TAG_LIMITS.tags) {
+    findings.push({
+      id: "tags.tooMany",
+      severity: "warn",
+      message: `Тегов ${tags.length}, а мы читаем ${TAG_LIMITS.tags}`,
+      suggestion: `Оставьте ${TAG_LIMITS.tags} самых точных: остальные не попадут ни в один фильтр.`,
+    });
+  }
 
-    if (tags.length > (limits.tags ?? Infinity)) {
-      findings.push({
-        id: "tags.tooMany",
-        severity: harsh,
-        message: `Тегов ${tags.length}, площадка читает ${limits.tags}`,
-        suggestion: `Оставьте ${limits.tags} самых точных: лишние всё равно не попадут в фильтры.`,
-      });
-    }
-
-    if (new Set(tags.map((tag) => tag.toLowerCase())).size !== tags.length) {
-      findings.push({
-        id: "tags.duplicates",
-        severity: "warn",
-        message: "Теги повторяются",
-        suggestion: "Уберите дубли в другом регистре: «Trap» и «trap» площадка считает одним и тем же.",
-      });
-    }
+  if (new Set(tags.map((tag) => tag.toLowerCase())).size !== tags.length) {
+    findings.push({
+      id: "tags.duplicates",
+      severity: "warn",
+      message: "Теги повторяются",
+      suggestion: "Уберите дубли в другом регистре: «Trap» и «trap» считаются одним и тем же тегом.",
+    });
   }
 
   if (pack.genre !== undefined && pack.genre.trim().length === 0) {
@@ -170,21 +216,21 @@ export function checkPackage(platform: PlatformId, pack: PackageFacts): HygieneF
       id: "genre.missing",
       severity: "warn",
       message: "Жанр не выбран",
-      suggestion: "Без жанра бит не попадает в подборки площадки.",
+      suggestion: "По жанру собираются подборки, и бит без него в них не попадает.",
     });
   }
 
   const embedded = pack.embedded;
 
   if (embedded) {
-    // Площадки берут название из файла, если поле карточки пустое. Разные
-    // источники названия дают один бит с двумя именами в выдаче.
+    // Название из тегов файла может перебить название в карточке — разные
+    // источники имени дают один бит под двумя именами.
     if (embedded.title !== undefined && embedded.title.trim() !== name && name.length > 0) {
       findings.push({
         id: "embedded.titleDiffers",
         severity: "warn",
         message: `В файле записано «${embedded.title}», а в карточке «${name}»`,
-        suggestion: "Сделайте названия одинаковыми, иначе площадка покажет своё имя из тегов.",
+        suggestion: "Сделайте названия одинаковыми, иначе в заказе файл будет называться не так, как карточка.",
       });
     }
 
@@ -193,14 +239,17 @@ export function checkPackage(platform: PlatformId, pack: PackageFacts): HygieneF
         id: "embedded.bpmDiffers",
         severity: "warn",
         message: `В тегах файла ${embedded.bpm} BPM, а в карточке ${pack.bpm}`,
-        suggestion: "Перезапишите темп в теги при сохранении: площадка читает их раньше карточки.",
+        suggestion: "Перезапишите темп в теги при сохранении: покупатель ищет по карточке и не найдёт нужный бит.",
       });
     }
 
     if (embedded.key !== undefined && pack.key !== undefined) {
       const normalize = (text: string) => text.toLowerCase().replace("maj", "").replace("min", "").trim();
 
-      if (normalize(embedded.key) !== normalize(pack.key) && normalize(embedded.key).replace("#", "") !== normalize(pack.key).replace("#", "")) {
+      if (
+        normalize(embedded.key) !== normalize(pack.key) &&
+        normalize(embedded.key).replace("#", "") !== normalize(pack.key).replace("#", "")
+      ) {
         findings.push({
           id: "embedded.keyDiffers",
           severity: "warn",
@@ -208,20 +257,6 @@ export function checkPackage(platform: PlatformId, pack: PackageFacts): HygieneF
           suggestion: "Приведите ключ в тегах к тому, что в карточке: фильтры сравнивают строки.",
         });
       }
-    }
-  }
-
-  // BeatStars различает мастер с тегом и без него.
-  if (platform === "beatstars") {
-    const masters = pack.files.filter((file) => file.role === "wav");
-
-    if (masters.length > 1) {
-      findings.push({
-        id: "files.ambiguousMaster",
-        severity: "warn",
-        message: `В пакете ${masters.length} файла WAV`,
-        suggestion: "Площадка спросит, какой из них мастер без тега. Ответьте заранее: переименуйте остальные в tagged и untagged.",
-      });
     }
   }
 

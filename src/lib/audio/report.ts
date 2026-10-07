@@ -1,17 +1,24 @@
 import { checkMetadata, type DeclaredMetadata, type MeasuredAudio, type MetadataFinding } from "./metadata";
 import { checkPackage, type HygieneFinding, type PackageFacts } from "./hygiene";
 import { checkAssets, type AssetFacts, type Finding } from "./preflight";
-import { platformRules, type PlatformId, type Trust } from "./platform-rules";
+import { DELIVERY_FIELDS, TIERS, type TierId, type Trust } from "./delivery-rules";
 
 /**
  * Выходной контроль целиком.
  *
  * Четыре слоя проверок дают четыре разных типа замечаний. Их нужно свести в
- * один ответ на единственный вопрос битмейкера: «можно выкладывать?».
+ * один ответ на единственный вопрос битмейкера: «это можно продавать?».
  *
- * Ответ бывает и «не знаю». Для Airbit и BeatChain требования к аудио не
- * опубликованы, поэтому честный вердикт — «не проверено», а не «готово».
- * Обещать готовность там, где мы ничего не знаем, хуже, чем молчать.
+ * Ответ бывает и «не знаю», и это теперь важнее, чем раньше. Проверка
+ * формата сравнивает файл с нашими требованиями — но если файл не удалось
+ * прочитать, сравнивать не с чем. Обещать готовность там, где мы ничего не
+ * проверили, хуже, чем молчать: покупатель получит файл, который мы не
+ * смотрели.
+ *
+ * Второе отличие от прежней версии: отчёт отвечает не про площадку, а про
+ * уровни. Один и тот же бит может быть готов к продаже по MP3 и совсем не
+ * готов по эксклюзиву, если нет дорожек, — и раньше такой вопрос был
+ * невозможен, потому что площадка была одна на все уровни сразу.
  */
 
 export type Layer = "files" | "metadata" | "hygiene";
@@ -32,19 +39,21 @@ export type Row = {
 };
 
 export type Report = {
-  platform: PlatformId;
+  /** Уровни, которые битмейкер выставил на продажу. */
+  tiers: TierId[];
   verdict: Verdict;
   rows: Row[];
-  /** Мешает выложить. Пустой массив, а не флаг: по нему считаем счётчики. */
+  /** Мешает продать. Пустой массив, а не флаг: по нему считаем счётчики. */
   blockers: Row[];
-  /** Стоит поправить, но площадка примет. */
+  /** Стоит поправить, но заказ выполним. */
   warnings: Row[];
   /** Сколько правил мы не смогли проверить. */
   unknown: number;
 };
 
 export type ReportInput = {
-  platform: PlatformId;
+  /** Какие уровни лицензии выставлены на продажу. */
+  tiers: TierId[];
   assets: AssetFacts[];
   declared: DeclaredMetadata;
   measured: MeasuredAudio;
@@ -58,7 +67,7 @@ const fileRow = (finding: Finding): Row => ({
   severity: finding.severity,
   label: finding.label,
   detail: finding.ok ? finding.actual : `получено: ${finding.actual ?? "неизвестно"}`,
-  suggestion: finding.ok ? undefined : finding.expected,
+  suggestion: finding.ok ? finding.expected : finding.expected,
   trust: finding.trust,
 });
 
@@ -81,47 +90,59 @@ const hygieneRow = (finding: HygieneFinding): Row => ({
   label: finding.message,
   detail: finding.message,
   suggestion: finding.suggestion,
-  trust: "observed",
+  trust: "documented",
 });
 
 /**
- * Правило, которое мы не смогли проверить, попадает в отчёт отдельной строкой.
+ * Проверка, которая ничего не проверила.
  *
- * Иначе битмейкер увидит зелёный список и решит, что площадка проверена
- * целиком, хотя половина требований неизвестна.
+ * Иначе битмейкер увидит зелёный список и решит, что файл посмотрен
+ * целиком, хотя половина требований к нему не применялась.
  */
-const unknownRow = (label: string): Row => ({
-  id: `unknown:${label}`,
+const unreadableRow = (kind: string, reason: string): Row => ({
+  id: `unreadable:${kind}`,
   layer: "files",
   ok: true,
   severity: "info",
-  label,
-  detail: "требование не опубликовано, проверить нечем",
-  trust: "unknown",
+  label: `${kind}: ${reason}`,
+  detail: reason,
+  trust: reason === "требование не задано" ? "unknown" : "observed",
 });
 
 export function buildReport(input: ReportInput): Report {
-  const rules = platformRules(input.platform);
-
   const rows: Row[] = [
-    ...checkAssets(rules!, input.assets).map(fileRow),
-    ...checkMetadata(input.platform, input.declared, input.measured).map(metaRow),
-    ...checkPackage(input.platform, input.package).map(hygieneRow),
+    ...checkAssets(input.assets).map(fileRow),
+    ...checkMetadata(input.tiers, input.declared, input.measured).map(metaRow),
+    ...checkPackage(input.tiers, input.package).map(hygieneRow),
   ];
 
-  // Неизвестное правило мешает обещать готовность только для тех файлов,
-  // которые действительно поедут на площадку. У BeatStars не опубликован
-  // размер обложки, но если обложки в пакете нет, это не повод тревожить
-  // битмейкера.
+  /**
+   * Молчание переносим в отчёт отдельной строкой.
+   *
+   * Считаем только по тем полям, которые в бите действительно есть: если
+   * обложки нет, отсутствие требования к её размеру не повод тревожить
+   * битмейкера. Требования к обложке мы не задали, и без обложки это
+   * безобидно.
+   */
   const present = new Set(input.assets.map((asset) => asset.kind));
 
-  if (rules) {
-    for (const kind of ["wav", "mp3", "stems", "artwork"] as const) {
-      const field = rules.fields[kind];
+  for (const kind of ["wav", "mp3", "stems", "artwork"] as const) {
+    const rule = DELIVERY_FIELDS[kind];
 
-      if (field?.trust === "unknown" && present.has(kind)) {
-        rows.push(unknownRow(`${kind}: параметры не опубликованы`));
-      }
+    if (!present.has(kind)) continue;
+
+    if (rule.trust === "unknown") {
+      rows.push(unreadableRow(kind, "требование не задано"));
+      continue;
+    }
+
+    // Файл в бите есть, но ни одна его характеристика не прочиталась:
+    // проверить формат было нечем, и это надо сказать отдельно от
+    // «требование не задано».
+    const asset = input.assets.find((item) => item.kind === kind);
+
+    if (asset && !measurable(asset)) {
+      rows.push(unreadableRow(kind, "файл не удалось прочитать"));
     }
   }
 
@@ -131,5 +152,34 @@ export function buildReport(input: ReportInput): Report {
 
   const verdict: Verdict = blockers.length > 0 ? "fix" : unknown > 0 ? "unknown" : "ready";
 
-  return { platform: input.platform, verdict, rows, blockers, warnings, unknown };
+  return { tiers: input.tiers, verdict, rows, blockers, warnings, unknown };
+}
+
+/**
+ * Читаем ли мы хоть что-нибудь в этом файле.
+ *
+ * Обложку меряем по сторонам, аудио — по разрядности, частоте, каналам и
+ * битрейту. Размер и имя файла есть всегда, но по ним формат не судить.
+ */
+function measurable(asset: AssetFacts): boolean {
+  if (asset.kind === "artwork") return asset.width !== undefined && asset.height !== undefined;
+
+  return (
+    asset.bitsPerSample !== undefined ||
+    asset.sampleRate !== undefined ||
+    asset.channels !== undefined ||
+    asset.kbps !== undefined
+  );
+}
+
+/**
+ * Уровни, которые нельзя продавать из-за отсутствия файлов.
+ *
+ * Отдельная функция, потому что это единственное место, где нужно знать
+ * про файлы и про цены одновременно, а проверки по слоям про них не знают.
+ */
+export function soldTiers(prices: Record<string, number | null>): TierId[] {
+  return TIERS.filter((tier) => typeof prices[tier.id] === "number" && (prices[tier.id] ?? 0) > 0).map(
+    (tier) => tier.id,
+  );
 }

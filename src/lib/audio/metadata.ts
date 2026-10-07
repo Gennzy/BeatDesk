@@ -1,4 +1,4 @@
-import { PLATFORMS, type PlatformId } from "./platform-rules";
+import type { TierId } from "./delivery-rules";
 
 /**
  * «Выходной контроль», слой метаданных.
@@ -127,9 +127,9 @@ export const canonicalKey = ({ root, minor, octave }: ParsedKey) =>
 /**
  * Перевести решётку в бемоль.
  *
- * BeatStars ищет по обоим написаниям, но в выдаче мелькают плоские
- * тональности: один и тот же бит зовётся то `F# major`, то `Gb major`,
- * и это порождает две почти одинаковые карточки.
+ * Ищем по обоим написаниям, но в выдаче мелькают плоские тональности: один
+ * и тот же бит зовётся то `F# major`, то `Gb major`, и это порождает две
+ * почти одинаковые карточки.
  */
 export function enharmonic(text: string): string | null {
   const parsed = parseKey(text);
@@ -182,21 +182,24 @@ export type MetadataFinding = {
 /**
  * Темп и тональность как поисковые фильтры.
  *
- * BeatStars превращает их в фильтры выдачи, поэтому несовпадение там мешает
- * продаже. Airbit про это молчит, и на нём то же расхождение — предупреждение.
+ * Раньше строгость зависела от площадки: BeatStars превращал темп в фильтр
+ * выдачи и расхождение было блокером, Airbit про это молчал и то же
+ * расхождение считалось предупреждением.
+ *
+ * Теперь площадка одна, и фильтры наши собственные. Расхождение блокирует
+ * продажу всегда: покупатель ищет по темпу, выбирает «166 BPM», а получает
+ * файл, который играет на 111, и возвращает его. Это не аккуратность
+ * карточки, это неверно описанный товар.
  */
-const strictness = (platform: PlatformId): "block" | "warn" =>
-  platform === "beatstars" ? "block" : "warn";
-
 export function checkMetadata(
-  platform: PlatformId,
+  tiers: TierId[],
   declared: DeclaredMetadata,
   measured: MeasuredAudio,
 ): MetadataFinding[] {
-  const known = PLATFORMS.some((item) => item.id === platform);
   const findings: MetadataFinding[] = [];
-  // Неизвестная площадка трактуется мягко: не выдумываем для неё правил.
-  const harsh = known ? strictness(platform) : "warn";
+  // Ничего не продаётся — спорить не о чем, но и молчать нельзя:
+  // к моменту продажи расхождение надо убрать.
+  const harsh: "block" | "warn" = tiers.length > 0 ? "block" : "warn";
 
   if (declared.bpm !== undefined) {
     const relation = tempoRelation(declared.bpm, measured.bpm);
@@ -209,7 +212,7 @@ export function checkMetadata(
         severity: harsh,
         drift: percent,
         message: `В карточке ${declared.bpm} BPM, а в файле ${heard} BPM — расхождение ${percent}%`,
-        suggestion: `Поставьте ${measured.bpm.toFixed(0)} BPM: площадка ищет биты по темпу, и покупатель услышит не тот бит, который выбрал.`,
+        suggestion: `Поставьте ${measured.bpm.toFixed(0)} BPM: покупатель ищет по темпу и услышит не тот бит, который выбрал.`,
       });
     } else if (relation === "family") {
       // Заявленный медленнее измеренного — значит в карточке стоит половина.
@@ -230,7 +233,7 @@ export function checkMetadata(
       id: "key",
       severity: "warn",
       message: `Тональность определена неуверенно (${Math.round(measured.keyConfidence * 100)}%)`,
-      suggestion: "Не публикуйте тональность по догадке: лучше оставьте поле пустым, чем укажете неверную.",
+      suggestion: "Не указывайте тональность по догадке: лучше оставьте поле пустым, чем укажете неверную.",
     });
   }
 
@@ -244,7 +247,7 @@ export function checkMetadata(
         id: "key",
         severity: harsh,
         message: `В карточке ${declared.key}, в файле ${measured.key} — тональности разные`,
-        suggestion: `Поставьте ${measured.key}: площадка ищет по тональности, и покупатель получит несовместимый бит.`,
+        suggestion: `Поставьте ${measured.key}: покупатель отбирает бит по тональности и получит несовместимый.`,
       });
     } else if (spellingDiffers(declaredKey, measuredKey)) {
       findings.push({
@@ -270,7 +273,7 @@ export function checkMetadata(
       id: "title",
       severity: "warn",
       message: `В названии есть имя файла: «${title}»`,
-      suggestion: "Уберите расширение и путь: в выдаче площадки они выглядят как мусор.",
+      suggestion: "Уберите расширение и путь: в ленте и в имени файла заказа они выглядят как мусор.",
     });
   }
 

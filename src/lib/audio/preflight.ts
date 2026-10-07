@@ -1,11 +1,21 @@
-import type { FieldRule, PlatformRules, Trust } from "./platform-rules";
+import { DELIVERY_FIELDS, type FieldKind, type FieldRule, type Trust } from "./delivery-rules";
 
 /**
  * «Выходной контроль», слой файлов.
  *
- * Проверяет то, что можно узнать из самого файла, против требований
- * площадки. Неизвестные требования не превращаются в предупреждения:
- * если площадка не опубликовала правило, мы о ней не знаем и молчим.
+ * Проверяет то, что можно узнать из самого файла, против наших требований
+ * к выдаче. Требования теперь общие для всех уровней и лежат в
+ * delivery-rules: различается не формат, а то, обязателен ли файл, и это
+ * проверяет hygiene.
+ *
+ * Здесь важно различать два молчания, которые старый код смешивал:
+ *
+ * - требования нет — мы не знаем, что требовать;
+ * - требование есть, а файл прочитать не удалось — мы знаем, что
+ *   требовать, но не знаем, выполнено ли.
+ *
+ * Первое — вина правил, второе — вина файла. Битмейкер должен видеть их
+ * по-разному, иначе «файл не прочитался» выглядит как «всё в порядке».
  */
 
 export type AssetKind = "wav" | "mp3" | "stems" | "artwork";
@@ -26,6 +36,9 @@ export type AssetFacts = {
 
 export type Severity = "block" | "warn" | "info";
 
+/** Почему проверка не дала ответа. */
+export type SkipReason = "no-rule" | "unreadable";
+
 export type Finding = {
   /** Короткий код для тестов и будущих ссылок из интерфейса. */
   id: string;
@@ -37,6 +50,8 @@ export type Finding = {
   /** Что требуется. */
   expected?: string;
   trust: Trust;
+  /** Заполняется, когда ok === true, а ответа по сути нет. */
+  skip?: SkipReason;
   source?: string;
 };
 
@@ -47,18 +62,24 @@ const khz = (value: number) => `${(value / 1000).toFixed(1).replace(".", ",")} �
 const clock = (value: number) =>
   `${Math.floor(value / 60)}:${String(Math.floor(value % 60)).padStart(2, "0")}`;
 
-/** Правило применимо, только если площадка опубликовала цифры. */
+/** Правило применимо, только если мы его задали. */
 const usable = (rule: FieldRule | undefined): rule is FieldRule =>
   rule !== undefined && rule.trust !== "unknown";
 
-const skipped = (id: string, label: string, trust: Trust, source?: string): Finding => ({
+/**
+ * Молчание с причиной.
+ *
+ * `severity: "info"` и `ok: true` — проверка не мешает выкладке, но
+ * отчёт обязан показать, что она ничего не проверила.
+ */
+const skipped = (id: string, label: string, trust: Trust, reason: SkipReason): Finding => ({
   id,
   ok: true,
   severity: "info",
   label,
-  expected: "требование не опубликовано",
-  trust,
-  source,
+  expected: reason === "no-rule" ? "требование не задано" : "файл не удалось прочитать",
+  trust: reason === "no-rule" ? "unknown" : trust,
+  skip: reason,
 });
 
 /**
@@ -81,10 +102,11 @@ function boundCheck(
 ): Finding {
   const trust = rule?.trust ?? "unknown";
 
-  if (!usable(rule) || actual === undefined) return skipped(id, label, trust, source);
+  if (!usable(rule)) return skipped(id, label, trust, "no-rule");
+  if (actual === undefined) return skipped(id, label, trust, "unreadable");
 
   const limit = bound(rule);
-  if (limit === undefined) return skipped(id, label, trust, source);
+  if (limit === undefined) return skipped(id, label, trust, "no-rule");
 
   const ok = direction === "min" ? actual >= limit : actual <= limit;
 
@@ -114,11 +136,12 @@ function rangeCheck(
 ): Finding {
   const trust = rule?.trust ?? "unknown";
 
-  if (!usable(rule) || actual === undefined) return skipped(id, label, trust, source);
+  if (!usable(rule)) return skipped(id, label, trust, "no-rule");
+  if (actual === undefined) return skipped(id, label, trust, "unreadable");
 
   const lower = min(rule);
   const upper = max(rule);
-  if (lower === undefined && upper === undefined) return skipped(id, label, trust, source);
+  if (lower === undefined && upper === undefined) return skipped(id, label, trust, "no-rule");
 
   const ok = (lower === undefined || actual >= lower) && (upper === undefined || actual <= upper);
 
@@ -134,9 +157,6 @@ function rangeCheck(
   };
 }
 
-const sourceOf = (platform: PlatformRules, field: string) =>
-  platform.checks.find((check) => check.field === field)?.source;
-
 const byField = (
   id: string,
   label: string,
@@ -151,38 +171,53 @@ const byField = (
     ? rangeCheck(id, label, rule, actual, requirement, bounds[0][1], bounds[1][1], format, source)
     : boundCheck(id, label, rule, actual, "min", requirement, bounds[0][1], format, source);
 
-export function checkAsset(platform: PlatformRules, asset: AssetFacts): Finding[] {
-  const rule = platform.fields[asset.kind];
-  const source = sourceOf(platform, asset.kind);
+/** Где в справке написано про это поле. */
+const DELIVERY_CHECKS: Record<AssetKind, string | undefined> = {
+  wav: "справка BeatDesk — лицензии и файлы",
+  mp3: "справка BeatDesk — как загрузить бит",
+  stems: "справка BeatDesk — лицензии и файлы",
+  artwork: undefined,
+};
+
+export function checkAsset(kind: AssetKind, asset: AssetFacts): Finding[] {
+  const rule: FieldRule | undefined = DELIVERY_FIELDS[kind as FieldKind];
 
   // Обложка проверяется иначе: там важна квадратность, а не потолок.
-  if (asset.kind === "artwork") {
-    const side = rule?.artworkSide;
+  if (kind === "artwork") {
+    const side = rule?.artworkMinSide;
     const isSquare = asset.width === asset.height;
-    const bigEnough = side !== undefined && (asset.width ?? 0) >= side;
+    const bigEnough = side === undefined || (asset.width ?? 0) >= side;
+    const measured = asset.width && asset.height ? `${asset.width}×${asset.height}` : undefined;
 
     return [
       {
         id: "artwork.square",
         ok: isSquare,
-        // Не блокер: площадка обрежет сама, предупреждаем заранее.
+        // Не блокер: обложку можно обрезать, об этом честнее сказать
+        // заранее, чем отклонять карточку.
         severity: isSquare ? "info" : "warn",
         label: "Обложка квадратная",
-        actual: asset.width && asset.height ? `${asset.width}×${asset.height}` : undefined,
+        actual: measured,
         expected: "квадрат",
         trust: rule?.trust ?? "unknown",
+        ...(measured === undefined ? { skip: "unreadable" as const } : {}),
       },
       {
         id: "artwork.size",
+        // Границы пока не задано, поэтому проверка всегда «ок». Как только
+        // зададим — начнёт проверять, а не молчать.
         ok: bigEnough,
-        severity: "info",
+        severity: bigEnough ? "info" : "warn",
         label: "Размер обложки",
-        actual: asset.width && asset.height ? `${asset.width}×${asset.height}` : undefined,
-        expected: side === undefined ? "требование не опубликовано" : `от ${side}×${side}`,
+        actual: measured,
+        expected: side === undefined ? "требование не задано" : `от ${side}×${side}`,
         trust: rule?.trust ?? "unknown",
+        ...(side === undefined ? { skip: "no-rule" as const } : measured === undefined ? { skip: "unreadable" as const } : {}),
       },
     ];
   }
+
+  const source = DELIVERY_CHECKS[kind];
 
   return [
     boundCheck(
@@ -236,7 +271,7 @@ export function checkAsset(platform: PlatformRules, asset: AssetFacts): Finding[
       rule,
       asset.kbps,
       "min",
-      () => "не ниже 320 кбит/с",
+      (value) => `не ниже ${value.minKbps} кбит/с`,
       (value) => value.minKbps,
       (value) => `${value} кбит/с`,
       source,
@@ -255,11 +290,11 @@ export function checkAsset(platform: PlatformRules, asset: AssetFacts): Finding[
   ];
 }
 
-export function checkAssets(platform: PlatformRules, assets: AssetFacts[]): Finding[] {
-  return assets.flatMap((asset) => checkAsset(platform, asset));
+export function checkAssets(assets: AssetFacts[]): Finding[] {
+  return assets.flatMap((asset) => checkAsset(asset.kind, asset));
 }
 
-/** Что мешает выложить: только то, что площадка действительно запрещает. */
+/** Что мешает продать: только то, что мы действительно запрещаем. */
 export function blockers(findings: Finding[]): Finding[] {
   return findings.filter((finding) => finding.severity === "block" && !finding.ok);
 }
