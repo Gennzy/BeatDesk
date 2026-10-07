@@ -6,6 +6,7 @@ import { usePlayer } from "@/components/player/player-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShortLinkButton } from "@/components/beats/short-link-button";
+import { TrustBlock } from "@/components/sales/trust-block";
 import { cn } from "@/lib/cn";
 import { SALE_STATE_LABELS, canPutOnSale, type SaleState } from "@/lib/sales/state";
 import { useI18n } from "@/lib/i18n/provider";
@@ -76,10 +77,10 @@ export function BeatHero({ beat, isOwner }: { beat: BeatHeroData; isOwner: boole
               }
               aria-label={active ? t("player.pause") : t("player.play")}
               className={cn(
-                "absolute bottom-4 left-4 grid size-14 place-items-center border transition-colors duration-150",
+                "absolute bottom-4 left-4 grid size-12 place-items-center rounded-full border backdrop-blur-md transition-all duration-200 ease-out",
                 active
                   ? "border-signal bg-signal text-ink"
-                  : "border-line bg-ink/85 text-paper backdrop-blur-sm hover:border-signal hover:bg-signal hover:text-ink",
+                  : "border-line-2 bg-ink/75 text-paper hover:scale-105 hover:border-signal hover:bg-signal hover:text-ink",
               )}
             >
               {active ? (
@@ -93,7 +94,7 @@ export function BeatHero({ beat, isOwner }: { beat: BeatHeroData; isOwner: boole
               )}
             </button>
           ) : (
-            <span className="label absolute bottom-4 left-4 border border-line bg-ink/85 px-3 py-2 text-mute">
+            <span className="label absolute bottom-4 left-4 rounded-full border border-line bg-ink/80 px-3 py-2 text-mute">
               {t("feed.noAudio")}
             </span>
           )}
@@ -131,6 +132,8 @@ export function BeatHero({ beat, isOwner }: { beat: BeatHeroData; isOwner: boole
         <p className="max-w-[62ch] text-sub text-mute">
           {isOwner ? t("share.noteOwner") : t("share.noteBuyer")}
         </p>
+
+        {isOwner ? null : <TrustBlock />}
 
         {isOwner ? (
           <div className="flex flex-wrap items-center gap-3 border-t border-line pt-6">

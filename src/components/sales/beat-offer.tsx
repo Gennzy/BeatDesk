@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/currency";
 import { useI18n } from "@/lib/i18n/provider";
-import { priceHint, priceLabel, type PriceKey } from "@/lib/prices";
+import { tierContents } from "@/lib/sales/delivery";
+import { priceLabel, type PriceKey } from "@/lib/prices";
 
 type Props = {
   beatId: string;
@@ -25,7 +26,7 @@ type Props = {
  * и кнопка стоит на своём уровне.
  */
 export function BeatOffer({ beatId, tiers, currency, isOwner }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const [tier, setTier] = useState<PriceKey | null>(tiers[0]?.key ?? null);
   const [email, setEmail] = useState("");
@@ -96,9 +97,9 @@ export function BeatOffer({ beatId, tiers, currency, isOwner }: Props) {
                   : cnTier(chosen)
               }
             >
-              <span className="flex flex-col">
+              <span className="flex flex-col gap-1">
                 <span className="label text-paper">{priceLabel[item.key]}</span>
-                <span className="text-xs text-mute">{priceHint[item.key]}</span>
+                <span className="text-xs leading-snug text-mute">{tierContents(dbTier(item.key), locale).join(" · ")}</span>
               </span>
 
               <span className="flex items-baseline gap-3">
@@ -137,7 +138,7 @@ export function BeatOffer({ beatId, tiers, currency, isOwner }: Props) {
 
           {error ? <p className="label leading-relaxed text-amber">{error}</p> : null}
 
-          <Button type="button" size="lg" disabled={status === "busy" || !selected} onClick={() => void buy()}>
+          <Button type="button" size="lg" className="sm:min-w-64 sm:self-start" disabled={status === "busy" || !selected} onClick={() => void buy()}>
             {status === "busy"
               ? t("order.creating")
               : selected
@@ -149,6 +150,9 @@ export function BeatOffer({ beatId, tiers, currency, isOwner }: Props) {
     </div>
   );
 }
+
+/** Перевод ключа уровня из интерфейса в правила выдачи. */
+const dbTier = (key: PriceKey): string => (key === "wav" ? "bundle" : key);
 
 /** Выбранный уровень подсвечиваем: кнопка «Купить» относится к нему. */
 function cnTier(chosen: boolean): string {

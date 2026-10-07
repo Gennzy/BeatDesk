@@ -43,3 +43,20 @@ const LABELS: Record<TierId, string> = {
 export function tierLabel(tier: string): string {
   return LABELS[tier as TierId] ?? tier;
 }
+
+/**
+ * Что человек получит на этом уровне, своими словами.
+ *
+ * Раньше подпись бралась из priceHint — это слова из словаря для подсказки в
+ * форме: «Стемы по дорожкам». Покупатель хочет знать, что откроет после
+ * оплаты: мастер в WAV, архив дорожек, превью без тега битмейкера.
+ */
+const FILE_LABELS: Record<FileKind, { ru: string; en: string }> = {
+  mp3: { ru: "превью в MP3 без тега битмейкера", en: "MP3 preview without the beatmaker tag" },
+  wav: { ru: "мастер в WAV", en: "master in WAV" },
+  stems: { ru: "архив дорожек", en: "stems archive" },
+};
+
+export function tierContents(tier: string, locale: "ru" | "en" = "ru"): string[] {
+  return (TIER_FILES[tier as TierId] ?? []).map((kind) => FILE_LABELS[kind][locale]);
+}
