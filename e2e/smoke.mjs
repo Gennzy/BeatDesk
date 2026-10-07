@@ -261,6 +261,42 @@ async function main() {
 
     await user.close();
 
+    // --- заказ: маршруты закрыты от чужих -------------------------------
+    // Живую покупку проверяем руками после применения 0023 и 0024: для неё
+    // нужен бит с ценами и файлами. Здесь проверяем, что без входа заказ
+    // не создать и чужая страница заказа не читается.
+console.log("\nЗаказ: доступ");
+    // Отдельный контекст: без него страница унаследовала бы сессию
+// зарегистрированного пользователя, и проверки гостя стали бы проверками пользователя.
+const guestContext = await browser.createBrowserContext();
+const guestOrder = await guestContext.newPage();
+    await guestOrder.setViewport({ width: 1440, height: 1000 });
+    await guestOrder.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 60_000 });
+
+    const createStatus = await guestOrder.evaluate(async () =>
+      (await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ beatId: "00000000-0000-0000-0000-000000000000", tier: "mp3", email: "guest@studio.ru" }),
+      })).status
+    );
+    check("гость не создаёт заказ", createStatus === 401, `статус ${createStatus}`);
+
+    const paidStatus = await guestOrder.evaluate(async () =>
+      (await fetch("/api/orders/00000000-0000-0000-0000-000000000000/paid", { method: "POST" })).status
+    );
+    check("гость не подтверждает оплату", paidStatus === 401, `статус ${paidStatus}`);
+
+    const downloadStatus = await guestOrder.evaluate(async () =>
+      (await fetch("/api/orders/00000000-0000-0000-0000-000000000000/download?item=x&kind=wav")).status
+    );
+    check("гость не скачивает файлы заказа", downloadStatus === 401, `статус ${downloadStatus}`);
+
+    await guestOrder.goto(`${BASE}/orders/00000000-0000-0000-0000-000000000000`, { waitUntil: "networkidle2", timeout: 60_000 });
+    const orderGated = await guestOrder.evaluate(() => !document.body.innerText.includes("Итого"));
+    check("страница чужого заказа не показывает содержимое", orderGated);
+    await guestContext.close();
+
     // --- публичная страница бита -------------------------------------
     console.log("\nПубличная страница бита");
     const anon = await browser.newPage();

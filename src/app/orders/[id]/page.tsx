@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { OrderItemDownloads } from "@/components/sales/order-item-downloads";
+import { SellerActions } from "@/components/sales/seller-actions";
 import { Container } from "@/components/ui/container";
 import { getT } from "@/lib/i18n/server";
+import { tierLabel } from "@/lib/sales/delivery";
 import { getSupabase } from "@/lib/supabase/user";
 
 export const metadata: Metadata = {
@@ -61,11 +64,26 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
     rows.length > 0
       ? await supabase
           .from("licenses")
-          .select("license_key, tier, order_item_id")
+          .select("license_key, tier, order_item_id, revoked_at")
           .in("order_item_id", rows.map((item) => item.id))
-      : { data: [] as { license_key: string; tier: string; order_item_id: string }[] };
+      : { data: [] as { license_key: string; tier: string; order_item_id: string; revoked_at: string | null }[] };
 
-  const licenses = (licenseRows ?? []) as { license_key: string; tier: string }[];
+  const licenses = (licenseRows ?? []) as { license_key: string; tier: string; order_item_id: string; revoked_at: string | null }[];
+
+  const licenseByItem = new Map(licenses.map((license) => [license.order_item_id, license]));
+
+  /*
+   * Видит ли этот человек кнопку продавца. RLS показывает заказ и покупателю,
+   * и продавцу его бита; у покупателя позиций чужих битов нет, поэтому
+   * наличие непринадлежащей ему позиции означает продавца.
+   */
+  const { data: viewer } = await supabase.auth.getUser();
+  const { data: myItems } = await supabase
+    .from("order_items")
+    .select("beat_owner_id")
+    .eq("order_id", id);
+
+  const isSeller = Boolean(viewer?.user && (myItems ?? []).some((row) => row.beat_owner_id === viewer.user!.id));
 
   return (
     <section className="py-14 lg:py-20">
@@ -83,15 +101,25 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         </div>
 
         <ul className="flex flex-col gap-px pt-8">
-          {rows.map((item) => (
-            <li key={item.id} className="flex items-baseline justify-between gap-4 bg-ink-2 px-4 py-3">
-              <span className="flex flex-col">
-                <span className="label text-paper">{item.beat_title}</span>
-                <span className="text-xs text-mute">{item.tier}</span>
-              </span>
-              <span className="font-mono text-sm text-amber">{money(item.price_minor, item.currency)}</span>
-            </li>
-          ))}
+          {rows.map((item) => {
+            const license = licenseByItem.get(item.id);
+
+            return (
+              <li key={item.id} className="flex flex-col gap-3 bg-ink-2 px-4 py-3 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+                <span className="flex flex-col gap-1">
+                  <span className="label text-paper">{item.beat_title}</span>
+                  <span className="text-xs text-mute">{tierLabel(item.tier)}</span>
+                  {typed.status === "paid" && license && !license.revoked_at ? (
+                    <OrderItemDownloads orderId={typed.id} itemId={item.id} tier={item.tier} />
+                  ) : null}
+                  {typed.status === "paid" && license?.revoked_at ? (
+                    <span className="text-xs text-amber">{t("order.revoked")}</span>
+                  ) : null}
+                </span>
+                <span className="font-mono text-sm text-amber">{money(item.price_minor, item.currency)}</span>
+              </li>
+            );
+          })}
         </ul>
 
         <div className="flex items-baseline justify-between gap-4 border-t border-line pt-6">
@@ -103,18 +131,23 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           {t("order.deliveryNote")}: {typed.buyer_email}
         </p>
 
-        {typed.status === "paid" && licenses && (licenses as { license_key: string; tier: string }[]).length > 0 ? (
+        {typed.status === "paid" && licenses.length > 0 ? (
           <div className="flex flex-col gap-3 pt-8">
             <span className="label text-paper">{t("order.licenses")}</span>
-            {(licenses as { license_key: string; tier: string }[]).map((license) => (
-              <code key={license.license_key} className="mono border border-line bg-ink-2 px-4 py-3 text-xs text-paper">
-                {license.tier}: {license.license_key}
+            {licenses.map((license) => (
+              <code
+                key={license.license_key}
+                className={license.revoked_at ? "mono border border-line bg-ink-2 px-4 py-3 text-xs text-mute line-through" : "mono border border-line bg-ink-2 px-4 py-3 text-xs text-paper"}
+              >
+                {tierLabel(license.tier)}: {license.license_key}
               </code>
             ))}
           </div>
         ) : null}
 
-        {typed.status !== "paid" ? (
+        {typed.status !== "paid" && isSeller ? <SellerActions orderId={typed.id} /> : null}
+
+        {typed.status !== "paid" && !isSeller ? (
           <p className="pt-8 text-sm leading-relaxed text-mute">{t("order.manualNote")}</p>
         ) : null}
       </Container>

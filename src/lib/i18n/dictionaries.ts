@@ -291,6 +291,10 @@ const ru = {
   "order.deliveryNote": "Файлы и лицензия придут на",
   "order.licenses": "Лицензии",
   "order.manualNote": "Пока без юрлица оплата подтверждается вручную: напиши битмейкеру, он закроет заказ — и файлы с лицензией появятся здесь.",
+  "order.confirmPayment": "Подтвердить оплату",
+  "order.confirming": "Подтверждаем…",
+  "order.confirmHint": "Нажми, когда деньги придут на карту: заказ закроется, покупателю выдадутся лицензия и файлы.",
+  "order.revoked": "Лицензия отозвана: деньги вернули покупателю.",
 
   "notfound.code": "404",
   "notfound.title": "Такой страницы нет",
@@ -705,6 +709,10 @@ const en: Record<keyof typeof ru, string> = {
   "order.deliveryNote": "Files and license go to",
   "order.licenses": "Licenses",
   "order.manualNote": "No legal entity yet, so payment is confirmed by hand: message the beatmaker, they close the order — and files with the license show up here.",
+  "order.confirmPayment": "Confirm payment",
+  "order.confirming": "Confirming…",
+  "order.confirmHint": "Press it once the money lands: the order closes and the buyer gets the license and files.",
+  "order.revoked": "License revoked: the money went back to the buyer.",
 
   "notfound.code": "404",
   "notfound.title": "No page here",
