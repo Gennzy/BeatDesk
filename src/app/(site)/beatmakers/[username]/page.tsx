@@ -10,6 +10,8 @@ import { getLocale, getT } from "@/lib/i18n/server";
 import { pluralEn, pluralRu } from "@/lib/plural";
 import { fetchProfilePosts, loadFollowState } from "@/lib/posts";
 import { getSupabase } from "@/lib/supabase/user";
+import { Achievements } from "@/components/sales/achievements";
+import { collectBeatmakerStats, computeAchievements } from "@/lib/sales/achievements";
 
 const PLATFORM_KEYS = ["telegram", "youtube", "vk"] as const;
 
@@ -55,7 +57,7 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, username, avatar_url, bio, links")
+    .select("id, username, avatar_url, bio, links, created_at")
     .eq("username", username)
     .maybeSingle();
 
@@ -75,7 +77,19 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const achievementStats = supabase
+    ? await collectBeatmakerStats(supabase, profile.id, profile.created_at)
+    : { registeredAt: new Date().toISOString(), beatsOnSale: 0, beatsTotal: 0, plays: 0, ordersPaid: 0, beatsWithStems: 0, postsPublished: 0 };
+
   const isOwner = user?.id === profile.id;
+
+  /*
+   * Достижения — внутренний инструмент битмейкера: показываем их только
+   * ему. Покупателю числа продаж знать не нужно, иначе выбор бита
+   * превращается в голосование за самого популярного.
+   */
+  const achievements = isOwner && supabase ? computeAchievements(achievementStats) : [];
+
 
   const [beats, follow, posts] = await Promise.all([
     fetchBeatsByOwner(supabase, profile.id, isOwner).catch(() => []),
@@ -163,6 +177,8 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
         </div>
 
         <div className="flex flex-col gap-8 pt-12">
+          {isOwner && achievements.length > 0 ? <Achievements list={achievements} /> : null}
+
           <SectionHead
             label={t("profile.beats")}
             hint={beats.length > 0 ? `${beats.length} ${locale === "ru" ? pluralRu(beats.length, "бит", "бита", "битов") : pluralEn(beats.length, "beat", "beats")}` : undefined}
