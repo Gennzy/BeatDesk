@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { emptyPrices, normalizePrices, PRICE_KEYS, priceLabel, pricesForDb, pricesToForm } from "./prices";
+import { emptyPrices, normalizePrices, parsePrice, PRICE_KEYS, priceLabel, pricesForDb, pricesToForm } from "./prices";
 
 describe("цены бита", () => {
   it("четыре уровня, и Track Out между WAV и эксклюзивом", () => {
@@ -57,5 +57,36 @@ describe("цены бита", () => {
     const back = normalizePrices(pricesForDb(prices));
 
     expect(back).toEqual(prices);
+  });
+});
+
+describe("parsePrice: цена из поля ввода", () => {
+  it("пустое поле значит «не продаётся», а не ноль", () => {
+    // Ноль отправил бы проверку по ложному следу: уровень как будто выставлен,
+    // и она начала бы требовать файл, который никто не покупает.
+    expect(parsePrice("")).toBeNull();
+    expect(parsePrice("   ")).toBeNull();
+    expect(parsePrice(null)).toBeNull();
+    expect(parsePrice(undefined)).toBeNull();
+  });
+
+  it("ноль и отрицательное — тоже не продажа", () => {
+    expect(parsePrice("0")).toBeNull();
+    expect(parsePrice("-500")).toBeNull();
+  });
+
+  it("обычная цена читается как число", () => {
+    expect(parsePrice("500")).toBe(500);
+    expect(parsePrice(" 1500 ")).toBe(1500);
+  });
+
+  it("дробная цена допустима: за неё никто не поспорит", () => {
+    expect(parsePrice("499.90")).toBe(499.9);
+  });
+
+  it("мусор в поле не превращается в цену", () => {
+    // Number("abc") — это NaN, и без проверки он молча уехал бы в базу.
+    expect(parsePrice("abc")).toBeNull();
+    expect(parsePrice("Infinity")).toBeNull();
   });
 });

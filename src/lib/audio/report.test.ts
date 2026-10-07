@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { MAX_ASSET_BYTES } from "@/lib/beats";
+
 import { buildReport, soldTiers, type ReportInput } from "./report";
 import type { TierId } from "./delivery-rules";
 
@@ -40,7 +42,7 @@ describe("вердикт выходного контроля", () => {
 
   it("требует правки, когда нарушено то, что мы задали сами", () => {
     const report = buildReport(input({
-      assets: [{ kind: "wav", bytes: 400 * 1024 * 1024, seconds: 184, bitsPerSample: 24, sampleRate: 44100, channels: 1 }],
+      assets: [{ kind: "wav", bytes: MAX_ASSET_BYTES + 1, seconds: 184, bitsPerSample: 24, sampleRate: 44100, channels: 1 }],
     }));
 
     expect(report.verdict).toBe("fix");
@@ -158,7 +160,7 @@ describe("слои отчёта", () => {
   it("каждая строка принадлежит ровно одному слою", () => {
     const report = buildReport(input({
       declared: { bpm: 90, key: "C# major", title: "" },
-      assets: [{ kind: "wav", bytes: 400 * 1024 * 1024, channels: 1 }],
+      assets: [{ kind: "wav", bytes: MAX_ASSET_BYTES + 1, channels: 1 }],
     }));
 
     for (const row of report.rows) {
@@ -171,7 +173,7 @@ describe("слои отчёта", () => {
     // что именно чинить.
     const report = buildReport(input({
       declared: { bpm: 90, key: "F# major", title: "" },
-      assets: [{ kind: "wav", bytes: 400 * 1024 * 1024, channels: 1 }],
+      assets: [{ kind: "wav", bytes: MAX_ASSET_BYTES + 1, channels: 1 }],
     }));
 
     for (const row of report.blockers) {

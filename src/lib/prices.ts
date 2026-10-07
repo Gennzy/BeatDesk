@@ -76,3 +76,16 @@ export function pricesForDb(prices: Prices): Record<string, number | null> {
 export function pricesToForm(prices: Prices): Record<string, number | null> {
   return { priceMp3: prices.mp3, priceBundle: prices.wav, priceTrackout: prices.trackout, priceExclusive: prices.exclusive };
 }
+/**
+ * Цена из поля ввода в число или null.
+ *
+ * Пустое поле — это не ноль и не минус один, это «уровень не продаётся».
+ * Если превратить его в ноль, проверка решит, что уровень выставлен, и
+ * начнёт требовать файл, который никто покупать не собирается.
+ */
+export function parsePrice(raw: string | null | undefined): number | null {
+  const text = (raw ?? "").trim();
+  const value = Number(text);
+
+  return text !== "" && Number.isFinite(value) && value > 0 ? value : null;
+}

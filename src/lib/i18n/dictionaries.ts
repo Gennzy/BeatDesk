@@ -391,6 +391,12 @@ const ru = {
   "connections.problemNetwork": "сеть недоступна",
   "connections.problemUnknown": "проблема с площадкой",
   "connections.groupHint.broadcast": "Эти каналы BeatDesk постит сам по кнопке.",
+  "readiness.title": "Готовность к продаже",
+  "readiness.noTiers": "Ни один уровень не выставлен на продажу: поставьте хотя бы цену на MP3, иначе бит нельзя купить.",
+  "readiness.ready": "всё на месте",
+  "readiness.missing": "не хватает:",
+  "readiness.noCover": "Обложка не загружена. Без неё карточка теряется в ленте.",
+  "readiness.blockedHint": "Уровень без файла продать нельзя: покупатель оплатит и получит заказ, который нечем выполнить.",
 } satisfies Record<string, string>;
 
 const en: Record<keyof typeof ru, string> = {
@@ -784,6 +790,12 @@ const en: Record<keyof typeof ru, string> = {
   "connections.problemNetwork": "network unreachable",
   "connections.problemUnknown": "platform problem",
   "connections.groupHint.broadcast": "BeatDesk posts to these channels itself, on one button.",
+  "readiness.title": "Ready to sell",
+  "readiness.noTiers": "No license tier is on sale. Set at least an MP3 price, otherwise the beat cannot be bought.",
+  "readiness.ready": "all there",
+  "readiness.missing": "missing:",
+  "readiness.noCover": "No cover uploaded. Without one the card gets lost in the feed.",
+  "readiness.blockedHint": "A tier without its file cannot be sold: the buyer would pay for an order we cannot fulfil.",
 };
 
 export const dictionaries = { ru, en } satisfies Record<Locale, Record<keyof typeof ru, string>>;

@@ -75,6 +75,7 @@ export default async function EditBeatPage({ params }: { params: Promise<{ id: s
               coverUrl: beat.cover_url,
               hasStems: Boolean(beat.files?.zip ?? beat.files?.rar),
               hasWav: Boolean(beat.files?.wav),
+              fileRoles: Object.keys(beat.files ?? {}),
             }}
           />
         </div>

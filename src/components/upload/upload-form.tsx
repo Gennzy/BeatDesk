@@ -25,6 +25,10 @@ import {
 import type { TranslationKey } from "@/lib/i18n/dictionaries";
 import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
 import { compressImage } from "@/lib/image";
+import { SellReadiness } from "@/components/beats/sell-readiness";
+import { fileRoles } from "@/lib/beats";
+import type { TierId } from "@/lib/audio/delivery-rules";
+import { parsePrice as toPrice } from "@/lib/prices";
 import { useI18n } from "@/lib/i18n/provider";
 import { createClient } from "@/lib/supabase/client";
 import { MastersBucketMissingError, SupabaseNotConfiguredError } from "@/lib/supabase/config";
@@ -67,6 +71,23 @@ export function UploadForm({ userId }: { userId: string }) {
   // Символ валюты под ценами: выбрал валюту — подписи перестали врать.
   const [currency, setCurrency] = useState<CurrencyCode>("RUB");
   const currencyHint = CURRENCIES.find((item) => item.code === currency)?.symbol ?? "₽";
+
+  /*
+   * Цены и название дублируем в состояние: поля остаются uncontrolled, ими
+   * владеет форма, но проверка готовности обязана видеть цену в ту же секунду,
+   * когда её ввели. Иначе человек поставит цену на дорожки, которых не
+   * загрузил, и узнает об этом только после отправки.
+   */
+  const [prices, setPrices] = useState<Record<TierId, number | null>>({
+    mp3: null,
+    bundle: null,
+    trackout: null,
+    exclusive: null,
+  });
+  const [title, setTitle] = useState("");
+
+  /** Роли выбранных файлов: проверка знает, что загружено, по ним. */
+  const roles = fileRoles(files, cover !== null);
 
   function selectFile(kind: BeatFileKind, file: File | null) {
     setFiles((prev) => ({ ...prev, [kind]: file ?? undefined }));
@@ -229,7 +250,7 @@ export function UploadForm({ userId }: { userId: string }) {
 
           <div className="grid gap-6">
             <Field label={t("upload.title_field")} hint={t("upload.title_fieldHint")}>
-              <Input name="title" placeholder="Night Shift" required maxLength={80} />
+              <Input name="title" placeholder="Night Shift" required maxLength={80} onChange={(event) => setTitle(event.target.value)} />
             </Field>
 
             <div className="grid gap-6 sm:grid-cols-2">
@@ -261,18 +282,20 @@ export function UploadForm({ userId }: { userId: string }) {
             </Field>
 
             <Field label={t("upload.priceMp3")} optional={currencyHint}>
-              <Input name="priceMp3" type="number" inputMode="numeric" placeholder="500" className="font-mono" />
+              <Input name="priceMp3" type="number" inputMode="numeric" placeholder="500" className="font-mono" onChange={(event) => setPrices((current) => ({ ...current, mp3: toPrice(event.target.value) }))} />
             </Field>
             <Field label={t("upload.priceBundle")} optional={currencyHint}>
-              <Input name="priceBundle" type="number" inputMode="numeric" placeholder="1500" className="font-mono" />
+              <Input name="priceBundle" type="number" inputMode="numeric" placeholder="1500" className="font-mono" onChange={(event) => setPrices((current) => ({ ...current, bundle: toPrice(event.target.value) }))} />
             </Field>
             <Field label={t("upload.priceTrackout")} hint={t("upload.priceTrackoutHint")} optional={currencyHint}>
-              <Input name="priceTrackout" type="number" inputMode="numeric" placeholder="2500" className="font-mono" />
+              <Input name="priceTrackout" type="number" inputMode="numeric" placeholder="2500" className="font-mono" onChange={(event) => setPrices((current) => ({ ...current, trackout: toPrice(event.target.value) }))} />
             </Field>
             <Field label={t("upload.priceExclusive")} optional={currencyHint}>
-              <Input name="priceExclusive" type="number" inputMode="numeric" placeholder="5000" className="font-mono" />
+              <Input name="priceExclusive" type="number" inputMode="numeric" placeholder="5000" className="font-mono" onChange={(event) => setPrices((current) => ({ ...current, exclusive: toPrice(event.target.value) }))} />
             </Field>
           </div>
+
+          <SellReadiness prices={prices} title={title} tags={[]} roles={roles} />
 
           <Switch label={t("upload.publish")} hint={t("upload.publishHint")} name="isPublic" defaultChecked={false} />
           <p className="text-xs leading-relaxed text-mute">{t("upload.feedNote")}</p>

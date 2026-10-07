@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { BeatAssistant } from "@/components/beats/beat-assistant";
+import { SellReadiness } from "@/components/beats/sell-readiness";
 import { CurrencyPicker } from "@/components/profile/currency-picker";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
@@ -13,6 +14,8 @@ import { KeyPicker } from "@/components/ui/key-picker";
 import { Switch } from "@/components/ui/switch";
 import type { FeedBeat } from "@/lib/feed";
 import { compressImage } from "@/lib/image";
+import type { TierId } from "@/lib/audio/delivery-rules";
+import { parsePrice as toPrice } from "@/lib/prices";
 import { useI18n } from "@/lib/i18n/provider";
 
 type Props = {
@@ -29,6 +32,8 @@ type Props = {
     /** Есть ли стемы и WAV: подсказка упоминает их в описании. */
     hasStems: boolean;
     hasWav: boolean;
+    /** Роли файлов в бите: "mp3", "wav", "stems", "artwork". */
+    fileRoles: string[];
   };
 };
 
@@ -50,6 +55,19 @@ export function EditBeatForm({ beat }: Props) {
    */
   const [title, setTitle] = useState(beat.title);
   const [tags, setTags] = useState(beat.tags.join(", "));
+
+  /*
+   * Цены дублируем в состояние, хотя поля остаются uncontrolled: полем
+   * управляет форма, а проверке готовности нужно видеть цену в ту же
+   * секунду, когда её ввели. Иначе человек поставит цену на уровень без
+   * файла и узнает об этом только после перезагрузки.
+   */
+  const [prices, setPrices] = useState<Record<TierId, number | null>>({
+    mp3: beat.prices.mp3 ?? null,
+    bundle: beat.prices.wav ?? null,
+    trackout: beat.prices.trackout ?? null,
+    exclusive: beat.prices.exclusive ?? null,
+  });
 
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
@@ -195,6 +213,9 @@ export function EditBeatForm({ beat }: Props) {
             type="number"
             inputMode="numeric"
             defaultValue={beat.prices.mp3 ?? ""}
+            onChange={(event) =>
+              setPrices((current) => ({ ...current, mp3: toPrice(event.target.value) }))
+            }
             className="font-mono"
           />
         </Field>
@@ -204,6 +225,9 @@ export function EditBeatForm({ beat }: Props) {
             type="number"
             inputMode="numeric"
             defaultValue={beat.prices.wav ?? ""}
+            onChange={(event) =>
+              setPrices((current) => ({ ...current, bundle: toPrice(event.target.value) }))
+            }
             className="font-mono"
           />
         </Field>
@@ -213,6 +237,9 @@ export function EditBeatForm({ beat }: Props) {
             type="number"
             inputMode="numeric"
             defaultValue={beat.prices.trackout ?? ""}
+            onChange={(event) =>
+              setPrices((current) => ({ ...current, trackout: toPrice(event.target.value) }))
+            }
             className="font-mono"
           />
         </Field>
@@ -222,10 +249,20 @@ export function EditBeatForm({ beat }: Props) {
             type="number"
             inputMode="numeric"
             defaultValue={beat.prices.exclusive ?? ""}
+            onChange={(event) =>
+              setPrices((current) => ({ ...current, exclusive: toPrice(event.target.value) }))
+            }
             className="font-mono"
           />
         </Field>
       </div>
+
+      <SellReadiness
+        prices={prices}
+        title={title}
+        tags={tags.split(",").map((tag) => tag.trim()).filter(Boolean)}
+        roles={beat.fileRoles}
+      />
 
       <Switch label={t("upload.publish")} hint={t("upload.publishHint")} name="isPublic" defaultChecked={beat.isPublic} />
 

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { CHUNK_BYTES, MAX_ASSET_BYTES } from "@/lib/beats";
+
 import { DELIVERY_FIELDS, TAG_LIMITS, TIERS, tierRules } from "./delivery-rules";
 
 describe("конфиг требований к выдаче", () => {
@@ -82,6 +84,21 @@ describe("конфиг требований к выдаче", () => {
     expect(wav.minSampleRate).toBe(44100);
     expect(wav.maxSampleRate).toBe(48000);
     expect(wav.minChannels).toBe(2);
+  });
+
+  it("потолок мастера совпадает с потолком загрузчика", () => {
+    // Правила строже загрузчика — значит файл пройдёт проверку и упадёт при
+    // отправке. Правила мягче загрузчика — значит человек зря потратит
+    // время на файл, который всё равно не примут. Потолок должен быть один.
+    expect(DELIVERY_FIELDS.wav.maxBytes).toBe(MAX_ASSET_BYTES);
+  });
+
+  it("потолок мастера помещается в куски по 20 МБ", () => {
+    // Мастер режется на куски, и ограничение Supabase в 50 МБ на объект до
+    // кусков не относится. Если размер куска доползёт до потолка, на
+    // бесплатном тарифе загрузка перестанет работать.
+    expect(CHUNK_BYTES).toBeLessThan(50 * 1024 * 1024);
+    expect(MAX_ASSET_BYTES % CHUNK_BYTES).toBe(0);
   });
 
   it("дорожки требуем в 24 бит: покупатель их сводит и слышит квантование", () => {

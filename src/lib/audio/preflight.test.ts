@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { MAX_ASSET_BYTES } from "@/lib/beats";
+
 import { blockers, checkAsset, checkAssets, type AssetFacts } from "./preflight";
 
 const wav = (over: Partial<AssetFacts> = {}): AssetFacts => ({
@@ -53,11 +55,17 @@ describe("checkAsset: мастер", () => {
     expect(byId(checkAsset("wav", wav({ sampleRate: 48000 })), "sampleRate").ok).toBe(true);
   });
 
-  it("ловит файл тяжелее 300 МБ", () => {
-    const findings = checkAsset("wav", wav({ bytes: 400 * 1024 * 1024 }));
+  it("ловит файл тяжелее потолка", () => {
+    // Потолок приходит из загрузчика, поэтому тест берёт его оттуда же и не
+    // разъезжается с ним при смене тарифа.
+    const findings = checkAsset("wav", wav({ bytes: MAX_ASSET_BYTES + 1 }));
 
     expect(byId(findings, "size").ok).toBe(false);
     expect(byId(findings, "size").severity).toBe("block");
+  });
+
+  it("файл ровно в потолке проходит", () => {
+    expect(byId(checkAsset("wav", wav({ bytes: MAX_ASSET_BYTES })), "size").ok).toBe(true);
   });
 
   it("ловит трек длиннее десяти минут", () => {

@@ -76,6 +76,25 @@ export function validateCoverFile(file: File): "upload.errorFileType" | "upload.
   return null;
 }
 
+/**
+ * Роли файлов в бите: "mp3", "wav", "stems", "artwork".
+ *
+ * В форме ключи называются zip и rar, а проверка готовности ждёт роли.
+ * Соответствие живёт здесь, потому что обе формы — загрузка и редактирование
+ * — обязаны считать одинаково: разойдутся — и человек увидит в одной форме
+ * «всё на месте», а в другой «не хватает».
+ */
+export function fileRoles(files: BeatFiles, hasCover: boolean): string[] {
+  const roles: string[] = [];
+
+  if (files.mp3) roles.push("mp3");
+  if (files.wav) roles.push("wav");
+  if (files.zip || files.rar) roles.push("stems");
+  if (hasCover) roles.push("artwork");
+
+  return roles;
+}
+
 export function countParts(size: number): number {
   return Math.max(1, Math.ceil(size / CHUNK_BYTES));
 }

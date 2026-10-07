@@ -222,6 +222,43 @@ async function main() {
       `e2e уникальный ответ ${stamp}`,
     );
     check("ответ не задваивается после живого обновления", afterLive === 1, `найдено ${afterLive}`);
+
+    // --- готовность к продаже -----------------------------------------
+    // Проверяем на живой форме: человек ставит цену на уровень, файла для
+    // которого нет, и обязан увидеть это сразу, а не после отправки.
+    console.log("\nГотовность к продаже");
+    await user.goto(`${BASE}/upload`, { waitUntil: "networkidle2", timeout: 60_000 });
+    await wait(1500);
+
+    const emptyReadiness = await user.evaluate(() => document.body.innerText);
+    check("форма загрузки объясняет, что без цены бит не купить", /поставьте хотя бы цену/i.test(emptyReadiness));
+
+    // Ставим цену на MP3, не загружая ничего: превью нет, значит уровень не готов.
+    await user.evaluate(() => {
+      const input = document.querySelector('input[name="priceMp3"]');
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+      setter.call(input, "500");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await wait(1200);
+
+    const mp3Readiness = await user.evaluate(() => document.body.innerText);
+    check("цена на MP3 без превью показана как неготовая", /не хватает/i.test(mp3Readiness));
+    check("не хватает именно превью, а не мастера", /превью в MP3/i.test(mp3Readiness));
+    check("форма предупреждает про невыполнимый заказ", /нечем выполнить|заказ/i.test(mp3Readiness));
+
+    // Убираем цену — блок должен вернуться к состоянию «ничего не продаётся».
+    await user.evaluate(() => {
+      const input = document.querySelector('input[name="priceMp3"]');
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+      setter.call(input, "");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await wait(1200);
+
+    const cleared = await user.evaluate(() => document.body.innerText);
+    check("пустая цена снимает претензию, а не оставляет её", /поставьте хотя бы цену/i.test(cleared));
+
     await user.close();
 
     // --- публичная страница бита -------------------------------------
