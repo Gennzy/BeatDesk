@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { PlayerBar } from "@/components/player/player-bar";
 import { PlayerProvider } from "@/components/player/player-provider";
 import { AuthPromptProvider } from "@/components/posts/auth-prompt-provider";
+import { ToastProvider } from "@/components/ui/toast";
 import { I18nProvider } from "@/lib/i18n/provider";
 import { getLocale } from "@/lib/i18n/server";
 import { getSessionUser } from "@/lib/supabase/user";
@@ -77,12 +78,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <I18nProvider locale={locale}>
           <AuthPromptProvider loggedIn={Boolean(user)}>
             <PlayerProvider>
-              <div className="flex min-h-svh flex-col">
-                <SiteHeader user={user} />
-                <main className="flex-1 pb-20 pb-[calc(5rem+env(safe-area-inset-bottom))]">{children}</main>
-                <SiteFooter />
-                <PlayerBar />
-              </div>
+              {/* Баннеры уведомлений живут здесь: они должны переживать смену
+                  маршрута, иначе всплывашка исчезала бы на каждом переходе. */}
+              <ToastProvider>
+                <div className="flex min-h-svh flex-col">
+                  <SiteHeader user={user} />
+                  <main className="flex-1 pb-20 pb-[calc(5rem+env(safe-area-inset-bottom))]">{children}</main>
+                  <SiteFooter />
+                  <PlayerBar />
+                </div>
+              </ToastProvider>
             </PlayerProvider>
           </AuthPromptProvider>
         </I18nProvider>

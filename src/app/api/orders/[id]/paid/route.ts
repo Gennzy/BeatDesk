@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { clientKey, rateLimit } from "@/lib/rate-limit";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -45,6 +46,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  /*
+   * Уведомления о продаже отправляем здесь, а не в mark_order_paid: там же
+   * проверка прав продавца, и её копия в миграции рано или поздно разошлась
+   * бы с оригиналом. Вызов идёт под service_role — у продавца нет доступа к
+   * функции, и мы туда попали не по его запросу, а по факту оплаты.
+   *
+   * Ошибка здесь не должна отменять подтверждение: деньги получены, заказ
+   * оплачен, а всплывашка — украшение.
+   */
+  try {
+    await getAdminClient().rpc("notify_sale", { p_order_id: id });
+  } catch {
+    // уведомление не ушло, заказ при этом оплачен
+  }
 
   return NextResponse.json({ status: (data as { status: string } | null)?.status ?? "paid" });
 }

@@ -21,6 +21,8 @@ export type PostBeat = {
   bpm: number;
   musicalKey: string;
   tags: string[];
+  /** Чей это бит: в посте показывается так же, как в ленте. */
+  typeBeatArtists: string[];
   coverUrl: string | null;
   mp3Url: string | null;
   plays: number;
@@ -69,6 +71,7 @@ type PostRowBeat = {
   bpm: number;
   key: string;
   tags: string[] | null;
+  type_beat_artists: string[] | null;
   cover_url: string | null;
   mp3_url: string | null;
   plays: number | null;
@@ -98,6 +101,7 @@ function toBeat(value: PostRowBeat | PostRowBeat[] | null): PostBeat | null {
     bpm: beat.bpm,
     musicalKey: beat.key,
     tags: beat.tags ?? [],
+    typeBeatArtists: beat.type_beat_artists ?? [],
     coverUrl: beat.cover_url,
     mp3Url: beat.mp3_url,
     plays: beat.plays ?? 0,
@@ -387,6 +391,7 @@ export function beatToFeedCard(beat: PostBeat, author: PostAuthor): FeedBeat {
     bpm: beat.bpm,
     musicalKey: beat.musicalKey,
     tags: beat.tags,
+    typeBeatArtists: beat.typeBeatArtists,
     coverUrl: beat.coverUrl,
     mp3Url: beat.mp3Url,
     prices: beat.prices,

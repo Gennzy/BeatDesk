@@ -29,6 +29,7 @@ import { SellReadiness } from "@/components/beats/sell-readiness";
 import { beatRoles } from "@/lib/beats";
 import type { TierId } from "@/lib/audio/delivery-rules";
 import { parsePrice as toPrice } from "@/lib/prices";
+import { parseTags } from "@/lib/tags";
 import { useI18n } from "@/lib/i18n/provider";
 import { createClient } from "@/lib/supabase/client";
 import { MastersBucketMissingError, SupabaseNotConfiguredError } from "@/lib/supabase/config";
@@ -151,10 +152,7 @@ export function UploadForm({ userId }: { userId: string }) {
         .filter(Boolean),
       bpm: Math.round(bpm),
       key: String(form.get("key") ?? ""),
-      tags: String(form.get("tags") ?? "")
-        .split(/[\s,]+/)
-        .map((item) => item.replace(/^#/, "").trim())
-        .filter(Boolean),
+      tags: parseTags(String(form.get("tags") ?? "")).map((item) => item.toLowerCase()),
       mp3_url: null,
       cover_url: null,
       files: {},

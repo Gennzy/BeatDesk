@@ -20,6 +20,8 @@ export type FeedBeat = {
   bpm: number;
   musicalKey: string;
   tags: string[];
+  /** Чей это бит: тип-биты ищут по артистам, и это не то же самое, что теги. */
+  typeBeatArtists: string[];
   coverUrl: string | null;
   mp3Url: string | null;
   prices: Prices;
@@ -38,6 +40,7 @@ type BeatRow = {
   bpm: number;
   key: string;
   tags: string[] | null;
+  type_beat_artists: string[] | null;
   cover_url: string | null;
   mp3_url: string | null;
   prices: FeedBeat["prices"] | null;
@@ -50,11 +53,11 @@ type BeatRow = {
 };
 
 const BEAT_COLUMNS =
-  "id, title, bpm, key, tags, cover_url, mp3_url, prices, currency, is_public, plays, created_at, updated_at, profiles(username, avatar_url)";
+  "id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, plays, created_at, updated_at, profiles(username, avatar_url)";
 
 /** Пока не применена миграция 0007, колонок plays и updated_at ещё нет в базе. */
 const LEGACY_BEAT_COLUMNS =
-  "id, title, bpm, key, tags, cover_url, mp3_url, prices, is_public, created_at, profiles(username, avatar_url)";
+  "id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, prices, is_public, created_at, profiles(username, avatar_url)";
 
 function serialize(row: BeatRow): FeedBeat {
   const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
@@ -65,6 +68,7 @@ function serialize(row: BeatRow): FeedBeat {
     bpm: row.bpm,
     musicalKey: row.key,
     tags: row.tags ?? [],
+    typeBeatArtists: row.type_beat_artists ?? [],
     coverUrl: row.cover_url,
     mp3Url: row.mp3_url,
     prices: normalizePrices(row.prices),

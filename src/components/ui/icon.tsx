@@ -1,0 +1,83 @@
+import { cn } from "@/lib/cn";
+
+/**
+ * Иконки в одном месте.
+ *
+ * Раньше значки набирали символами Unicode («◔» вместо колокольчика), и они
+ * рисовались по-разному в зависимости от шрифта и платформы. Здесь явная
+ * геометрия: вид одинаков везде и не зависит от загруженных шрифтов.
+ *
+ * Все иконки наследуют цвет через currentColor и рисуются обводкой в
+ * координатной сетке 24×24.
+ */
+export type IconName =
+  | "bell"
+  | "heart"
+  | "reply"
+  | "follow"
+  | "sale"
+  | "achievement"
+  | "download"
+  | "check"
+  | "close"
+  | "chevronRight";
+
+const PATHS: Record<IconName, React.ReactNode> = {
+  bell: (
+    <>
+      <path d="M18 8.5a6 6 0 1 0-12 0c0 4-1.5 5.5-2 6.5h16c-.5-1-2-2.5-2-6.5Z" />
+      <path d="M10 18.5a2 2 0 0 0 4 0" />
+    </>
+  ),
+  heart: <path d="M12 20.5 4.5 13a4.5 4.5 0 0 1 6.4-6.4l1.1 1.1 1.1-1.1A4.5 4.5 0 0 1 19.5 13L12 20.5Z" />,
+  reply: <path d="M9 7 4 12l5 5M4 12h9a7 7 0 0 1 7 7v1" />,
+  follow: (
+    <>
+      <path d="M10 11.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+      <path d="M3.5 20.5c0-3.3 2.9-5.5 6.5-5.5s6.5 2.2 6.5 5.5" />
+      <path d="M18.5 7v5M21 9.5h-5" />
+    </>
+  ),
+  sale: (
+    <>
+      <path d="M20 12.5 12.5 20a2 2 0 0 1-2.8 0L4 14.3V4h10.3l5.7 5.7a2 2 0 0 1 0 2.8Z" />
+      <path d="M8 8.5h.01" />
+    </>
+  ),
+  achievement: (
+    <>
+      <path d="M8 4h8v4a4 4 0 0 1-8 0V4Z" />
+      <path d="M8 5.5H5.5A2.5 2.5 0 0 0 8 8M16 5.5h2.5A2.5 2.5 0 0 1 16 8" />
+      <path d="M12 12v3.5M9 20h6M10 20l.8-4.5h2.4L14 20" />
+    </>
+  ),
+  download: <path d="M12 4v10m0 0 3.5-3.5M12 14 8.5 10.5M5 17v1.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V17" />,
+  check: <path d="m5 12.5 4.5 4.5L19 7" />,
+  close: <path d="M6 6l12 12M18 6 6 18" />,
+  chevronRight: <path d="m9 5 7 7-7 7" />,
+};
+
+export function Icon({
+  name,
+  className,
+  filled = false,
+}: {
+  name: IconName;
+  className?: string;
+  filled?: boolean;
+}) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      stroke={filled ? "none" : "currentColor"}
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn("size-5 shrink-0", className)}
+    >
+      {PATHS[name]}
+    </svg>
+  );
+}

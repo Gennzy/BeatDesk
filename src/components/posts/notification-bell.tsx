@@ -4,33 +4,95 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { Icon, type IconName } from "@/components/ui/icon";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n/provider";
 import { useRealtime } from "@/lib/realtime";
 
+type UnreadNotification = {
+  id: string;
+  kind: string;
+  actorUsername: string | null;
+  actorAvatar: string | null;
+  beatTitle: string | null;
+  createdAt: string;
+};
+
 /**
- * Колокольчик со счётчиком непрочитанных. Считает раз в минуту и сразу
- * после перехода на страницу уведомлений, а не по таймеру каждую секунду.
+ * Виды уведомлений для всплывашки: иконка, ключ подписи и адрес, куда
+ * ведёт нажатие.
+ *
+ * Тип ключа задан явно: `t()` принимает объединение строковых литералов,
+ * и шаблонный `notifications.${string}` в него не попадает.
+ */
+/**
+ * Уже показанные события живут на уровне модуля, а не компонента.
+ * Колокольчик отрисован в двух шапках — на широком экране и на узком, обе
+ * подписаны на одни и те же события, и счётчик внутри компонента показал бы
+ * две всплывашки на один ответ.
+ */
+const announced = new Set<string>();
+
+type ToastKind = {
+  icon: IconName;
+  label: "notifications.reply" | "notifications.like" | "notifications.follow" | "notifications.sale" | "notifications.achievement";
+  href?: string;
+};
+
+const TOAST_KINDS: Record<string, ToastKind> = {
+  reply: { icon: "reply", label: "notifications.reply" },
+  like: { icon: "heart", label: "notifications.like" },
+  follow: { icon: "follow", label: "notifications.follow" },
+  sale: { icon: "sale", label: "notifications.sale", href: "/notifications" },
+  achievement: { icon: "achievement", label: "notifications.achievement" },
+};
+
+/**
+ * Колокольчик со счётчиком непрочитанных и всплывашкой на каждое новое
+ * событие.
+ *
+ * Счётчик по-прежнему опрашивается раз в минуту: подписка на таблицу
+ * notifications приходит с задержкой, а человек должен видеть цифру сразу,
+ * а не после следующего кадра страницы.
  */
 export function NotificationBell() {
   const { t } = useI18n();
   const pathname = usePathname();
+  const toast = useToast();
 
   const [unread, setUnread] = useState(0);
+  // Ник владельца для ссылки на его профиль: достижения живут там.
+  const [username, setUsername] = useState<string | null>(null);
 
-  // Возвращаем значение, а не меняем состояние: иначе setState внутри
-  // вызова из эффекта ловит правило react-hooks про каскадные рендеры.
   const fetchUnread = useCallback(async (): Promise<number | null> => {
     try {
       const response = await fetch("/api/notifications/unread", { cache: "no-store" });
       if (!response.ok) return null;
-      const data = (await response.json()) as { unread?: number };
+      const data = (await response.json()) as { unread?: number; items?: UnreadNotification[] };
       return typeof data.unread === "number" ? data.unread : null;
     } catch {
       // сеть недоступна: это не повод ломать шапку
       return null;
     }
   }, []);
+
+  const fetchLatest = useCallback(async (): Promise<UnreadNotification[]> => {
+    try {
+      const response = await fetch("/api/notifications/unread", { cache: "no-store" });
+      if (!response.ok) return [];
+      const data = (await response.json()) as { items?: UnreadNotification[]; username?: string | null };
+      if (typeof data.username === "string") setUsername(data.username);
+      return Array.isArray(data.items) ? data.items : [];
+    } catch {
+      return [];
+    }
+  }, []);
+
+  // Всплывашка показывается только на настоящих страницах: на самой
+  // странице уведомлений человек уже смотрит на список, и баннер поверх
+  // него только мешает.
+  const onPage = pathname.startsWith("/notifications");
 
   useEffect(() => {
     let alive = true;
@@ -51,11 +113,36 @@ export function NotificationBell() {
     };
   }, [fetchUnread, pathname]);
 
-  // Счётчик обязан реагировать сразу: иначе человек узнает об ответе
-  // только после перезагрузки.
   useRealtime("notifications", () => {
     void fetchUnread().then((value) => {
       if (value !== null) setUnread(value);
+    });
+
+    if (onPage) return;
+
+    void fetchLatest().then((items) => {
+      for (const item of items.slice(0, 2)) {
+        // Подписка на таблицу срабатывает и на своей же записи, поэтому
+        // одно и то же событие всплывало бы повторно.
+        if (announced.has(item.id)) continue;
+        announced.add(item.id);
+
+        const kind = TOAST_KINDS[item.kind];
+        const who = item.actorUsername ? `@${item.actorUsername}` : t("notifications.system");
+        const text = kind ? t(kind.label) : t("notifications.system");
+        // Подпись хранит плейсхолдер {beat}, поэтому бит подставляется
+        // строкой: уведомление о посте бита не содержит.
+        const body = item.beatTitle ? text.replace("{beat}", `«${item.beatTitle}»`) : text.replace("{beat}", "");
+
+        toast.show({
+          icon: kind?.icon ?? "bell",
+          avatar: item.actorAvatar,
+          // Имя сверху, событие под ним — так строка читается как фраза,
+          // а не как «@nick» и отдельное слово без конца.
+          title: `${who} ${body}`,
+          href: kind?.href ?? (item.kind === "achievement" && username ? `/beatmakers/${username}` : undefined),
+        });
+      }
     });
   });
 
@@ -68,9 +155,11 @@ export function NotificationBell() {
         unread > 0 ? "border-signal text-signal" : "border-line text-mute hover:text-paper",
       )}
     >
-      <span aria-hidden>◔</span>
+      {/* Раньше здесь стоял символ «◔», который рисовался как кружок с
+          чертой и ни с чем не был похож на колокольчик. */}
+      <Icon name="bell" className="size-4" />
       {unread > 0 ? (
-        <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-signal px-1 text-[10px] leading-none text-ink">
+        <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-signal px-1 text-[10px] leading-none font-semibold text-ink">
           {unread > 99 ? "99+" : unread}
         </span>
       ) : null}

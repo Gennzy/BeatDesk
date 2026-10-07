@@ -41,6 +41,17 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
     [beat.prices],
   );
 
+  const artists = useMemo(
+    () => beat.typeBeatArtists.map((artist) => artist.trim()).filter(Boolean),
+    [beat.typeBeatArtists],
+  );
+
+  /** Теги, которые не повторяют артистов строкой выше. */
+  const looseTags = useMemo(() => {
+    const told = new Set(artists.map((artist) => artist.toLowerCase()));
+    return beat.tags.filter((tag) => !told.has(tag.toLowerCase())).slice(0, 3);
+  }, [artists, beat.tags]);
+
   function listen() {
     const next = trackFromBeat(beat);
     if (!next) return;
@@ -156,9 +167,22 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
           ) : null}
         </div>
 
-        {beat.tags.length > 0 ? (
+        {/*
+          Чей это бит показываем отдельно от тегов. Раньше карточка выводила
+          только теги, а они оказались копией артистов: «Slayr & Pittkiid»
+          читалось как набор случайных слов. Заодно убираем из тегов то, что
+          уже сказано строкой выше.
+        */}
+        {artists.length > 0 ? (
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="label text-mute/60">{t("feed.typeOf")}</span>
+            <span className="text-xs text-paper">{artists.join(", ")}</span>
+          </div>
+        ) : null}
+
+        {looseTags.length > 0 ? (
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-            {beat.tags.slice(0, 3).map((tag) => (
+            {looseTags.map((tag) => (
               <span key={tag} className="label text-mute">
                 {tag}
               </span>

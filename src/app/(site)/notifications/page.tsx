@@ -25,7 +25,7 @@ export default async function NotificationsPage() {
 
   const { data } = await supabase
     .from("notifications")
-    .select("id, kind, post_id, read_at, created_at, posts(body, parent_id), profiles!notifications_actor_id_fkey(username, avatar_url)")
+    .select("id, kind, post_id, beat_id, order_id, read_at, created_at, posts(body, parent_id), beats(title), profiles!notifications_actor_id_fkey(username, avatar_url)")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(PAGE_SIZE);
@@ -34,15 +34,19 @@ export default async function NotificationsPage() {
     id: string;
     kind: Notification["kind"];
     post_id: string | null;
+    beat_id: string | null;
+    order_id: string | null;
     read_at: string | null;
     created_at: string;
     posts: { body: string } | { body: string }[] | null;
+    beats: { title: string } | { title: string }[] | null;
     profiles: { username: string; avatar_url: string | null } | { username: string; avatar_url: string | null }[] | null;
   }[];
 
   const initial: Notification[] = rows.map((row) => {
     const actor = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
     const post = Array.isArray(row.posts) ? row.posts[0] : row.posts;
+    const beat = Array.isArray(row.beats) ? row.beats[0] : row.beats;
 
     return {
       id: row.id,
@@ -51,6 +55,9 @@ export default async function NotificationsPage() {
       actorAvatar: actor?.avatar_url ?? null,
       postId: row.post_id,
       postExcerpt: post?.body ? post.body.slice(0, 120) : null,
+      beatId: row.beat_id,
+      beatTitle: beat?.title ?? null,
+      orderId: row.order_id,
       readAt: row.read_at,
       createdAt: row.created_at,
     };

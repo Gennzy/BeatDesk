@@ -17,6 +17,7 @@ import { compressImage } from "@/lib/image";
 import type { TierId } from "@/lib/audio/delivery-rules";
 import { beatRoles } from "@/lib/beats";
 import { parsePrice as toPrice } from "@/lib/prices";
+import { parseTags } from "@/lib/tags";
 import { useI18n } from "@/lib/i18n/provider";
 
 type Props = {
@@ -98,10 +99,7 @@ export function EditBeatForm({ beat }: Props) {
       }),
     );
 
-    const tagList = tags
-      .split(/[\s,]+/)
-      .map((tag) => tag.replace(/^#/, "").trim())
-      .filter(Boolean);
+    const tagList = parseTags(tags);
 
     // Строку тегов убираем: сервер ждёт массив, и без этого поле уходило
     // дважды — сначала текстом, потом списком.
