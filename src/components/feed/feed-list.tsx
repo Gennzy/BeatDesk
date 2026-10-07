@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { BeatCard } from "@/components/feed/beat-card";
-import { EmptyState, ErrorState, Skeleton } from "@/components/ui/states";
+import { BeatCardSkeleton } from "@/components/ui/progress";
+import { EmptyState, ErrorState } from "@/components/ui/states";
 import type { FeedBeat } from "@/lib/feed";
 
 import { filtersToParams, type FeedFilterState } from "./feed-filters";
@@ -64,7 +65,7 @@ export function FeedList({ initial, initialNextOffset, filters }: Props) {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {beats.map((beat) => (
           <BeatCard key={beat.id} beat={beat} />
         ))}
@@ -72,15 +73,9 @@ export function FeedList({ initial, initialNextOffset, filters }: Props) {
 
       <div ref={sentinelRef} aria-live="polite" className="flex min-h-24 items-center justify-center">
         {status === "loading" ? (
-          <div className="grid w-full gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 3 }, (_, index) => (
-              <div key={index} className="flex flex-col overflow-hidden rounded-md border border-line bg-ink-2">
-                <Skeleton className="aspect-square rounded-none" />
-                <div className="flex flex-col gap-3 p-4">
-                  <Skeleton className="h-5 w-2/3" />
-                  <Skeleton className="h-3 w-24" />
-                </div>
-              </div>
+          <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: 4 }, (_, index) => (
+              <BeatCardSkeleton key={index} />
             ))}
           </div>
         ) : null}

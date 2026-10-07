@@ -44,6 +44,26 @@
   --text-label: 0.6875rem;
   --text-label--line-height: 1;
   --text-label--letter-spacing: 0.2em;
+
+  /*
+   * Движение.
+   *
+   * Три скорости и никаких случайных: быстро — отклик на нажатие, обычно
+   * на глазах, средне — появление и смена состояния, медленно — переходы
+   * между экранами. Раньше каждая анимация писала свою цифру, и интерфейс
+   * дёргался неравномерно: кнопка за 150 мс, карточка за 500, появление
+   * списка за 700.
+   */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 140ms;
+  --duration-base: 220ms;
+  --duration-slow: 380ms;
+
+  /* тени: плоская сетка снимает объём, но карточка должна подниматься */
+  --shadow-card: 0 1px 0 0 color-mix(in oklab, var(--color-paper) 4%, transparent);
+  --shadow-lift: 0 18px 40px -24px rgb(0 0 0 / 0.85);
+  --shadow-signal: 0 10px 30px -14px color-mix(in oklab, var(--color-signal) 45%, transparent);
 }
 
 @layer base {
@@ -125,6 +145,78 @@
   /* моноширинный — только для настоящих технических строк: имена файлов, версии */
   .mono {
     font-family: var(--font-jetbrains), ui-monospace, monospace;
+  }
+
+  /*
+   * Карточка товара.
+   *
+   * Раньше каждая карточка в приложении описывала себя сама: рамка, фон,
+   * hover — своей строкой классов. Четыре места разъезжались по высоте и по
+   * скорости наведения, и сетка ленты ломалась на последней карточке.
+   */
+  .surface {
+    position: relative;
+    border: 1px solid var(--color-line);
+    background: var(--color-ink-2);
+    transition:
+      border-color var(--duration-base) var(--ease-out),
+      transform var(--duration-base) var(--ease-out),
+      box-shadow var(--duration-base) var(--ease-out);
+  }
+
+  .surface-interactive:hover,
+  .surface-interactive:focus-within {
+    border-color: var(--color-line-2);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lift);
+  }
+
+  /* ряд строк в панели: лента цен, списки заказов, блок готовности */
+  .rows {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .row {
+    background: var(--color-ink-2);
+    padding: 0.75rem 1rem;
+  }
+
+  /* фокус для всего, что кликабельно: кольцо не обрезается родителем */
+  .focusable {
+    outline: none;
+  }
+
+  .focusable:focus-visible {
+    outline: 2px solid var(--color-signal);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+
+  /*
+   * Волна в к��рточке.
+   *
+   * Показывает, где играет бит, без плеера: у маркетплейса человек
+   * пролистывает сотню карточек и ориентируется по звуку, а не по тексту.
+   * Полоски симметричны по центру и не мигают — анимация только на активной.
+   */
+  .wave {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 22px;
+  }
+
+  .wave-bar {
+    flex: 1;
+    min-width: 2px;
+    background: var(--color-line-2);
+    transition: background var(--duration-base) var(--ease-out);
+  }
+
+  .wave[data-active="true"] .wave-bar {
+    background: var(--color-signal);
   }
 
   /* vertical mixer guides at the container edges */
