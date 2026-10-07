@@ -5,6 +5,7 @@ import { useMemo } from "react";
 
 import { usePlayer } from "@/components/player/player-provider";
 import { Avatar } from "@/components/ui/avatar";
+import { ProgressLine } from "@/components/ui/progress";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/currency";
 import type { FeedBeat } from "@/lib/feed";
@@ -15,10 +16,14 @@ import { useI18n } from "@/lib/i18n/provider";
 /**
  * Карточка товара в ленте.
  *
- * Сверху — обложка и звук, снизу — товар: название, кто сделал, технические
- * числа и тарифы. Тарифы показаны полными названиями, а не сокращениями
- * «TRACKOUT · WAV · EXCL»: на сокращения пришлось бы гадать, а человек
- * выбирает уровень именно по тому, что в него входит.
+ * Глубина карточке даёт наведение: рамка светлеет, обложка чуть приближается,
+ * под карточкой появляется тень. Раньше поверх этого ещё наезжал сдвиг на
+ * два пикселя и увеличение обложки на четыре процента — два трансформа
+ * складывались, и при быстром движении мыши карточка дёргалась. Осталось
+ * одно движение, и оно читается как «живая», а не как «сломалась».
+ *
+ * Полоска прогресса идёт по нижнему краю обложки, а не поверх неё
+ * декорациями: видно, где играет, и обложка остаётся обложкой.
  */
 export function BeatCard({ beat }: { beat: FeedBeat }) {
   const { t } = useI18n();
@@ -36,21 +41,6 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
     [beat.prices],
   );
 
-  // Волна не отражает звук — она рисует движение. Случайные числа пересоздаются
-  // только при смене бита, иначе лента перерисовывалась бы на каждом кадре.
-  const bars = useMemo(() => {
-    const seed = beat.id.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    const heights: number[] = [];
-    for (let index = 0; index < 28; index += 1) {
-      const value = (seed * (index + 3) * 2654435761) % 97;
-      heights.push(24 + (value % 76));
-    }
-    return heights;
-  }, [beat.id]);
-
-  // Плеер отдаёт секунды, а полоскам нужна доля: так они не зависят от длины бита.
-  const position = active && duration > 0 ? currentTime / duration : 0;
-
   function listen() {
     const next = trackFromBeat(beat);
     if (!next) return;
@@ -59,8 +49,8 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
   }
 
   return (
-    <article className={cn("surface surface-interactive group flex h-full flex-col", active && "border-signal/60")}>
-      <div className="relative aspect-square overflow-hidden">
+    <article className={cn("surface surface-interactive group flex h-full flex-col", active && "border-signal/50")}>
+      <div className="relative aspect-square overflow-hidden bg-ink-3">
         {beat.coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -68,10 +58,10 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
             alt=""
             loading="lazy"
             decoding="async"
-            className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+            className="size-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
           />
         ) : (
-          <div className="cover-grid relative size-full bg-ink-3">
+          <div className="cover-grid relative size-full">
             <span aria-hidden className="absolute top-3 right-3 size-2 bg-signal" />
             <span aria-hidden className="absolute inset-0 grid place-items-center">
               <span className="size-10 border border-line-2" />
@@ -80,58 +70,47 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
           </div>
         )}
 
-        {/* Затемнение только снизу: даёт читаемую подпись и не съедает обложку. */}
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-ink/85 to-transparent" />
+        {/* Затемнение снизу нужно только под кнопкой: без него кнопка
+            «висит» на светлой обложке и теряется. */}
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-ink/80 to-transparent" />
 
         {playable ? (
-          <>
-            <button
-              type="button"
-              onClick={listen}
-              aria-label={active ? t("player.pause") : t("player.play")}
-              aria-pressed={active}
-              className={cn(
-                "absolute bottom-3 left-3 grid size-12 place-items-center rounded-full border backdrop-blur-md transition-all duration-200 ease-out",
-                active
-                  ? "border-signal bg-signal text-ink"
-                  : "border-line-2 bg-ink/75 text-paper hover:scale-105 hover:border-signal hover:bg-signal hover:text-ink",
-              )}
-            >
-              {active ? (
-                <svg viewBox="0 0 10 12" aria-hidden className="h-4 w-3.5 fill-current">
-                  <path d="M0 0h3.5v12H0zM6.5 0H10v12H6.5z" />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 10 12" aria-hidden className="h-4 w-3.5 fill-current">
-                  <path d="M0 0l10 6-10 6z" />
-                </svg>
-              )}
-            </button>
-
-            <div
-              className="wave absolute right-3 bottom-4 left-[4.25rem] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-              data-active={active}
-              aria-hidden
-            >
-              {bars.map((height, index) => (
-                <span
-                  key={index}
-                  className="wave-bar"
-                  style={{
-                    height: `${active ? Math.max(20, Math.min(100, height * (position > index / bars.length ? 1 : 0.45))) : height * 0.4}%`,
-                  }}
-                />
-              ))}
-            </div>
-          </>
+          <button
+            type="button"
+            onClick={listen}
+            aria-label={active ? t("player.pause") : t("player.play")}
+            aria-pressed={active}
+            className={cn(
+              "absolute bottom-3 left-3 grid size-12 place-items-center rounded-full border backdrop-blur-sm transition-colors duration-200",
+              active
+                ? "border-signal bg-signal text-ink"
+                : "border-line-2 bg-ink/80 text-paper hover:border-signal hover:bg-signal hover:text-ink",
+            )}
+          >
+            {active ? (
+              <svg viewBox="0 0 10 12" aria-hidden className="h-4 w-3.5 fill-current">
+                <path d="M0 0h3.5v12H0zM6.5 0H10v12H6.5z" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 10 12" aria-hidden className="h-4 w-3.5 fill-current">
+                <path d="M0 0l10 6-10 6z" />
+              </svg>
+            )}
+          </button>
         ) : (
-          <span className="label absolute bottom-3 left-3 border border-line bg-ink/80 px-2.5 py-1.5 text-mute">
+          <span className="label absolute bottom-3 left-3 rounded-full border border-line bg-ink/85 px-3 py-1.5 text-mute">
             {t("feed.noAudio")}
           </span>
         )}
+
+        {active ? (
+          <span className="absolute inset-x-0 bottom-0 block">
+            <ProgressLine value={duration > 0 ? currentTime / duration : 0} label={t("player.progress")} />
+          </span>
+        ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col gap-3.5 p-4">
+      <div className="flex flex-1 flex-col gap-3 p-4">
         <div className="flex flex-col gap-2">
           <Link href={`/beats/${beat.id}`} className="group/title focusable w-fit">
             <h3 className="font-display text-lg leading-tight tracking-tight text-paper uppercase transition-colors group-hover/title:text-signal">
@@ -181,23 +160,24 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
         ) : null}
 
         {/*
-          Тарифы — главный выбор на карточке, поэтому они идут дороже тегов и
-          стоят на своём фоне: видно, где товар заканчивается.
+          Тарифы прижаты к низу и отделены волосяной линией: без линии пустое
+          место между тегами и ценой читалось как недоделанная вёрстка.
         */}
-        <div className="rows mt-auto">
-          {tiers.map((tier) => (
-            <Link
-              key={tier.key}
-              href={`/beats/${beat.id}`}
-              className="row flex items-baseline justify-between gap-3 transition-colors hover:bg-ink-3 focusable"
-            >
-              <span className="label text-mute">{tier.label}</span>
-              <span className="font-mono text-[13px] text-paper tabular-nums">
-                {formatMoney(tier.value as number, beat.currency)}
-              </span>
-            </Link>
-          ))}
-        </div>
+        {tiers.length > 0 ? (
+          <ul className="rows mt-auto border-t border-line pt-px">
+            {tiers.map((tier) => (
+              <li
+                key={tier.key}
+                className="row flex items-baseline justify-between gap-3 py-2 transition-colors hover:bg-ink-3"
+              >
+                <span className="label text-mute">{tier.label}</span>
+                <span className="font-mono text-[13px] text-paper tabular-nums">
+                  {formatMoney(tier.value as number, beat.currency)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
     </article>
   );

@@ -164,10 +164,14 @@
       box-shadow var(--duration-base) var(--ease-out);
   }
 
+  /*
+   * Наведение: одно движение — тень и светлая рамка. Сдвиг на пару пикселей
+   * поверх увеличения обложки складывался в дрожание, когда мышь двигалась
+   * быстро: карточка дёргалась, и это читалось как поломка, а не как глубина.
+   */
   .surface-interactive:hover,
   .surface-interactive:focus-within {
     border-color: var(--color-line-2);
-    transform: translateY(-2px);
     box-shadow: var(--shadow-lift);
   }
 
@@ -194,30 +198,6 @@
     border-radius: var(--radius-xs);
   }
 
-  /*
-   * Волна в к��рточке.
-   *
-   * Показывает, где играет бит, без плеера: у маркетплейса человек
-   * пролистывает сотню карточек и ориентируется по звуку, а не по тексту.
-   * Полоски симметричны по центру и не мигают — анимация только на активной.
-   */
-  .wave {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    height: 22px;
-  }
-
-  .wave-bar {
-    flex: 1;
-    min-width: 2px;
-    background: var(--color-line-2);
-    transition: background var(--duration-base) var(--ease-out);
-  }
-
-  .wave[data-active="true"] .wave-bar {
-    background: var(--color-signal);
-  }
 
   /* vertical mixer guides at the container edges */
   .guide-grid {
