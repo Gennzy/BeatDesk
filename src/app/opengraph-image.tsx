@@ -39,10 +39,10 @@ export default async function OpengraphImage() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 900 }}>
           <div style={{ fontSize: 78, fontWeight: 800, lineHeight: 1.05 }}>
-            Один бит — все площадки
+            Маркетплейс битов
           </div>
           <div style={{ fontSize: 34, color: "#8f8f98", lineHeight: 1.3 }}>
-            Название, BPM, тональность, теги, имена файлов и тексты для YouTube, ВК и Telegram
+            Цены по лицензиям, мастер и стемы после оплаты. Публикация в Telegram, ВК и YouTube — одним нажатием
           </div>
         </div>
 

@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { BeatHero, type BeatHeroData } from "@/components/beat/beat-hero";
-import { BuyBox } from "@/components/sales/buy-box";
+import { BeatOffer } from "@/components/sales/beat-offer";
 import { Container } from "@/components/ui/container";
-import type { BeatAsset } from "@/lib/beats";
 import { normalizePrices, PRICE_KEYS, priceLabel } from "@/lib/prices";
 import { getSupabase } from "@/lib/supabase/user";
 
@@ -51,7 +50,7 @@ export default async function BeatDistributionPage({ params }: { params: Promise
 
   const { data: beat } = await supabase
     .from("beats")
-    .select("id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, currency, files, owner_id, profiles(username, avatar_url)")
+    .select("id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, currency, sale_state, owner_id, profiles(username, avatar_url)")
     .eq("id", id)
     .maybeSingle();
 
@@ -64,19 +63,7 @@ export default async function BeatDistributionPage({ params }: { params: Promise
   } = await supabase.auth.getUser();
 
   const owner = Array.isArray(beat.profiles) ? beat.profiles[0] : beat.profiles;
-  const files = (beat.files ?? {}) as Record<string, BeatAsset>;
-  // гостям мастера не отдаём даже список: пути живут в закрытом бакете
   const isOwner = Boolean(user && user.id === beat.owner_id);
-  const assets = isOwner ? Object.values(files).filter(Boolean) : [];
-
-  const FORMATS: Record<string, string> = {
-    "audio/mpeg": "MP3",
-    "audio/wav": "WAV",
-    "audio/x-wav": "WAV",
-    "application/zip": "ZIP",
-    "application/vnd.rar": "RAR",
-  };
-  const formats = [...new Set([...(beat.mp3_url ? ["MP3"] : []), ...assets.map((asset) => FORMATS[asset.mime]).filter(Boolean)])];
 
   const prices = normalizePrices(beat.prices);
   const tiers = PRICE_KEYS.map((key) => ({
@@ -99,15 +86,13 @@ export default async function BeatDistributionPage({ params }: { params: Promise
             bpm: beat.bpm,
             musicalKey: beat.key,
             tags: beat.tags ?? [],
-            prices: (beat.prices ?? { mp3: null, bundle: null, exclusive: null }) as BeatHeroData["prices"],
-            currency: beat.currency ?? "RUB",
-            formats,
+            saleState: (beat.sale_state ?? "draft") as BeatHeroData["saleState"],
           }}
           isOwner={isOwner}
         />
 
         <div className="pt-10">
-          <BuyBox beatId={beat.id} tiers={tiers} currency={beat.currency ?? "RUB"} isOwner={isOwner} />
+          <BeatOffer beatId={beat.id} tiers={tiers} currency={beat.currency ?? "RUB"} isOwner={isOwner} />
         </div>
       </Container>
     </section>

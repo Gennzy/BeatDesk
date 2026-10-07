@@ -60,7 +60,7 @@ export function ShortLinkButton({ path }: { path: string }) {
         <>
           <code className="mono text-xs text-paper">{url}</code>
           <Button type="button" size="sm" variant="ink" onClick={() => void copy()}>
-            {copied ? t("share.copied") : t("shortLink.copy")}
+            {copied ? t("shortLink.copied") : t("shortLink.copy")}
           </Button>
         </>
       ) : (

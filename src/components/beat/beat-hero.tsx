@@ -1,17 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 
 import { usePlayer } from "@/components/player/player-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/cn";
 import { ShortLinkButton } from "@/components/beats/short-link-button";
-import { formatMoney } from "@/lib/currency";
-import { PRICE_KEYS, priceHint, priceLabel } from "@/lib/prices";
+import { cn } from "@/lib/cn";
+import { SALE_STATE_LABELS, canPutOnSale, type SaleState } from "@/lib/sales/state";
 import { useI18n } from "@/lib/i18n/provider";
-import type { Prices } from "@/lib/prices";
 
 export type BeatHeroData = {
   id: string;
@@ -23,54 +20,26 @@ export type BeatHeroData = {
   bpm: number;
   musicalKey: string;
   tags: string[];
-  prices: Prices;
-  currency?: string;
-  formats: string[];
+  /** Состояние в продаже: витрина, придержан или ушёл эксклюзивом. */
+  saleState: SaleState;
 };
 
 /**
- * Уровни берём из общего списка цен, а не пишем здесь свои.
+ * Шапка карточки товара.
  *
- * Список был продублирован, и когда появился Track Out, карточка продолжила
- * бы показывать три уровня из четырёх — тихо и без ошибок.
+ * Раньше здесь стояли цены и подпись «тексты и имена файлов ниже», но блока
+ * под ними уже нет: внешние витрины убрали. Осталось обещание, которого
+ * никто не выполнял. Теперь шапка показывает состояние продажи, а уровни и
+ * цену — блок покупки ниже: покупателю не нужно знать про публикацию в
+ * каналы, а битмейкеру — про копирование строки цен.
  */
-
-function money(value: number, currency?: string): string {
-  return formatMoney(value, currency);
-}
-
 export function BeatHero({ beat, isOwner }: { beat: BeatHeroData; isOwner: boolean }) {
   const { t } = useI18n();
-  const { currency } = beat;
   const { track, isPlaying, play } = usePlayer();
-  const [copied, setCopied] = useState(false);
 
   const active = track?.id === beat.id && isPlaying;
   const playable = Boolean(beat.audioUrl);
-  const tiers = PRICE_KEYS.map((key) => ({
-    key,
-    label: priceLabel[key],
-    hint: priceHint[key],
-    value: beat.prices[key],
-  })).filter((tier) => tier.value !== null);
-
-  async function copyPrices() {
-    const line = tiers.map((tier) => `${tier.label} ${money(tier.value as number, currency)}`).join(" · ");
-    try {
-      await navigator.clipboard.writeText(line);
-    } catch {
-      const area = document.createElement("textarea");
-      area.value = line;
-      area.style.position = "fixed";
-      area.style.opacity = "0";
-      document.body.append(area);
-      area.select();
-      document.execCommand("copy");
-      area.remove();
-    }
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
-  }
+  const sellable = canPutOnSale(beat.saleState);
 
   return (
     <div className="grid gap-10 lg:grid-cols-[minmax(0,30rem)_minmax(0,1fr)] lg:gap-14">
@@ -129,14 +98,13 @@ export function BeatHero({ beat, isOwner }: { beat: BeatHeroData; isOwner: boole
             </span>
           )}
         </div>
-
       </div>
 
       <div className="flex flex-col gap-6 lg:sticky lg:top-24 lg:self-start">
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
-            <span aria-hidden className="size-1.5 bg-signal" />
-            <span className="label text-mute">{t("share.title")}</span>
+            <span aria-hidden className={cn("size-1.5", sellable ? "bg-signal" : "bg-amber")} />
+            <span className="label text-mute">{SALE_STATE_LABELS[beat.saleState]}</span>
             <Link
               href={`/beatmakers/${beat.username}`}
               className="label ml-auto text-mute underline-offset-4 transition-colors hover:text-paper hover:underline"
@@ -160,61 +128,24 @@ export function BeatHero({ beat, isOwner }: { beat: BeatHeroData; isOwner: boole
           </div>
         </div>
 
-        <p className="max-w-[62ch] text-sub text-mute">{t("share.note")}</p>
+        <p className="max-w-[62ch] text-sub text-mute">
+          {isOwner ? t("share.noteOwner") : t("share.noteBuyer")}
+        </p>
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-line pt-6">
-          <Link href={`/beats/${beat.id}/publish`}>
-            <Button size="md">{t("publish.openButton")}</Button>
-          </Link>
-          {isOwner ? (
+        {isOwner ? (
+          <div className="flex flex-wrap items-center gap-3 border-t border-line pt-6">
             <Link href={`/beats/${beat.id}/edit`}>
+              <Button size="md">{t("edit.title")}</Button>
+            </Link>
+            <Link href={`/beats/${beat.id}/publish`}>
               <Button size="md" variant="ink">
-                {t("edit.title")}
+                {t("publish.openButton")}
               </Button>
             </Link>
-          ) : null}
-          <span className="label ml-auto hidden text-mute sm:inline">{t("share.hintPlatforms")}</span>
-        </div>
+          </div>
+        ) : null}
 
         {isOwner ? <ShortLinkButton path={`/beats/${beat.id}`} /> : null}
-
-        {tiers.length > 0 ? (
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-4 border-b border-line pb-2">
-              <span className="label text-mute">{t("share.prices")}</span>
-              <button
-                type="button"
-                onClick={() => void copyPrices()}
-                className="label text-mute transition-colors hover:text-signal"
-              >
-                {copied ? t("share.copied") : t("share.copyPrices")}
-              </button>
-            </div>
-            <ul className="flex flex-col gap-px">
-              {tiers.map((tier) => (
-                <li
-                  key={tier.key}
-                  className="flex items-baseline justify-between gap-4 bg-ink-2 px-4 py-3"
-                >
-                  <span className="flex flex-col">
-                    <span className="label text-paper">{tier.label}</span>
-                    <span className="text-xs text-mute">{tier.hint}</span>
-                  </span>
-                  <span className="font-mono text-sm text-amber">{money(tier.value as number, currency)}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-
-        {beat.formats.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="label mr-1 text-mute">{t("share.formats")}</span>
-            {beat.formats.map((format) => (
-              <Badge key={format} tone="outline">{format}</Badge>
-            ))}
-          </div>
-        ) : null}
       </div>
     </div>
   );
