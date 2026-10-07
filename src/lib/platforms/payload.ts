@@ -1,4 +1,4 @@
-import { hashtagList, priceLine, typeBeatLine } from "@/lib/distribution";
+import { hashtagList, priceLine, typeBeatLine } from "@/lib/beat-promo";
 import type { Prices } from "@/lib/prices";
 
 export type PublishBeat = {

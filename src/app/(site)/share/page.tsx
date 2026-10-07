@@ -10,7 +10,7 @@ import { getSupabase } from "@/lib/supabase/user";
 
 export const metadata: Metadata = {
   title: "Шейринг",
-  description: "Публикация битов в Telegram, ВК и Discord сразу пачкой.",
+  description: "Публикация битов в Telegram, ВК и YouTube сразу пачкой.",
   robots: { index: false, follow: false },
 };
 

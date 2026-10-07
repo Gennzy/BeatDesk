@@ -191,7 +191,6 @@ export function ConnectionsBoard({ connected, platforms, groups, oauthReturn }: 
             <ul className="flex flex-col gap-4">
               {items.map((platform) => {
                 const row = byPlatform.get(platform.id);
-                const isApi = platform.kind === "api";
                 const verdict = verdicts[platform.id];
                 const isOpen = openId === platform.id;
 
@@ -229,18 +228,7 @@ export function ConnectionsBoard({ connected, platforms, groups, oauthReturn }: 
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">
-                          {!isApi ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => platform.openUrl && window.open(platform.openUrl, "_blank", "noopener")}
-                              disabled={!platform.openUrl}
-                            >
-                              {t("connections.open")}
-                            </Button>
-                          ) : null}
-
+    
                           {row ? (
                             <>
                               <Button
@@ -271,37 +259,31 @@ export function ConnectionsBoard({ connected, platforms, groups, oauthReturn }: 
                                 {t("connections.disconnect")}
                               </Button>
                             </>
-                          ) : isApi ? (
-                            platform.level === "oauth" ? (
-                              <a href={platform.oauthPath ?? `/api/platforms/${platform.id}/authorize`}>
-                                <Button type="button" variant="signal" size="sm">
-                                  {t("connections.connect")}
-                                </Button>
-                              </a>
-                            ) : (
-                              <Button
-                                type="button"
-                                variant="signal"
-                                size="sm"
-                                onClick={() => (isOpen ? setOpenId(null) : setOpenId(platform.id))}
-                              >
+                          ) : platform.level === "oauth" ? (
+                            <a href={platform.oauthPath ?? `/api/platforms/${platform.id}/authorize`}>
+                              <Button type="button" variant="signal" size="sm">
                                 {t("connections.connect")}
                               </Button>
-                            )
-                          ) : null}
+                            </a>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="signal"
+                              size="sm"
+                              onClick={() => (isOpen ? setOpenId(null) : setOpenId(platform.id))}
+                            >
+                              {t("connections.connect")}
+                            </Button>
+                          )}
                         </div>
                       </div>
 
-                      {isOpen && isApi ? (
+                      {isOpen ? (
                         <ConnectForm
                           platform={platform}
                           busy={busy === platform.id}
                           onConnect={connect}
                         />
-                      ) : null}
-
-                      {!isApi ? (
-                        <p className="label text-mute">{t(`connections.manual.${platform.id}` as "connections.manual.beatstars")}</p>
                       ) : null}
                     </Card>
                   </li>

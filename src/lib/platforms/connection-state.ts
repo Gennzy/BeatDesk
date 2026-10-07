@@ -20,7 +20,7 @@ export type ConnectionRow = {
 
 /** Нужен ли секрет, чтобы площадка считалась подключённой. */
 export function needsSecret(platform: Pick<Platform, "auth">): boolean {
-  return platform.auth === "token" || platform.auth === "webhook" || platform.auth === "oauth";
+  return platform.auth === "token" || platform.auth === "oauth";
 }
 
 export function isConnected(platform: Pick<Platform, "auth">, row: ConnectionRow | undefined): boolean {

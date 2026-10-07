@@ -1,6 +1,5 @@
 import type { SupabaseServerClient } from "@/lib/supabase/server";
 
-import { publishToDiscord } from "./adapters/discord";
 import { publishToTelegram } from "./adapters/telegram";
 import { publishToVk } from "./adapters/vk";
 import type { PlatformConnection } from "./adapters/vk";
@@ -87,16 +86,6 @@ export async function publishBeat(input: {
     const meta = (input.connection?.meta ?? {}) as Record<string, string | number | null>;
 
     return publishToVk({ accessToken: decrypted, meta }, payload);
-  }
-
-  if (input.platform === "discord") {
-    return publishToDiscord(
-      {
-        accessToken: decrypt(input.connection),
-        meta: (input.connection?.meta ?? {}) as Record<string, string | number | null>,
-      },
-      payload,
-    );
   }
 
   if (input.platform === "youtube") {

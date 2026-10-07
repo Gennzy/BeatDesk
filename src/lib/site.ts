@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 export const SITE_NAME = "BeatDesk";
 
 export const SITE_DESCRIPTION =
-  "BeatDesk ведёт бит от загрузки до публикации: имена файлов, тексты для постов и данные для маркетплейсов, автопост в Telegram, ВК и Discord. Мастера и стемы остаются приватными.";
+  "BeatDesk — маркетплейс битов: загружай, выставляй цены по лицензиям, продавай и публикуй в Telegram, ВК и YouTube. Мастера и стемы отдаются только покупателю после оплаты.";
 
 /**
  * Адрес сайта для canonical, og-тегов, sitemap и ссылок в постах.

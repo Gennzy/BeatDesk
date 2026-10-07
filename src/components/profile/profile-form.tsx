@@ -21,11 +21,9 @@ export type ProfileData = {
 };
 
 const PLATFORMS = [
-  { key: "beatchain", label: "BeatChain" },
+  { key: "telegram", label: "Telegram" },
   { key: "youtube", label: "YouTube" },
   { key: "vk", label: "ВК" },
-  { key: "telegram", label: "Telegram" },
-  { key: "instagram", label: "Instagram" },
 ] as const;
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;

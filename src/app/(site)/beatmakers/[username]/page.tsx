@@ -11,14 +11,12 @@ import { pluralEn, pluralRu } from "@/lib/plural";
 import { fetchProfilePosts, loadFollowState } from "@/lib/posts";
 import { getSupabase } from "@/lib/supabase/user";
 
-const PLATFORM_KEYS = ["beatchain", "youtube", "vk", "telegram", "instagram"] as const;
+const PLATFORM_KEYS = ["telegram", "youtube", "vk"] as const;
 
 const PLATFORM_LABELS: Record<(typeof PLATFORM_KEYS)[number], string> = {
-  beatchain: "BeatChain",
+  telegram: "Telegram",
   youtube: "YouTube",
   vk: "ВК",
-  telegram: "Telegram",
-  instagram: "Instagram",
 };
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {

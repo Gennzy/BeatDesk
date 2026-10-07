@@ -3,6 +3,13 @@ import { describe, expect, it } from "vitest";
 import { PLATFORMS, platformsByGroup } from "./registry";
 
 describe("реестр площадок", () => {
+  it("остались ровно три канала", () => {
+    // BeatStars, Airbit, BeatChain и прочие маркетплейсы убраны вместе с
+    // расширением: продажа идёт на BeatDesk, публиковать биты в чужие
+    // витрины больше не зачем.
+    expect(PLATFORMS.map((platform) => platform.id)).toEqual(["telegram", "vk", "youtube"]);
+  });
+
   it("у каждой площадки уникальный идентификатор", () => {
     const ids = PLATFORMS.map((platform) => platform.id);
 
@@ -10,51 +17,41 @@ describe("реестр площадок", () => {
   });
 
   it("у каждой площадки есть подпись и заметка для человека", () => {
-    // Молчаливую карточку человек не поймёт: надо знать, что делать руками.
     for (const platform of PLATFORMS) {
       expect(platform.label.length, platform.id).toBeGreaterThan(0);
       expect(platform.note?.length ?? 0, platform.id).toBeGreaterThan(20);
     }
   });
 
-  it("у ручной площадки есть адрес, куда идти", () => {
-    for (const platform of PLATFORMS.filter((item) => item.level === "manual")) {
-      expect(platform.openUrl, platform.id).toMatch(/^https?:\/\//);
-    }
-  });
-
-  it("beatmaker.tv есть и он маркетплейс битов", () => {
-    // Главная площадка СНГ: без неё список выглядит неполным.
-    const platform = PLATFORMS.find((item) => item.id === "beatmakertv");
-
-    expect(platform).toBeDefined();
-    expect(platform?.group).toBe("market");
-    expect(platform?.openUrl).toContain("beatmaker.tv");
-  });
-
-  it("новые площадки разложены по группам", () => {
-    const expected: Record<string, string[]> = {
-      tiktok: ["broadcast"],
-      instagram: ["broadcast"],
-      splice: ["market"],
-      tracklib: ["market"],
-      beatmakertv: ["market"],
-    };
-
-    for (const [id, group] of Object.entries(expected)) {
-      expect(platformsByGroup(group[0]!).map((item) => item.id), id).toContain(id);
-    }
-  });
-
-  it("площадки с публичным API не помечены ручными", () => {
+  it("все три — автопост, ни одна не ручная", () => {
+    // Ручных площадок не осталось: кнопка, которая ничего не публикует,
+    // в шапке выглядит как кнопка, которая публикует.
     for (const platform of PLATFORMS) {
-      if (platform.level === "live") expect(platform.auth, platform.id).not.toBe("none");
+      expect(platform.kind, platform.id).toBe("api");
+      expect(platform.level, platform.id).not.toBe("manual" as never);
     }
   });
 
-  it("у площадок с OAuth указан адрес входа", () => {
+  it("Telegram работает сразу, YouTube требует настройки", () => {
+    expect(platformsByGroup("broadcast").find((item) => item.id === "telegram")?.level).toBe("live");
+    expect(platformsByGroup("broadcast").find((item) => item.id === "youtube")?.level).toBe("oauth");
+  });
+
+  it("у площадки с OAuth указан адрес входа", () => {
     for (const platform of PLATFORMS.filter((item) => item.level === "oauth")) {
       expect(platform.oauthPath ?? `/api/platforms/${platform.id}/authorize`, platform.id).toBeTruthy();
+    }
+  });
+
+  it("YouTube не публикуется автоматически: нужен видеофайл", () => {
+    // Отправка ролика ещё не сделана, и молча отправлять туда пустоту хуже,
+    // чем честно сказать «нужен видеофайл».
+    expect(PLATFORMS.find((item) => item.id === "youtube")?.noAutoPublish).toBe(true);
+  });
+
+  it("у всех площадок есть документация", () => {
+    for (const platform of PLATFORMS) {
+      expect(platform.docsUrl, platform.id).toMatch(/^https?:\/\//);
     }
   });
 });

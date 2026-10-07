@@ -55,11 +55,9 @@ const { supabase, user } = await getUser();
 
   const meta = body.meta ?? {};
 
-  // у вебхука Discord URL сам по себе секрет, у токенной площадки токен приходит отдельным полем
-  const webhook = platform.auth === "webhook" ? String(meta.webhookUrl ?? "").trim() : "";
-  const accessToken = webhook || body.accessToken?.trim() || String(meta.accessToken ?? "").trim();
+  const accessToken = body.accessToken?.trim() || String(meta.accessToken ?? "").trim();
 
-  if (platform.auth === "token" || platform.auth === "webhook") {
+  if (platform.auth === "token") {
     const missing = (platform.fields ?? [])
       .filter((field) => field.key !== "accessToken")
       .filter((field) => !String(meta[field.key] ?? "").trim());

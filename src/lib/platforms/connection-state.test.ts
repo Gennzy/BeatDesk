@@ -23,7 +23,6 @@ describe("подключение по-настоящему", () => {
 
   it("токенная площадка без токена не подключена", () => {
     expect(isConnected({ auth: "token" }, row())).toBe(false);
-    expect(isConnected({ auth: "webhook" }, row({ hasToken: true }))).toBe(true);
   });
 
   it("отсутствие строки — не проблема, а состояние «не подключено»", () => {

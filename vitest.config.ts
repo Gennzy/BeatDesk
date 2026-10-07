@@ -9,7 +9,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["src/**/*.test.ts", "extension/**/*.test.ts", "bench/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "bench/**/*.test.ts"],
     // Замер детекторов считает десятки секунд на фикстурах, ему нужен запас.
     testTimeout: 180_000,
   },

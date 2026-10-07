@@ -5,7 +5,6 @@ import { notFound, redirect } from "next/navigation";
 import { PublishPanel } from "@/components/publish/publish-panel";
 import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/ui/container";
-import { fileBase, hashtagList, priceLine, typeBeatLine, type DistributionBeat } from "@/lib/distribution";
 import { isBotConfigured } from "@/lib/platforms/telegram-client";
 import { loadConnections } from "@/lib/platforms/publish";
 import { getT } from "@/lib/i18n/server";
@@ -30,14 +29,12 @@ export default async function PublishPage({ params }: { params: Promise<{ id: st
 
   const { data: beat } = await supabase
     .from("beats")
-    .select("id, title, bpm, key, tags, prices, is_public, owner_id, files, profiles(username)")
+    .select("id, title, bpm, key, tags, prices, is_public, owner_id, files")
     .eq("id", id)
     .maybeSingle();
 
   if (!beat) notFound();
   if (beat.owner_id !== user.id) redirect(`/beats/${id}`);
-
-  const owner = Array.isArray(beat.profiles) ? beat.profiles[0] : beat.profiles;
 
   const [connections, posts] = await Promise.all([
     loadConnections(supabase, user.id),
@@ -49,28 +46,7 @@ export default async function PublishPage({ params }: { params: Promise<{ id: st
       .limit(20),
   ]);
 
-  const distributionBeat = {
-    id: beat.id,
-    title: beat.title,
-    artists: [],
-    bpm: beat.bpm,
-    musicalKey: beat.key,
-    tags: beat.tags ?? [],
-    prices: (beat.prices ?? { mp3: null, bundle: null, exclusive: null }) as DistributionBeat["prices"],
-    audioUrl: null,
-    ownerUsername: owner?.username ?? "",
-  };
 
-  const pasteFields = [
-    { label: "Название", value: distributionBeat.title },
-    { label: "Описание", value: `${typeBeatLine(distributionBeat)} · ${beat.bpm} BPM · ${beat.key}` },
-    { label: "Теги", value: hashtagList(distributionBeat) },
-    { label: "Цены по лицензиям", value: priceLine(distributionBeat) || "не заданы" },
-    { label: "Файл MP3 (tagged)", value: `${fileBase(distributionBeat)}_tagged.mp3` },
-    { label: "Файл WAV (master)", value: `${fileBase(distributionBeat)}_tagged.wav` },
-    { label: "Файлы без тегов", value: `${fileBase(distributionBeat)}_untagged.mp3` },
-    { label: "Стены (stems)", value: `${fileBase(distributionBeat)}_stems.zip` },
-  ];
 
   return (
     <section className="py-14 lg:py-20">
@@ -107,7 +83,6 @@ export default async function PublishPage({ params }: { params: Promise<{ id: st
               { label: connection.label, meta: connection.meta },
             ]),
           )}
-          pasteFields={pasteFields}
           posts={(posts.data ?? []).map((post) => ({
             platform: post.platform,
             status: post.status,

@@ -239,12 +239,14 @@ async function main() {
       await anon.goto(`${BASE}${beatHref}`, { waitUntil: "networkidle2", timeout: 60_000 });
       await wait(1500);
       const text = await anon.evaluate(() => document.body.innerText);
-      check("на странице бита есть блок площадок", /BEATSTARS/i.test(text));
-      // Airbit выведен из автозаполнения: кнопок заполнения ровно две,
-      // а рядом с Airbit стоит честное предупреждение.
+      // Продажа идёт на BeatDesk, поэтому на странице бита ждём цены
+      // по уровням лицензии, а не блок чужих площадок.
+      check("на странице бита видны цены по уровням", /MP3/i.test(text));
+      // Регрессия: убранные маркетплейсы не должны нигде всплывать текстом.
+      const removed = text.match(/BEATSTARS|BEATCHAIN|AIRBIT|BANDCAMP|SPLICE|TRACKLIB|DISCORD/i);
+      check("удалённых площадок на странице нет", removed === null, removed ? `найдено «${removed[0]}»` : "чисто");
       const fillButtons = text.match(/ОТКРЫТЬ И ЗАПОЛНИТЬ/gi) ?? [];
-      check("кнопок заполнения ровно две: BeatStars и BeatChain", fillButtons.length === 2, `найдено ${fillButtons.length}`);
-      check("Airbit предупреждает, что форма не поддержана", /Форму расширение не знает/i.test(text));
+      check("кнопок заполнения чужих форм не осталось", fillButtons.length === 0, `найдено ${fillButtons.length}`);
     }
     await anon.close();
     // --- студия -------------------------------------------------------

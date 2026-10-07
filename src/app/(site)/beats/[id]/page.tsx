@@ -2,10 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { BeatHero, type BeatHeroData } from "@/components/beat/beat-hero";
-import { DistributionBlocks } from "@/components/distribution/distribution-blocks";
 import { Container } from "@/components/ui/container";
 import type { BeatAsset } from "@/lib/beats";
-import { fileBase, type DistributionBeat } from "@/lib/distribution";
 import { getSupabase } from "@/lib/supabase/user";
 
 
@@ -99,38 +97,6 @@ export default async function BeatDistributionPage({ params }: { params: Promise
           isOwner={isOwner}
         />
 
-        <DistributionBlocks
-          beat={{
-            id: beat.id,
-            title: beat.title,
-            artists: beat.type_beat_artists ?? [],
-            bpm: beat.bpm,
-            musicalKey: beat.key,
-            tags: beat.tags ?? [],
-            prices: (beat.prices ?? { mp3: null, bundle: null, exclusive: null }) as DistributionBeat["prices"],
-            currency: beat.currency ?? "RUB",
-            audioUrl: beat.mp3_url,
-            ownerUsername: owner?.username ?? "",
-          }}
-          assets={assets}
-          isOwner={isOwner}
-          audio={
-            beat.mp3_url
-              ? { name: `${fileBase({
-                  id: beat.id,
-                  title: beat.title,
-                  artists: beat.type_beat_artists ?? [],
-                  bpm: beat.bpm,
-                  musicalKey: beat.key,
-                  tags: beat.tags ?? [],
-                  prices: beat.prices,
-                  currency: beat.currency ?? "RUB",
-                  audioUrl: beat.mp3_url,
-                  ownerUsername: owner?.username ?? "",
-                })}_tagged.mp3`, size: 0, mime: "audio/mpeg", url: beat.mp3_url }
-              : null
-          }
-        />
       </Container>
     </section>
   );

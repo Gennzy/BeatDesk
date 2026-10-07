@@ -49,30 +49,6 @@ async function checkTelegram(meta: Record<string, unknown>, token: string | null
   }
 }
 
-async function checkDiscord(meta: Record<string, unknown>, accessToken: string | null): Promise<CheckResult> {
-  const webhookUrl = accessToken?.trim() || String(meta.webhookUrl ?? "").trim();
-  if (!webhookUrl) return { ok: false, problem: "no_token", detail: "Не указан webhook URL" };
-  if (!webhookUrl.startsWith("https://discord.com/api/webhooks/")) {
-    return { ok: false, problem: "no_token", detail: "Некорректный webhook URL" };
-  }
-
-  try {
-    // GET без тела не создаёт сообщение, в отличие от POST
-    const response = await fetch(webhookUrl, { method: "GET", cache: "no-store" });
-    if (response.ok) {
-      const data = (await response.json()) as { name?: string; channel_id?: string };
-      return { ok: true, detail: data.name ?? data.channel_id ?? "вебхук отвечает" };
-    }
-    if (response.status === 404) return { ok: false, problem: "not_found", detail: "Вебхук удалён" };
-    if (response.status === 401 || response.status === 403) {
-      return { ok: false, problem: "forbidden", detail: "Вебхук запрещён или истёк" };
-    }
-    return { ok: false, problem: "unknown", detail: `Discord ответил ${response.status}` };
-  } catch {
-    return { ok: false, problem: "network", detail: "Discord недоступен" };
-  }
-}
-
 async function checkVk(meta: Record<string, unknown>, accessToken: string | null): Promise<CheckResult> {
   if (!accessToken) return { ok: false, problem: "no_token", detail: "Не указан токен" };
   const groupId = String(meta.groupId ?? "").trim();
@@ -157,9 +133,6 @@ export async function POST(scopedRequest: Request) {
 
   if (body.platform === "telegram") {
     return NextResponse.json(await checkTelegram(meta, accessToken ?? getBotToken()));
-  }
-  if (body.platform === "discord") {
-    return NextResponse.json(await checkDiscord(meta, accessToken));
   }
   if (body.platform === "vk") {
     return NextResponse.json(await checkVk(meta, accessToken));

@@ -9,7 +9,6 @@ import { cn } from "@/lib/cn";
 import { absoluteDateTime } from "@/lib/dates";
 import { useI18n } from "@/lib/i18n/provider";
 import {
-  DISTRIBUTORS,
   GROUP_HINTS,
   GROUP_LABELS,
   LEVEL_LABELS,
@@ -24,14 +23,12 @@ type Props = {
   connections: Record<string, { label: string | null; meta: Record<string, unknown> }>;
   botReady: boolean;
   posts: { platform: string; status: string; externalUrl: string | null; error: string | null; createdAt: string }[];
-  /** поля, которые вставляются руками в маркетплейс */
-  pasteFields: { label: string; value: string }[];
 };
 
 type Status = { kind: "idle" } | { kind: "busy"; platform: string } | { kind: "error"; message: string };
 type Result = { ok: boolean; message: string; url?: string };
 
-export function PublishPanel({ beatId, connections, botReady, posts, pasteFields }: Props) {
+export function PublishPanel({ beatId, connections, botReady, posts }: Props) {
   const { t } = useI18n();
   const router = useRouter();
   const [selected, setSelected] = useState<PlatformId[]>([]);
@@ -131,7 +128,7 @@ export function PublishPanel({ beatId, connections, botReady, posts, pasteFields
   }
 
   const connectedIds = Object.keys(connections);
-  const groups: PlatformGroup[] = ["broadcast", "market", "distribution"];
+  const groups: PlatformGroup[] = ["broadcast"];
   const autoPublishable = platformsByGroup("broadcast").filter((platform) => !platform.noAutoPublish);
 
   return (
@@ -185,7 +182,7 @@ export function PublishPanel({ beatId, connections, botReady, posts, pasteFields
                         <span
                           className={cn(
                             "label",
-                            platform.level === "live" ? "text-signal" : platform.level === "manual" ? "text-mute" : "text-amber",
+                            platform.level === "live" ? "text-signal" : "text-amber",
                           )}
                         >
                           {LEVEL_LABELS[platform.level]}
@@ -265,22 +262,6 @@ export function PublishPanel({ beatId, connections, botReady, posts, pasteFields
                       </div>
                     ) : null}
 
-                    {group === "distribution" ? (
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-4">
-                        <span className="label text-mute">Дистрибьюторы</span>
-                        {DISTRIBUTORS.map((item) => (
-                          <a
-                            key={item.url}
-                            href={item.url}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            className="label text-paper underline-offset-4 transition-colors hover:text-signal hover:underline"
-                          >
-                            {item.label}
-                          </a>
-                        ))}
-                      </div>
-                    ) : null}
 
                     {platform.docsUrl ? (
                       <a
@@ -309,7 +290,6 @@ export function PublishPanel({ beatId, connections, botReady, posts, pasteFields
               })}
             </div>
 
-            {group === "market" && pasteFields.length > 0 ? <PasteFields fields={pasteFields} /> : null}
           </section>
         );
       })}
@@ -346,59 +326,5 @@ export function PublishPanel({ beatId, connections, botReady, posts, pasteFields
       {connectedIds.length === 0 ? <p className="label text-mute">{t("publish.noConnections")}</p> : null}
       {autoPublishable.length === 0 ? null : null}
     </div>
-  );
-}
-
-function PasteFields({ fields }: { fields: { label: string; value: string }[] }) {
-  const { t } = useI18n();
-
-  if (fields.length === 0) return null;
-
-  return (
-    <div className="flex flex-col gap-3 border border-line bg-ink-2 p-5">
-      <div className="flex items-center gap-3">
-        <span aria-hidden className="size-1.5 bg-signal" />
-        <span className="label text-paper">{t("publish.pasteTitle")}</span>
-      </div>
-      {fields.map((field) => (
-        <div key={field.label} className="flex items-start justify-between gap-3 border-b border-line px-1 py-2 last:border-b-0">
-          <span className="flex min-w-0 flex-col gap-1">
-            <span className="label text-paper">{field.label}</span>
-            <span className="mono text-xs break-all text-mute">{field.value}</span>
-          </span>
-          <CopyChip text={field.value} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function CopyChip({ text }: { text: string }) {
-  const { t } = useI18n();
-  const [copied, setCopied] = useState(false);
-
-  return (
-    <button
-      type="button"
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(text);
-        } catch {
-          const area = document.createElement("textarea");
-          area.value = text;
-          area.style.position = "fixed";
-          area.style.opacity = "0";
-          document.body.append(area);
-          area.select();
-          document.execCommand("copy");
-          area.remove();
-        }
-        setCopied(true);
-        window.setTimeout(() => setCopied(false), 1600);
-      }}
-      className="label shrink-0 border border-line px-2.5 py-1.5 text-mute transition-colors hover:border-signal/60 hover:text-paper"
-    >
-      {copied ? t("share.copied") : t("share.copy")}
-    </button>
   );
 }

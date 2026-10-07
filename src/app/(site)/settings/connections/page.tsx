@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const GROUPS: PlatformGroup[] = ["broadcast", "market", "distribution"];
+const GROUPS: PlatformGroup[] = ["broadcast"];
 
 export default async function ConnectionsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const [t, supabase, params] = await Promise.all([getT(), getSupabase(), searchParams]);
