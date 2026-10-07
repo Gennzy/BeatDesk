@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import type { FeedBeat } from "@/lib/feed";
 import { compressImage } from "@/lib/image";
 import type { TierId } from "@/lib/audio/delivery-rules";
+import { beatRoles } from "@/lib/beats";
 import { parsePrice as toPrice } from "@/lib/prices";
 import { useI18n } from "@/lib/i18n/provider";
 
@@ -261,7 +262,12 @@ export function EditBeatForm({ beat }: Props) {
         prices={prices}
         title={title}
         tags={tags.split(",").map((tag) => tag.trim()).filter(Boolean)}
-        roles={beat.fileRoles}
+        roles={beatRoles({
+          keys: beat.fileRoles,
+          // Обложку можно выбрать прямо сейчас: она ещё не сохранена, но
+          // претензия «обложка не загружена» в этом случае врала бы.
+          hasCover: beat.coverUrl !== null || cover !== null,
+        })}
       />
 
       <Switch label={t("upload.publish")} hint={t("upload.publishHint")} name="isPublic" defaultChecked={beat.isPublic} />

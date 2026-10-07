@@ -38,8 +38,8 @@ const BENEFITS = [
     ),
   },
   {
-    title: "login.benefitFeedTitle",
-    note: "login.benefitFeedNote",
+    title: "login.benefitDeliverTitle",
+    note: "login.benefitDeliverNote",
     icon: (
       <>
         <rect x="3" y="4" width="18" height="12" rx="1.5" strokeWidth="1.6" />

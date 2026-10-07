@@ -26,7 +26,7 @@ import type { TranslationKey } from "@/lib/i18n/dictionaries";
 import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
 import { compressImage } from "@/lib/image";
 import { SellReadiness } from "@/components/beats/sell-readiness";
-import { fileRoles } from "@/lib/beats";
+import { beatRoles } from "@/lib/beats";
 import type { TierId } from "@/lib/audio/delivery-rules";
 import { parsePrice as toPrice } from "@/lib/prices";
 import { useI18n } from "@/lib/i18n/provider";
@@ -87,7 +87,7 @@ export function UploadForm({ userId }: { userId: string }) {
   const [title, setTitle] = useState("");
 
   /** Роли выбранных файлов: проверка знает, что загружено, по ним. */
-  const roles = fileRoles(files, cover !== null);
+  const roles = beatRoles({ keys: Object.keys(files), hasCover: cover !== null });
 
   function selectFile(kind: BeatFileKind, file: File | null) {
     setFiles((prev) => ({ ...prev, [kind]: file ?? undefined }));

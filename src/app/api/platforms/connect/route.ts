@@ -27,18 +27,18 @@ function stripSecrets(meta: Record<string, string | number | null>): Record<stri
   return Object.fromEntries(Object.entries(meta).filter(([key]) => !SECRET_KEYS.has(key.toLowerCase())));
 }
 
-/** Подключение или обновление площадки. */
+/** Подключение или обновление канала. */
 export async function POST(request: Request) {
   const body = (await request.json()) as Body;
 
   if (!body.platform || !isPlatformId(body.platform)) {
-    return NextResponse.json({ error: "Неизвестная площадка" }, { status: 400 });
+    return NextResponse.json({ error: "Неизвестный канал" }, { status: 400 });
   }
 
   const platform = PLATFORM_MAP[body.platform];
 
   if (platform.kind !== "api") {
-    return NextResponse.json({ error: "Эта площадка подключается вручную" }, { status: 400 });
+    return NextResponse.json({ error: "Этот канал подключается вручную" }, { status: 400 });
   }
 
 const { supabase, user } = await getUser();
@@ -90,12 +90,12 @@ const { supabase, user } = await getUser();
   return NextResponse.json({ ok: true, platform: body.platform });
 }
 
-/** Отключение площадки. */
+/** Отключение канала. */
 export async function DELETE(request: Request) {
   const body = (await request.json()) as Body;
 
   if (!body.platform || !isPlatformId(body.platform)) {
-    return NextResponse.json({ error: "Неизвестная площадка" }, { status: 400 });
+    return NextResponse.json({ error: "Неизвестный канал" }, { status: 400 });
   }
 
   const { supabase, user } = await getUser();

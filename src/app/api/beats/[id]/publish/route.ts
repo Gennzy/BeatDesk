@@ -16,7 +16,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const platforms = (body.platforms ?? []).filter((item): item is string => typeof item === "string");
   if (platforms.length === 0) {
-    return NextResponse.json({ error: "Выбери площадку" }, { status: 400 });
+    return NextResponse.json({ error: "Выбери канал" }, { status: 400 });
   }
 
   const supabase = await createClient();

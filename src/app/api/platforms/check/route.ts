@@ -85,12 +85,12 @@ export async function POST(scopedRequest: Request) {
   const body = (await request.json()) as Body;
 
   if (!body.platform || !isPlatformId(body.platform)) {
-    return NextResponse.json({ error: "Неизвестная площадка" }, { status: 400 });
+    return NextResponse.json({ error: "Неизвестный канал" }, { status: 400 });
   }
 
   const platform = PLATFORM_MAP[body.platform];
   if (platform.kind !== "api") {
-    return NextResponse.json({ error: "У этой площадки нет подключения" }, { status: 400 });
+    return NextResponse.json({ error: "У этого канала нет подключения" }, { status: 400 });
   }
 
   const supabase = await createClient();
@@ -114,7 +114,7 @@ export async function POST(scopedRequest: Request) {
     .eq("platform", body.platform)
     .maybeSingle();
 
-  if (!row) return NextResponse.json({ error: "Эта площадка не подключена" }, { status: 404 });
+  if (!row) return NextResponse.json({ error: "Этот канал не подключён" }, { status: 404 });
 
   const meta = (row.meta ?? {}) as Record<string, unknown>;
   const cipher = row.access_token_cipher as string | null;

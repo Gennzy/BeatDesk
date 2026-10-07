@@ -77,20 +77,32 @@ export function validateCoverFile(file: File): "upload.errorFileType" | "upload.
 }
 
 /**
- * Роли файлов в бите: "mp3", "wav", "stems", "artwork".
+ * Что реально лежит в бите: "mp3", "wav", "stems", "artwork".
  *
- * В форме ключи называются zip и rar, а проверка готовности ждёт роли.
- * Соответствие живёт здесь, потому что обе формы — загрузка и редактирование
- * — обязаны считать одинаково: разойдутся — и человек увидит в одной форме
- * «всё на месте», а в другой «не хватает».
+ * Превью лежит в mp3_url, обложка — в cover_url, а в jsonb-поле files только
+ * мастера и дорожек. Форма редактирования брала роли из Object.keys(files) и
+ * поэтому писала «нет превью» и «обложка не загружена» биту, у которого и
+ * превью, и обложка были: человек видел претензию к файлу, который он и так
+ * загрузил, и не понимал, что исправлять.
+ *
+ * Ключи zip и rar оба значат дорожки, и функция живёт здесь одна: обе формы
+ * — загрузка и редактирование — обязаны считать одинаково, разойдутся — и
+ * в одной «всё на месте», а в другой «не хватает».
  */
-export function fileRoles(files: BeatFiles, hasCover: boolean): string[] {
+export function beatRoles(present: {
+  /** Ключи выбранных или сохранённых файлов. */
+  keys?: string[];
+  /** Превью в mp3_url: в files его нет. */
+  hasPreview?: boolean;
+  hasCover?: boolean;
+}): string[] {
+  const keys = present.keys ?? [];
   const roles: string[] = [];
 
-  if (files.mp3) roles.push("mp3");
-  if (files.wav) roles.push("wav");
-  if (files.zip || files.rar) roles.push("stems");
-  if (hasCover) roles.push("artwork");
+  if (present.hasPreview || keys.includes("mp3")) roles.push("mp3");
+  if (keys.includes("wav")) roles.push("wav");
+  if (keys.includes("zip") || keys.includes("rar")) roles.push("stems");
+  if (present.hasCover) roles.push("artwork");
 
   return roles;
 }

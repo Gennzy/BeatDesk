@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { EditBeatForm } from "@/components/profile/edit-beat-form";
 import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/ui/container";
+import { beatRoles } from "@/lib/beats";
 import { getT } from "@/lib/i18n/server";
 import { normalizePrices } from "@/lib/prices";
 import { getSupabase } from "@/lib/supabase/user";
@@ -28,7 +29,7 @@ export default async function EditBeatPage({ params }: { params: Promise<{ id: s
 
   const { data: beat } = await supabase
     .from("beats")
-    .select("id, title, type_beat_artists, bpm, key, tags, prices, is_public, cover_url, owner_id, files")
+    .select("id, title, type_beat_artists, bpm, key, tags, prices, is_public, mp3_url, cover_url, owner_id, files")
     .eq("id", id)
     .maybeSingle();
 
@@ -75,7 +76,11 @@ export default async function EditBeatPage({ params }: { params: Promise<{ id: s
               coverUrl: beat.cover_url,
               hasStems: Boolean(beat.files?.zip ?? beat.files?.rar),
               hasWav: Boolean(beat.files?.wav),
-              fileRoles: Object.keys(beat.files ?? {}),
+              fileRoles: beatRoles({
+                keys: Object.keys(beat.files ?? {}),
+                hasPreview: Boolean(beat.mp3_url),
+                hasCover: Boolean(beat.cover_url),
+              }),
             }}
           />
         </div>

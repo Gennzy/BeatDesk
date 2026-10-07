@@ -1,14 +1,10 @@
-import { FeedTabs } from "@/components/feed/feed-tabs";
-import type { FeedFilterState } from "@/components/feed/feed-filters";
-import { HeroVideo } from "@/components/media/hero-video";
-import { Button } from "@/components/ui/button";
-import { Container, SectionHead } from "@/components/ui/container";
-import { ErrorState } from "@/components/ui/states";
-import { HeroIntro } from "@/components/ui/hero-intro";
-import { Reveal } from "@/components/ui/reveal";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { FeedTabs } from "@/components/feed/feed-tabs";
+import type { FeedFilterState } from "@/components/feed/feed-filters";
+import { Container, SectionHead } from "@/components/ui/container";
+import { ErrorState } from "@/components/ui/states";
 import { fetchBeatsByOwner, fetchPublicBeats, type FeedBeat, type FeedFilters } from "@/lib/feed";
 import { getT } from "@/lib/i18n/server";
 import { fetchPosts } from "@/lib/posts";
@@ -16,11 +12,24 @@ import { getSessionUser, getSupabase } from "@/lib/supabase/user";
 
 export const metadata: Metadata = {
   // заголовок главной берётся из дефолта в layout
-  description: "Свежие биты битмейкеров: обложка, BPM, тональность, теги и цены. Слушай прямо в ленте.",
+  description:
+    "Маркетплейс битов: превью, темп, тональность и цены по лицензиям. Мастер и стемы покупатель получает после оплаты.",
   alternates: { canonical: "/" },
-  openGraph: { title: "Лента битов · BeatDesk", description: "Свежие публичные биты битмейкеров с плеером." },
+  openGraph: {
+    title: "Маркетплейс битов · BeatDesk",
+    description: "Свежие биты битмейкеров с превью, ценами по лицензиям и выдачей файлов после оплаты.",
+  },
 };
 
+/**
+ * Главная — это лента, а не рекламный экран.
+ *
+ * Раньше сверху стоял видео-герой на три строки текста: человек, который
+ * пришёл за битом, должен был прокрутить мимо обещаний, прежде чем увидеть
+ * биты. На маркетплейсе человек уже знает, куда пришёл, и первым экраном
+ * ждёт каталог. Поэтому лента начинается сразу, а место героя заняла узкая
+ * строка для битмейкера.
+ */
 export default async function HomePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const [t, supabase, params] = await Promise.all([getT(), getSupabase(), searchParams]);
 
@@ -60,7 +69,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     }
   }
 
-  // Ветки и композер нужны только для вошедшего, поэтому тянутся вместе с ним.
+  // Ветки и свои биты нужны только вошедшему, поэтому тянутся вместе с ним.
   const viewer = supabase ? (await supabase.auth.getUser()).data.user ?? null : null;
   const viewerName = viewer ? (await getSessionUser())?.username ?? null : null;
 
@@ -80,79 +89,27 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         </div>
       ) : null}
 
-      <section className="relative overflow-hidden border-b border-line">
-        <HeroVideo src="/media/hero.mp4" />
-        <div aria-hidden className="guide-grid pointer-events-none absolute inset-0 opacity-40" />
+      <section id="feed" className="pt-10 pb-20 lg:pt-14 lg:pb-28">
         <Container>
-          <HeroIntro>
-            <div className="relative z-10 pt-10 pb-14 lg:pt-14 lg:pb-20">
-              {/* На телефоне строка площадок не помещалась в одну линию и упиралась в края. */}
-              <div
-                data-fade
-                className="flex items-center justify-center border-b border-line pb-4 text-center lg:justify-end lg:text-right"
-              >
-                <span className="label text-balance text-mute">{t("hero.platforms")}</span>
-              </div>
+          <SectionHead label={t("feed.label")} hint={t("feed.hint")} />
 
-              <h1 className="mt-9 font-display text-hero font-black text-balance text-paper uppercase lg:mt-12">
-                {[t("hero.title.line1"), t("hero.title.line2"), t("hero.title.line3")].map((line, index) => (
-                  <span key={line} className="block overflow-hidden pb-[0.06em]">
-                    <span data-line className={index === 1 ? "block text-signal" : "block"}>
-                      {line}
-                    </span>
-                  </span>
-                ))}
-              </h1>
-
-              <div className="mt-9 flex max-w-[34rem] flex-col gap-6">
-                <p data-fade className="text-pretty text-sub text-mute">
-                  {t("hero.sub")}
-                </p>
-
-                <p data-fade className="flex items-start gap-3 border-l border-signal/50 pl-4 text-sm leading-relaxed text-paper/70">
-                  {t("hero.note")}
-                </p>
-
-                {/* Кнопки на телефоне тянулись по содержимому и получались разной ширины. */}
-                <div data-fade className="mt-2 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                  <Button href="/upload" size="lg" className="w-full sm:w-auto">
-                    {t("hero.ctaPrimary")}
-                    <span aria-hidden>→</span>
-                  </Button>
-                  <Button href="#feed" variant="ink" size="lg" className="w-full sm:w-auto">
-                    {t("hero.ctaSecondary")}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </HeroIntro>
-        </Container>
-      </section>
-
-      <section id="feed" className="py-20 lg:py-28">
-        <Container>
-          <Reveal>
-            <SectionHead label={t("feed.label")} hint={t("feed.hint")} />
-          </Reveal>
-          <Reveal delay={0.08}>
-            <div className="mt-8">
-              <Suspense fallback={null}>
-                {feedError && feed.beats.length === 0 ? (
-                  <ErrorState title={t("feed.errorTitle")} description={feedError} />
-                ) : (
-                  <FeedTabs
-                    beats={feed.beats}
-                    nextOffset={feed.nextOffset}
-                    filters={filters}
-                    posts={posts}
-                    myBeats={myBeats}
-                    loggedIn={Boolean(viewer)}
-                    myUsername={viewerName}
-                  />
-                )}
-              </Suspense>
-            </div>
-          </Reveal>
+          <div className="mt-8">
+            <Suspense fallback={null}>
+              {feedError && feed.beats.length === 0 ? (
+                <ErrorState title={t("feed.errorTitle")} description={feedError} />
+              ) : (
+                <FeedTabs
+                  beats={feed.beats}
+                  nextOffset={feed.nextOffset}
+                  filters={filters}
+                  posts={posts}
+                  myBeats={myBeats}
+                  loggedIn={Boolean(viewer)}
+                  myUsername={viewerName}
+                />
+              )}
+            </Suspense>
+          </div>
         </Container>
       </section>
     </>
