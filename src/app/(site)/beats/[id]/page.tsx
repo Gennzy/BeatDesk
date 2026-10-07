@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { BeatHero, type BeatHeroData } from "@/components/beat/beat-hero";
+import { BuyBox } from "@/components/sales/buy-box";
 import { Container } from "@/components/ui/container";
 import type { BeatAsset } from "@/lib/beats";
+import { normalizePrices, PRICE_KEYS, priceLabel } from "@/lib/prices";
 import { getSupabase } from "@/lib/supabase/user";
 
 
@@ -76,6 +78,13 @@ export default async function BeatDistributionPage({ params }: { params: Promise
   };
   const formats = [...new Set([...(beat.mp3_url ? ["MP3"] : []), ...assets.map((asset) => FORMATS[asset.mime]).filter(Boolean)])];
 
+  const prices = normalizePrices(beat.prices);
+  const tiers = PRICE_KEYS.map((key) => ({
+    key,
+    label: priceLabel[key],
+    value: prices[key],
+  })).filter((tier) => tier.value !== null) as { key: (typeof PRICE_KEYS)[number]; label: string; value: number }[];
+
   return (
     <section className="py-14 lg:py-20">
       <Container>
@@ -97,6 +106,9 @@ export default async function BeatDistributionPage({ params }: { params: Promise
           isOwner={isOwner}
         />
 
+        <div className="pt-10">
+          <BuyBox beatId={beat.id} tiers={tiers} currency={beat.currency ?? "RUB"} isOwner={isOwner} />
+        </div>
       </Container>
     </section>
   );

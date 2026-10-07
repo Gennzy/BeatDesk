@@ -95,7 +95,7 @@ function FiltersBar({ search, resultCount }: { search: string; resultCount: numb
           onClick={() => setOpen((value) => !value)}
           className="label h-8 border border-line px-3 text-mute transition-colors hover:border-line-2 hover:text-paper"
         >
-          {open ? t("feed.reset") && t("feed.filters") : t("feed.filters")}
+          {t("feed.filters")}
           {active ? " ·" : ""}
         </button>
 

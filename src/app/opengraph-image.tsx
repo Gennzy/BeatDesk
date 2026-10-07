@@ -42,12 +42,11 @@ export default async function OpengraphImage() {
             Один бит — все площадки
           </div>
           <div style={{ fontSize: 34, color: "#8f8f98", lineHeight: 1.3 }}>
-            Название, BPM, тональность, теги, имена файлов и тексты для BeatStars, YouTube, ВК и Telegram
+            Название, BPM, тональность, теги, имена файлов и тексты для YouTube, ВК и Telegram
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 20, fontSize: 26, color: "#8f8f98" }}>
-          <div style={{ border: "1px solid #26262b", padding: "12px 22px" }}>BeatStars</div>
           <div style={{ border: "1px solid #26262b", padding: "12px 22px" }}>Telegram</div>
           <div style={{ border: "1px solid #26262b", padding: "12px 22px" }}>YouTube</div>
           <div style={{ border: "1px solid #26262b", padding: "12px 22px" }}>ВК</div>
