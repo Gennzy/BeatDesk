@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 import { Button } from "./button";
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div aria-hidden className={cn("shimmer rounded-xs", className)} />;
+  return <div aria-hidden className={cn("shimmer rounded-lg", className)} />;
 }
 
 export function EmptyState({

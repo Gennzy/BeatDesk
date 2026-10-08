@@ -51,7 +51,7 @@ export async function LicenseTerms({ tiers }: { tiers: { key: string; label: str
       <h2 className="label text-mute">{t("license.title")}</h2>
       <dl className="flex flex-col">
         {rows.map((row) => (
-          <div key={row.label} className="flex items-baseline justify-between gap-6 border-b border-line py-2.5">
+          <div key={row.label} className="flex items-baseline justify-between gap-6 border-b border-line py-2.5 last:border-b-0">
             <dt className="text-sm text-mute">{row.label}</dt>
             <dd className="text-right text-sm text-paper">{row.value}</dd>
           </div>

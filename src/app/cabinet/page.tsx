@@ -109,7 +109,7 @@ export default async function CabinetPage() {
           набраны моноширинным шрифтом: в display-глифе Unbounded знак рубля
           теряет засечку и читается как «Р».
         */}
-        <dl className="grid grid-cols-2 border-b border-line lg:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-px border-b border-line bg-line lg:grid-cols-4">
           {[
             { label: t("cabinet.statEarned"), value: formatMoney(earned / 100, currency), money: true },
             { label: t("cabinet.statSold"), value: String(sold.length) },
@@ -141,7 +141,7 @@ export default async function CabinetPage() {
           не подтверждены, сделка не завершена, и забытый заказ — потерянные
           деньги и недовольный покупатель.
         */}
-        <div className="border-b border-line py-8">
+        <div className="panel mt-6 p-5">
           <div className="mb-4 flex items-baseline justify-between gap-4">
             <h2 className="label text-paper">{t("cabinet.pendingTitle")}</h2>
             {pending.length > 0 ? <span className="font-mono text-sm text-signal">{pending.length}</span> : null}
@@ -150,7 +150,7 @@ export default async function CabinetPage() {
           {pending.length === 0 ? (
             <p className="text-sm text-mute">{t("cabinet.pendingEmpty")}</p>
           ) : (
-            <ul className="border-t border-line">
+            <ul className="flex flex-col">
               {pending.map((row) => (
                 <li key={row.order_id}>
                   <Link
@@ -177,12 +177,12 @@ export default async function CabinetPage() {
         </div>
 
         {/* Инструменты — ссылки в одну строку, а не плитки. */}
-        <nav className="border-b border-line py-8">
+        <nav className="panel mt-6 p-5">
           <h2 className="label mb-4 text-mute">{t("cabinet.tools")}</h2>
-          <ul className="grid gap-x-8 sm:grid-cols-2 lg:grid-cols-4">
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {TOOLS.map((tool) => (
               <li key={tool.href}>
-                <Link href={tool.href} className="group flex items-start gap-3 py-3">
+                <Link href={tool.href} className="group flex items-start gap-3 rounded-md border border-line bg-ink-2 p-3 transition-colors hover:border-line-2">
                   <span className="mt-0.5 text-mute transition-colors group-hover:text-paper">
                     <Icon name={tool.icon} className="size-4" />
                   </span>
@@ -199,14 +199,14 @@ export default async function CabinetPage() {
         </nav>
 
         {recent.length > 0 ? (
-          <div className="border-b border-line py-8">
+          <div className="panel mt-6 p-5">
             <h2 className="label mb-4 text-mute">{t("cabinet.recentSales")}</h2>
-            <ul className="border-t border-line">
+            <ul className="flex flex-col">
               {recent.map((row) => (
                 <li key={`${row.order_id}-${row.beat_id}`}>
                   <Link
                     href={`/orders/${row.order_id}`}
-                    className="flex items-baseline justify-between gap-4 border-b border-line py-3 text-sm transition-colors hover:bg-ink-2"
+                    className="flex items-baseline justify-between gap-4 rounded-md px-2 py-3 text-sm transition-colors hover:bg-ink-3"
                   >
                     <span className="truncate text-mute">{row.beat_title}</span>
                     <span className="flex shrink-0 items-baseline gap-4">
@@ -223,7 +223,7 @@ export default async function CabinetPage() {
         ) : null}
 
         {achievements.length > 0 ? (
-          <div className="py-8">
+          <div className="panel mt-6 p-5">
             <h2 className="label mb-4 text-mute">{t("ach.title")}</h2>
             <ul className="flex flex-wrap gap-2">
               {achievements

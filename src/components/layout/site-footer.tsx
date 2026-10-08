@@ -9,7 +9,7 @@ export async function SiteFooter({ user }: { user: SessionUser | null }) {
   const t = await getT();
 
   return (
-    <footer className="mt-24 border-t border-line">
+    <footer className="mt-24 border-t border-line bg-ink-2/40">
       <Container>
         <div className="grid gap-10 py-14 md:grid-cols-3">
           <div className="flex flex-col gap-3">

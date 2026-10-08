@@ -154,7 +154,7 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
           <span>{t("beat.crumbCatalog")}</span>
         </nav>
 
-        <h1 className="mt-5 max-w-4xl font-display text-3xl leading-tight font-black text-paper lg:text-5xl">
+        <h1 className="mt-5 max-w-4xl font-display text-3xl leading-tight font-black tracking-tight text-paper lg:text-5xl">
           {beat.title}
         </h1>
 
@@ -176,7 +176,7 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
                       <Link
                         key={tag}
                         href={`/?q=${encodeURIComponent(tag)}`}
-                        className="rounded-pill border border-line px-2.5 py-1 text-xs text-mute transition-colors hover:border-line-2 hover:text-paper"
+                        className="chip chip-hover"
                       >
                         #{tag}
                       </Link>
@@ -256,7 +256,7 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
 
 function BeatFact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-6 border-b border-line py-2.5">
+    <div className="flex items-baseline justify-between gap-6 border-b border-line py-2.5 last:border-b-0">
       <dt className="text-sm text-mute">{label}</dt>
       <dd className="text-sm text-paper">{value}</dd>
     </div>

@@ -53,11 +53,14 @@ export default async function CabinetBeatsPage() {
             </Link>
           </div>
         ) : (
-          <ul className="grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {beats.map((beat) => (
-              <li key={beat.id} className="flex flex-col gap-3 bg-ink p-4">
+              <li
+              key={beat.id}
+              className="surface flex flex-col gap-3 p-4 transition-colors hover:border-line-2"
+            >
                 <div className="flex gap-3">
-                  <div className="size-20 shrink-0 overflow-hidden bg-ink-3">
+                  <div className="size-20 shrink-0 overflow-hidden rounded-md bg-ink-3">
                     {beat.coverUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={beat.coverUrl} alt="" loading="lazy" decoding="async" className="size-full object-cover" />

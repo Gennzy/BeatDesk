@@ -69,7 +69,7 @@ export function FileDrop({ label, hint, prompt, accept, format, selected, error,
         onDragLeave={() => setOver(false)}
         onDrop={handleDrop}
         className={cn(
-          "flex min-h-24 flex-col items-start justify-center gap-1.5 rounded-xs border border-dashed border-line-2 bg-ink-2 px-5 py-5 text-left transition-colors hover:border-signal/60",
+          "flex min-h-24 flex-col items-start justify-center gap-1.5 rounded-lg border border-dashed border-line-2 bg-ink-2 px-5 py-5 text-left transition-colors hover:border-signal/60",
           over && "border-signal bg-signal/5",
           selected && "border-solid border-line-2",
         )}

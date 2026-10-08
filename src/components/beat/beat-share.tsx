@@ -62,7 +62,7 @@ export function BeatShare({ beatId, title }: { beatId: string; title: string }) 
         type="button"
         onClick={() => void copy()}
         className={cn(
-          "flex items-center gap-2 rounded-pill border px-3 py-1.5 text-xs transition-colors",
+          "chip chip-hover px-3 py-1.5",
           copied ? "border-signal text-signal" : "border-line text-mute hover:border-line-2 hover:text-paper",
         )}
       >
@@ -75,7 +75,7 @@ export function BeatShare({ beatId, title }: { beatId: string; title: string }) 
           type="button"
           onClick={() => void nativeShare()}
           aria-label={t("share.open")}
-          className="flex items-center gap-2 rounded-pill border border-line px-3 py-1.5 text-xs text-mute transition-colors hover:border-line-2 hover:text-paper"
+          className="chip chip-hover px-3 py-1.5"
         >
           <Icon name="share" className="size-3.5" />
           {t("share.open")}

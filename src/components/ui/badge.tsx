@@ -13,10 +13,10 @@ const tones: Record<Tone, string> = {
 
 export function Badge({ tone = "dim", className, children }: { tone?: Tone; className?: string; children: ReactNode }) {
   return (
-    <span className={cn("label inline-flex h-6 items-center rounded-xs px-2", tones[tone], className)}>{children}</span>
+    <span className={cn("label inline-flex h-6 items-center rounded-full px-2", tones[tone], className)}>{children}</span>
   );
 }
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cn("rounded-md border border-line bg-ink-2", className)}>{children}</div>;
+  return <div className={cn("rounded-lg border border-line bg-ink-2 shadow-[0_1px_2px_rgb(0_0_0/0.4)]", className)}>{children}</div>;
 }

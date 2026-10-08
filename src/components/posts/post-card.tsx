@@ -107,13 +107,13 @@ export function PostCard({ post, loggedIn = true, depth = 0, inThread = false }:
       {post.body ? <p className="text-sub max-w-[70ch] text-pretty whitespace-pre-wrap text-paper">{post.body}</p> : null}
 
       {beat ? (
-        <div className="flex items-center gap-3 border border-line bg-ink-2 p-2.5">
+        <div className="surface flex items-center gap-3 p-3">
           <Link href={`/beats/${beat.id}`} className="flex min-w-0 flex-1 items-center gap-3">
             {beat.coverUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={beat.coverUrl} alt="" loading="lazy" decoding="async" className="size-14 shrink-0 object-cover" />
+              <img src={beat.coverUrl} alt="" loading="lazy" decoding="async" className="size-14 shrink-0 rounded-md object-cover" />
             ) : (
-              <span aria-hidden className="grid size-14 shrink-0 place-items-center bg-ink-3 text-[10px] text-mute">
+              <span aria-hidden className="grid size-14 shrink-0 place-items-center rounded-md bg-ink-3 text-[10px] text-mute">
                 {beat.bpm}
               </span>
             )}
@@ -144,7 +144,7 @@ export function PostCard({ post, loggedIn = true, depth = 0, inThread = false }:
                 event.preventDefault();
                 togglePreview();
               }}
-              className="label shrink-0 border border-line px-3 py-1.5 text-mute transition-colors hover:border-signal/60 hover:text-paper"
+              className="chip chip-hover shrink-0 px-3 py-1.5"
             >
               {isBeatPlaying ? t("posts.pause") : t("posts.play")}
             </span>
