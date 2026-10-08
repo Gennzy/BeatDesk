@@ -24,7 +24,7 @@ const base =
 const variants: Record<Variant, string> = {
   // Главное действие. Светлая заливка даёт глубину и поднимает кнопку над
   // тёмным фоном без всякой тени.
-  signal: "rounded-pill bg-signal text-ink hover:bg-paper",
+  signal: "rounded-pill bg-signal text-ink hover:bg-paper hover:shadow-[var(--glow-accent)]",
   // Обычное действие: та же форма, но рамка и подложка отделяют её от фона.
   ink: "rounded-pill border border-line-2 bg-ink-2 text-paper hover:border-line-2 hover:bg-ink-3",
   ghost: "rounded-pill text-mute hover:bg-ink-2 hover:text-paper",

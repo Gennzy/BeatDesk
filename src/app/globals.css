@@ -25,7 +25,7 @@
   --gray-800: #2c2c2c;
   --gray-600: #4a4a48;
   --gray-500: #5f5f5c;
-  --gray-400: #7c7c78;
+  --gray-400: #9a9a96;
 
   /* Костяной белый, не чистый: чистый режет глаз на чёрном. */
   --bone-100: #e9e7e1;
@@ -66,6 +66,14 @@
 
   /* Нижняя подсветка шапки и плеера: на чёрном тень не видна, работает свет. */
   --shade-strong: rgb(0 0 0 / 0.4);
+
+  /*
+   * Свечение акцента. На чёрном глубину даёт не тень, а свет: тень просто
+   * не видна. Свечение скупое — только главное действие и активное
+   * состояние, иначе оно превращается в неон и мешает читать.
+   */
+  --glow-accent: 0 0 24px color-mix(in oklab, var(--color-signal) 35%, transparent);
+  --glow-accent-soft: 0 0 14px color-mix(in oklab, var(--color-signal) 22%, transparent);
   /* Внутренняя тень поля: подчёркивает, что это углубление, а не площадка. */
   --edge-sunken: inset 0 1px 1px rgb(0 0 0 / 0.35);
 
@@ -183,6 +191,26 @@
   button {
     font: inherit;
     color: inherit;
+  }
+
+  /*
+   * Курсор-указатель на всём нажимаемом.
+   *
+   * Браузер по умолчанию ставит на кнопку обычную стрелку, а не руку, и на
+   * пятидесяти с лишним кнопках это выглядело так, будто на них нельзя
+   * нажать. Правило общее, потому что записывать его в каждой кнопке —
+   * это пятьдесят мест, где его забудут.
+   */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  select:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: default;
   }
 
   input::placeholder,
@@ -377,6 +405,7 @@
   .tab[aria-pressed="true"] {
     background: var(--color-signal);
     color: var(--color-ink);
+    box-shadow: var(--glow-accent-soft);
   }
 
   .tab[aria-pressed="true"]:hover {
