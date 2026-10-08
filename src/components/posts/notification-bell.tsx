@@ -34,6 +34,26 @@ type UnreadNotification = {
  */
 const announced = new Set<string>();
 
+/**
+ * Множество живёт всё время жизни вкладки и без границы росло бы на каждом
+ * событии. Держим последние: всё, что старше, давно показано и повторно прийти
+ * не может.
+ */
+const ANNOUNCED_LIMIT = 50;
+
+function remember(id: string): boolean {
+  if (announced.has(id)) return false;
+
+  announced.add(id);
+
+  if (announced.size > ANNOUNCED_LIMIT) {
+    const oldest = announced.values().next().value;
+    if (oldest !== undefined) announced.delete(oldest);
+  }
+
+  return true;
+}
+
 type ToastKind = {
   icon: IconName;
   label: "notifications.reply" | "notifications.like" | "notifications.follow" | "notifications.sale" | "notifications.achievement";
@@ -124,8 +144,7 @@ export function NotificationBell() {
       for (const item of items.slice(0, 2)) {
         // Подписка на таблицу срабатывает и на своей же записи, поэтому
         // одно и то же событие всплывало бы повторно.
-        if (announced.has(item.id)) continue;
-        announced.add(item.id);
+        if (!remember(item.id)) continue;
 
         const kind = TOAST_KINDS[item.kind];
         const who = item.actorUsername ? `@${item.actorUsername}` : t("notifications.system");
