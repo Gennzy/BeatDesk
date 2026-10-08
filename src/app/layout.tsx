@@ -65,7 +65,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export const viewport: Viewport = {
-  themeColor: "#08080a",
+  /*
+   * Цвет строки браузера. Здесь нужен литерал, а не токен: meta-тег читает
+   * значение из разметки, и var() в нём не разрешается. Значение совпадает
+   * с --black-950 в globals.css — при смене фона менять в обоих местах.
+   */
+  themeColor: "#050505",
   colorScheme: "dark",
 };
 
