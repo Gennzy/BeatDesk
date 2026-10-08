@@ -76,7 +76,7 @@ export function FeedTabs({ beats, nextOffset, filters, posts, myBeats, loggedIn,
           <Suspense fallback={null}>
             <FeedFiltersBar resultCount={beats.length} />
           </Suspense>
-          <FeedList initial={beats} initialNextOffset={nextOffset} filters={filters} />
+          <FeedList initial={beats} initialNextOffset={nextOffset} filters={filters} signedIn={loggedIn} />
         </div>
       ) : (
         // key по виду: при смене вкладки компонент пересоздаётся и не держит

@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { FeedTabs } from "@/components/feed/feed-tabs";
-import type { FeedFilterState } from "@/components/feed/feed-filters";
+import type { FeedFilterState } from "@/lib/feed-filters";
 import { Container, SectionHead } from "@/components/ui/container";
 import { ErrorState } from "@/components/ui/states";
 import { fetchBeatsByOwner, fetchPublicBeats, type FeedBeat, type FeedFilters } from "@/lib/feed";
+import { readFilters, toFeedFilters } from "@/lib/feed-filters";
 import { getT } from "@/lib/i18n/server";
 import { fetchPosts } from "@/lib/posts";
 import { getSessionUser, getSupabase } from "@/lib/supabase/user";
@@ -34,35 +35,30 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const [t, supabase, params] = await Promise.all([getT(), getSupabase(), searchParams]);
 
   const one = (key: string) => (typeof params[key] === "string" ? (params[key] as string) : "");
-  const numeric = (key: string) => {
-    const value = Number(one(key));
-    return one(key) && Number.isFinite(value) ? value : undefined;
-  };
-
-  const filters: FeedFilterState = {
-    sort: one("sort") === "popular" ? "popular" : "new",
-    query: one("q"),
-    key: one("key"),
-    bpmMin: one("bpmMin"),
-    bpmMax: one("bpmMax"),
-  };
-
-  const feedFilters: FeedFilters = {
-    sort: filters.sort,
-    query: filters.query || undefined,
-    key: filters.key || undefined,
-    bpmMin: numeric("bpmMin"),
-    bpmMax: numeric("bpmMax"),
-  };
+  const paramsString = (values: Record<string, string | string[] | undefined>) =>
+    new URLSearchParams(
+      Object.entries(values)
+        .filter(([, value]) => typeof value === "string")
+        .map(([key, value]) => [key, value as string]),
+    );
+  /*
+   * Разбор адреса один и тот же, что и у панели фильтров. Раньше здесь стоял
+   * свой разбор на два значения сортировки, из-за чего вкладка «популярное» не
+   * доходила до запроса, а главная всегда показывала новые биты.
+   */
+  const filters = readFilters(new URLSearchParams(paramsString(params)));
+  const feedFilters: FeedFilters = toFeedFilters(filters);
 
   // Пустой массив при ошибке неотличим от «битов пока нет». Разделяем явно:
   // поломка запроса должна выглядеть поломкой, а не пустой витриной.
   let feedError: string | null = null;
   let feed: { beats: FeedBeat[]; nextOffset: number | null } = { beats: [], nextOffset: null };
 
+  const viewer = supabase ? (await supabase.auth.getUser()).data.user ?? null : null;
+
   if (supabase) {
     try {
-      feed = await fetchPublicBeats(supabase, 0, undefined, feedFilters);
+      feed = await fetchPublicBeats(supabase, 0, undefined, feedFilters, viewer?.id ?? null);
     } catch (error) {
       console.error("beat feed failed", error);
       feedError = t("feed.error");
@@ -70,7 +66,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   }
 
   // Ветки и свои биты нужны только вошедшему, поэтому тянутся вместе с ним.
-  const viewer = supabase ? (await supabase.auth.getUser()).data.user ?? null : null;
   const viewerName = viewer ? (await getSessionUser())?.username ?? null : null;
 
   const [posts, myBeats] = viewer

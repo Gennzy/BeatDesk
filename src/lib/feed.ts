@@ -50,6 +50,11 @@ export type FeedBeat = {
   score: number;
   /** Уровень продавца 1..10: поднимает бит, но не перевешивает содержание. */
   sellerLevel: number;
+  likes: number;
+  saves: number;
+  /** Наш выбор: без него кнопки мигали бы после каждой перезагрузки. */
+  liked: boolean;
+  saved: boolean;
   createdAt: string;
   updatedAt: string | null;
 };
@@ -75,17 +80,19 @@ type BeatRow = {
     | { username: string; avatar_url: string | null; level?: number }
     | { username: string; avatar_url: string | null; level?: number }[]
     | null;
+  beat_reactions?: { kind: string; user_id: string }[] | null;
 };
 
 const BEAT_COLUMNS =
-  "id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, created_at, updated_at, profiles(username, avatar_url, level)";
+  "id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, created_at, updated_at, profiles(username, avatar_url, level), beat_reactions(kind, user_id)";
 
 /** Пока не применена миграция 0007, колонок plays и updated_at ещё нет в базе. */
 const LEGACY_BEAT_COLUMNS =
   "id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, prices, is_public, created_at, profiles(username, avatar_url)";
 
-function serialize(row: BeatRow): FeedBeat {
+function serialize(row: BeatRow, viewerId?: string | null): FeedBeat {
   const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+  const reactions = row.beat_reactions ?? [];
 
   return {
     id: row.id,
@@ -105,12 +112,22 @@ function serialize(row: BeatRow): FeedBeat {
     plays: row.plays ?? 0,
     score: Number(row.score ?? 0),
     sellerLevel: profile?.level ?? 1,
+    likes: reactions.filter((reaction) => reaction.kind === "like").length,
+    saves: reactions.filter((reaction) => reaction.kind === "save").length,
+    liked: viewerId !== null && viewerId !== undefined
+      ? reactions.some((reaction) => reaction.kind === "like" && reaction.user_id === viewerId)
+      : false,
+    saved: viewerId !== null && viewerId !== undefined
+      ? reactions.some((reaction) => reaction.kind === "save" && reaction.user_id === viewerId)
+      : false,
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? null,
   };
 }
 
 type QueryOptions = {
+  /** Кто смотрит ленту: его реакции помечаются, чужие считаются. */
+  viewerId?: string | null;
   filters?: FeedFilters;
   ownerId?: string;
   isOwner?: boolean;
@@ -183,11 +200,12 @@ export async function fetchPublicBeats(
   offset = 0,
   limit = FEED_PAGE_SIZE,
   filters: FeedFilters = {},
+  viewerId: string | null = null,
 ): Promise<{ beats: FeedBeat[]; nextOffset: number | null }> {
-  let result = await queryBeats(supabase, BEAT_COLUMNS, { filters, offset, limit });
+  let result = await queryBeats(supabase, BEAT_COLUMNS, { filters, offset, limit, viewerId });
 
   if (result.error) {
-    result = await queryBeats(supabase, LEGACY_BEAT_COLUMNS, { filters, offset, limit });
+    result = await queryBeats(supabase, LEGACY_BEAT_COLUMNS, { filters, offset, limit, viewerId });
   }
 
   if (result.error) {
@@ -195,7 +213,7 @@ export async function fetchPublicBeats(
   }
 
   const rows = result.data ?? [];
-  return { beats: rows.map(serialize), nextOffset: rows.length === limit ? offset + limit : null };
+  return { beats: rows.map((row) => serialize(row, viewerId)), nextOffset: rows.length === limit ? offset + limit : null };
 }
 
 /** Биты одного битмейкера. Чужие показываем только публичные, свои все. */
@@ -214,5 +232,5 @@ export async function fetchBeatsByOwner(
     throw new Error(result.error.message);
   }
 
-  return (result.data ?? []).map(serialize);
+  return (result.data ?? []).map((row) => serialize(row as BeatRow));
 }

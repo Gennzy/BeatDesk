@@ -24,7 +24,8 @@ export type IconName =
   | "check"
   | "close"
   | "chevronRight"
-  | "search";
+  | "search"
+  | "bookmark";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   bell: (
@@ -68,6 +69,7 @@ const PATHS: Record<IconName, React.ReactNode> = {
   check: <path d="m5 12.5 4.5 4.5L19 7" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,
   chevronRight: <path d="m9 5 7 7-7 7" />,
+  bookmark: <path d="M6 4h12v16l-6-4.5L6 20V4Z" />,
   search: (
     <>
       <path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z" />

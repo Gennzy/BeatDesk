@@ -119,7 +119,7 @@ returns integer language sql immutable set search_path = public as $$
 $$;
 
 create or replace function public.recalc_seller_level(p_user uuid)
-returns integer language sql security definer set search_path = public as $$
+returns integer language plpgsql security definer set search_path = public as $$
 declare
   v_score numeric;
   v_level integer;
@@ -189,7 +189,11 @@ returns numeric language sql stable set search_path = public as $$
         + 6 * coalesce(saves, 0)
       )
       -- exp(-ln(2) * возраст / 3): половина каждые трое суток.
-      * exp(-ln(2) * greatest(extract(epoch from (now() - created_at)) / 86400, 0) / 3.0)
+      --
+      -- Приведение к double обязательно: в PostgreSQL есть только
+      -- exp(double precision), а ln() от numeric даёт numeric, и без
+      -- приведения вызов не находился бы вовсе.
+      * exp((-ln(2) * greatest(extract(epoch from (now() - created_at)) / 86400, 0) / 3.0)::double precision)
       -- Потолок 1.45 при десятом уровне.
       * (1 + least(45, 5 * greatest(seller_level - 1, 0)) / 100.0)
       * (
@@ -202,7 +206,7 @@ returns numeric language sql stable set search_path = public as $$
 $$;
 
 create or replace function public.recount_beat(p_beat_id uuid)
-returns numeric language sql security definer set search_path = public as $$
+returns numeric language plpgsql security definer set search_path = public as $$
 declare
   v_score numeric;
 begin
@@ -248,8 +252,16 @@ grant execute on function public.recount_all_beats() to service_role;
 create or replace function public.recount_on_reaction() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  perform public.recount_beat(coalesce(new.beat_id, old.beat_id));
-  return coalesce(new, old);
+  -- В DELETE запись NEW пуста, поэтому бит берётся из OLD, а возвращать
+  -- нужно ту строку, которая соответствует операции: coalesce на составном
+  -- типе здесь не работает.
+  perform public.recount_beat(case when tg_op = 'DELETE' then old.beat_id else new.beat_id end);
+
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+
+  return new;
 end;
 $$;
 

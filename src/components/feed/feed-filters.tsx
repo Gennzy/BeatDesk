@@ -8,45 +8,10 @@ import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n/provider";
 import { MUSICAL_KEYS } from "@/lib/keys";
 import { pluralEn, pluralRu } from "@/lib/plural";
+import { EMPTY_FILTERS, filtersToParams, readFilters, type FeedFilterState } from "@/lib/feed-filters";
 
-export type FeedFilterState = {
-  sort: "top" | "new" | "popular";
-  query: string;
-  key: string;
-  bpmMin: string;
-  bpmMax: string;
-};
-
-export const EMPTY_FILTERS: FeedFilterState = { sort: "top", query: "", key: "", bpmMin: "", bpmMax: "" };
-
-/**
- * Сортировка из адреса. Значение приходит от клиента, поэтому берём только
- * известные: иначе в запрос уйдёт строка, на которую нет сортировки, и
- * человек получит ленту без объяснения, почему она вдруг другая.
- */
-function parseSort(raw: string | null): FeedFilterState["sort"] {
-  return raw === "new" || raw === "popular" ? raw : "top";
-}
-
-function readFilters(params: URLSearchParams): FeedFilterState {
-  return {
-    sort: parseSort(params.get("sort")),
-    query: params.get("q") ?? "",
-    key: params.get("key") ?? "",
-    bpmMin: params.get("bpmMin") ?? "",
-    bpmMax: params.get("bpmMax") ?? "",
-  };
-}
-
-export function filtersToParams(filters: FeedFilterState): string {
-  const params = new URLSearchParams();
-  if (filters.sort !== "top") params.set("sort", filters.sort);
-  if (filters.query.trim()) params.set("q", filters.query.trim());
-  if (filters.key) params.set("key", filters.key);
-  if (filters.bpmMin) params.set("bpmMin", filters.bpmMin);
-  if (filters.bpmMax) params.set("bpmMax", filters.bpmMax);
-  return params.toString();
-}
+export type { FeedFilterState };
+export { filtersToParams, readFilters };
 
 /** Ключ по URL: смена фильтров пересоздаёт панель, поэтому состояние не рассинхронизируется. */
 export function FeedFiltersBar({ resultCount }: { resultCount: number }) {

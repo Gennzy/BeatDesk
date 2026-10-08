@@ -30,6 +30,8 @@ export type PostBeat = {
   plays: number;
   score: number;
   sellerLevel: number;
+  likes: number;
+  saves: number;
   prices: Prices;
   currency: string;
 };
@@ -53,7 +55,7 @@ export type Post = {
 // Без подсказки PostgREST отвечает PGRST201 и возвращает пустую выборку.
 const POST_COLUMNS = `
   id, author_id, parent_id, body, like_count, reply_count, created_at,
-  beats(id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, plays, score, prices, currency, is_public, sale_state),
+  beats(id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, plays, score, prices, currency, is_public, sale_state, beat_reactions(kind, user_id)),
   profiles!posts_author_id_fkey(username, avatar_url, level)
 `;
 
@@ -98,6 +100,7 @@ type PostRowBeat = {
   mp3_url: string | null;
   plays: number | null;
   score?: number | null;
+  beat_reactions?: { kind: string; user_id: string }[] | null;
   prices: PostBeat["prices"] | null;
   currency: string | null;
   is_public: boolean | null;
@@ -131,6 +134,8 @@ function toBeat(value: PostRowBeat | PostRowBeat[] | null): PostBeat | null {
     plays: beat.plays ?? 0,
     score: beat.score ?? 0,
     sellerLevel: 1,
+    likes: (beat.beat_reactions ?? []).filter((r) => r.kind === "like").length,
+    saves: (beat.beat_reactions ?? []).filter((r) => r.kind === "save").length,
     prices: normalizePrices(beat.prices),
     currency: beat.currency ?? "RUB",
   };
@@ -481,6 +486,10 @@ export function beatToFeedCard(beat: PostBeat, author: PostAuthor): FeedBeat {
     plays: beat.plays,
     score: beat.score,
     sellerLevel: beat.sellerLevel,
+    likes: beat.likes,
+    saves: beat.saves,
+    liked: false,
+    saved: false,
     createdAt: new Date(0).toISOString(),
     updatedAt: null,
   };

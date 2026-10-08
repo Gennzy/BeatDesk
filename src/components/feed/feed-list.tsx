@@ -14,10 +14,11 @@ type Props = {
   initial: FeedBeat[];
   initialNextOffset: number | null;
   filters: FeedFilterState;
+  signedIn: boolean;
 };
 
 /** Лента с бесконечной прокруткой: догружаем, когда докрутили до конца. */
-export function FeedList({ initial, initialNextOffset, filters }: Props) {
+export function FeedList({ initial, initialNextOffset, filters, signedIn }: Props) {
   const { t } = useI18n();
   const [beats, setBeats] = useState(initial);
   const [nextOffset, setNextOffset] = useState(initialNextOffset);
@@ -67,7 +68,7 @@ export function FeedList({ initial, initialNextOffset, filters }: Props) {
     <div className="flex flex-col gap-8">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {beats.map((beat) => (
-          <BeatCard key={beat.id} beat={beat} />
+          <BeatCard key={beat.id} beat={beat} signedIn={signedIn} />
         ))}
       </div>
 

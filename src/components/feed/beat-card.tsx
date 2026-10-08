@@ -7,6 +7,7 @@ import { usePlayer } from "@/components/player/player-provider";
 import { Avatar } from "@/components/ui/avatar";
 import { ProgressLine } from "@/components/ui/progress";
 import { cn } from "@/lib/cn";
+import { BeatReactions } from "@/components/feed/beat-reactions";
 import { formatMoney } from "@/lib/currency";
 import type { FeedBeat } from "@/lib/feed";
 import { PRICE_KEYS, priceLabel } from "@/lib/prices";
@@ -25,7 +26,14 @@ import { useI18n } from "@/lib/i18n/provider";
  * Полоска прогресса идёт по нижнему краю обложки, а не поверх неё
  * декорациями: видно, где играет, и обложка остаётся обложкой.
  */
-export function BeatCard({ beat }: { beat: FeedBeat }) {
+/**
+ * Карточка бита.
+ *
+ * signedIn передаётся явно, а не берётся из сессии на клиенте: карточку
+ * рисует и серверная страница ленты, и профиль, и без признака входа кнопки
+ * реакций молча не работали бы у вошедшего.
+ */
+export function BeatCard({ beat, signedIn = false }: { beat: FeedBeat; signedIn?: boolean }) {
   const { t } = useI18n();
   const { track, isPlaying, play, toggle, plays, currentTime, duration } = usePlayer();
 
@@ -190,9 +198,34 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
           </div>
         ) : null}
 
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-3">
+          <BeatReactions
+            beatId={beat.id}
+            initialLikes={beat.likes}
+            initialSaves={beat.saves}
+            initialLiked={beat.liked}
+            initialSaved={beat.saved}
+            signedIn={signedIn}
+          />
+          {/*
+            Уровень продавца виден покупателю только с третьего: до этого он
+            ничего не значит и был бы пустой рамкой. Число прослушиваний здесь
+            дублировало бы строку BPM выше.
+          */}
+          {beat.sellerLevel >= 3 ? (
+            <span
+              title={t("feed.levelHint")}
+              className="flex items-center gap-1.5 rounded-pill border border-line px-2 py-1 text-[11px] text-mute"
+            >
+              <span aria-hidden className="size-1 bg-signal" />
+              <span className="font-mono tabular-nums">{beat.sellerLevel}</span>
+            </span>
+          ) : null}
+        </div>
+
         {/*
-          Тарифы прижаты к низу и отделены волосяной линией: без линии пустое
-          место между тегами и ценой читалось как недоделанная вёрстка.
+          Тарифы отделены волосяной линией: без линии пустое место между
+          реакциями и ценой читалось как недоделанная вёрстка.
         */}
         {tiers.length > 0 ? (
           <ul className="rows mt-auto border-t border-line pt-px">
