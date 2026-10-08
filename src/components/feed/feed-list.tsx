@@ -91,7 +91,7 @@ export function FeedList({ initial, initialNextOffset, filters, signedIn }: Prop
             title={t("states.error.title")}
             description={t("states.error.sub")}
             action={
-              <button type="button" onClick={() => void loadMore()} className="label border border-line px-3 py-2 text-paper hover:border-line-2">
+              <button type="button" onClick={() => void loadMore()} className="tab border border-line px-3.5 py-2 text-paper hover:border-line-2">
                 {t("states.error.retry")}
               </button>
             }

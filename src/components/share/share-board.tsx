@@ -115,8 +115,8 @@ export function ShareBoard({ beats, channels, published }: Props) {
                     active && channel.connected
                       ? "label border border-signal bg-signal px-3 py-1.5 text-ink"
                       : channel.connected
-                        ? "label border border-line px-3 py-1.5 text-mute transition-colors hover:border-line-2 hover:text-paper"
-                        : "label cursor-not-allowed border border-line px-3 py-1.5 text-mute/50"
+                        ? "tab border border-line px-3 py-1.5 text-mute transition-colors hover:border-line-2 hover:text-paper"
+                        : "tab cursor-not-allowed border border-line px-3 py-1.5 text-mute/50"
                   }
                   title={channel.connected ? platform.label : t("sharing.notConnected")}
                 >
@@ -261,12 +261,12 @@ export function ShareBoard({ beats, channels, published }: Props) {
                           href={post.externalUrl}
                           target="_blank"
                           rel="noreferrer noopener"
-                          className="label border border-line-2 px-2 py-1 text-paper"
+                          className="chip text-paper"
                         >
                           {platform.label}
                         </a>
                       ) : (
-                        <span key={channel.id} className="label border border-line px-2 py-1 text-mute">
+                        <span key={channel.id} className="chip text-mute">
                           {platform.label}
                         </span>
                       )

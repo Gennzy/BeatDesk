@@ -85,7 +85,7 @@ export function OrderItemDownloads({ orderId, itemId, tier }: Props) {
             type="button"
             disabled={busy !== null}
             onClick={() => void download(kind)}
-            className="label h-9 border border-line px-3 text-mute transition-colors hover:border-line-2 hover:text-paper disabled:opacity-50"
+            className="label h-9 rounded-pill border border-line px-3.5 text-mute transition-colors hover:border-line-2 hover:text-paper disabled:opacity-50"
           >
             {busy === kind ? "Скачиваем…" : KIND_LABELS[kind]}
           </button>

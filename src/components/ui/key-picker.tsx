@@ -31,7 +31,7 @@ export function KeyPicker({ name = "key", defaultValue = "F# minor" }: { name?: 
                   aria-pressed={active}
                   onClick={() => setValue(option)}
                   className={cn(
-                    "h-9 border font-mono text-xs transition-colors duration-150",
+                    "h-9 rounded-md border font-mono text-xs transition-colors duration-150",
                     active
                       ? "border-signal bg-signal text-ink"
                       : "border-line bg-ink-2 text-mute hover:border-line-2 hover:text-paper",

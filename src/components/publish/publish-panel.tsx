@@ -208,7 +208,7 @@ export function PublishPanel({ beatId, connections, botReady, posts }: Props) {
                           href={platform.openUrl}
                           target="_blank"
                           rel="noreferrer noopener"
-                          className="label border border-line px-3 py-1.5 text-mute transition-colors hover:border-line-2 hover:text-paper"
+                          className="tab border border-line px-3 py-1.5 text-mute transition-colors hover:border-line-2 hover:text-paper"
                         >
                           {t("publish.open")}
                         </a>
@@ -247,7 +247,7 @@ export function PublishPanel({ beatId, connections, botReady, posts }: Props) {
                                 key={chat.chatId}
                                 type="button"
                                 onClick={() => void connect(platform, { chatId: chat.chatId })}
-                                className="flex items-center justify-between gap-3 border border-line px-3 py-2 text-left transition-colors hover:border-signal/50"
+                                className="flex items-center justify-between gap-3 rounded-lg border border-line bg-ink-2 px-3 py-2 text-left transition-colors hover:border-line-2"
                               >
                                 <span className="truncate text-sm text-paper">{chat.title}</span>
                                 <span className="label text-mute">{chat.type}</span>

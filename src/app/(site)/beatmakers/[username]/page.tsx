@@ -134,7 +134,7 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
                   {collaborators.map((name) => (
                     <li
                       key={name}
-                      className="border border-line-2 px-3 py-1 text-sm text-paper"
+                      className="chip px-3 py-1 text-sm text-paper"
                     >
                       {name}
                     </li>

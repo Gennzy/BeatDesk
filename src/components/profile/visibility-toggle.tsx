@@ -37,7 +37,7 @@ export function VisibilityToggle({ beatId, initialPublic }: { beatId: string; in
       className={
         isPublic
           ? "label border border-signal/40 bg-signal/10 px-2 py-1.5 text-signal transition-colors hover:border-signal"
-          : "label border border-line px-2 py-1.5 text-mute transition-colors hover:border-line-2 hover:text-paper"
+          : "tab border border-line px-3 py-1.5 text-mute transition-colors hover:border-line-2 hover:text-paper"
       }
     >
       {isPublic ? t("profile.public") : t("profile.private")}

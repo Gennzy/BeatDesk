@@ -97,7 +97,7 @@ export function BeatAssistant({ beat, hasStems, hasWav, onApply }: Props) {
                     type="button"
                     onClick={() => onApply({ title })}
                     className={cn(
-                      "border border-line-2 px-3 py-1.5 text-sm text-paper transition-colors",
+                      "chip chip-hover px-3 py-1.5 text-sm text-paper transition-colors",
                       "hover:border-line-2",
                     )}
                   >
@@ -118,7 +118,7 @@ export function BeatAssistant({ beat, hasStems, hasWav, onApply }: Props) {
               <span className="label text-mute">{t("edit.aiTags")}</span>
               <ul className="flex flex-wrap gap-1.5">
                 {suggestion.tags.map((tag) => (
-                  <li key={tag} className="border border-line-2 px-2 py-0.5 text-xs text-mute">
+                  <li key={tag} className="chip text-xs text-mute">
                     {tag}
                   </li>
                 ))}

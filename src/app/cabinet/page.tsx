@@ -232,7 +232,7 @@ export default async function CabinetPage() {
                   <li
                     key={achievement.id}
                     title={t(achievement.titleKey as "ach.firstBeat.title")}
-                    className="border border-line-2 px-3 py-2"
+                    className="chip px-3 py-2"
                   >
                     <span className="label text-paper">{t(achievement.titleKey as "ach.firstBeat.title")}</span>
                   </li>
