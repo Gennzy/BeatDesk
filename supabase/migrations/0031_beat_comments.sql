@@ -10,17 +10,56 @@
 
 -- 1. Вид уведомления ----------------------------------------------------
 
-alter table public.notifications
-  drop constraint if exists notifications_kind_check;
+/*
+ * Проверка на kind меняется под блокировкой ACCESS EXCLUSIVE, а любой запрос
+ * уведомлений держит на таблице ACCESS SHARE. Пока сайт живой, обычный ALTER
+ * упирается в ожидание, а два ожидающих друг друга процесса дают 40P01.
+ *
+ * Поэтому: одна команда вместо двух (замок берётся один раз, а не два), с
+ * коротким lock_timeout и тремя попытками. Иначе миграция падает случайно —
+ * в зависимости от того, открыл ли кто-нибудь страницу уведомлений.
+ */
+do $$
+declare
+  v_done boolean := false;
+begin
+  /*
+   * Без предельного времени ожидания ALTER ждал бы вечно, и два запроса,
+   * ждущих друг друга, по-прежнему дали бы 40P01. Две секунды — достаточно,
+   * чтобы взять замок на пустой таблице, и достаточно мало, чтобы не висеть.
+   */
+  perform set_config('lock_timeout', '2s', true);
 
-alter table public.notifications
-  add constraint notifications_kind_check
-  check (kind in (
-    'reply', 'like', 'follow',
-    'sale', 'achievement',
-    'beat_uploaded', 'beat_failed', 'beat_published',
-    'review', 'order_ready', 'beat_comment'
-  ));
+  for attempt in 1..3 loop
+    begin
+      alter table public.notifications
+        drop constraint if exists notifications_kind_check,
+        add constraint notifications_kind_check
+        check (kind in (
+          'reply', 'like', 'follow',
+          'sale', 'achievement',
+          'beat_uploaded', 'beat_failed', 'beat_published',
+          'review', 'order_ready', 'beat_comment'
+        ));
+
+      v_done := true;
+      exit;
+    exception
+      when lock_not_available then
+        -- Живой запрос держит таблицу. Ждём и пробуем снова.
+        raise notice 'notifications занята, попытка % из 3', attempt;
+        perform pg_sleep(0.5);
+    end;
+  end loop;
+
+  -- Молчаливый выход был бы хуже ошибки: миграция отметилась бы успешной, а
+  -- вид beat_comment остался бы недопустимым, и комментарий падал бы уже в
+  -- приложении с непонятным сообщением.
+  if not v_done then
+    raise exception 'notifications занята дольше 6 секунд — закрой страницу уведомлений и повтори';
+  end if;
+end;
+$$;
 
 -- 2. Комментарии --------------------------------------------------------
 
