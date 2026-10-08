@@ -150,7 +150,7 @@ export function NotificationsList({ initial }: { initial: Notification[] }) {
                   <button
                     type="button"
                     onClick={() => void markRead(group.items.map((item) => item.id))}
-                    className="label text-mute/70 transition-colors hover:text-paper"
+                    className="label text-mute transition-colors hover:text-paper"
                   >
                     {t("notifications.markReadGroup")}
                   </button>
@@ -216,9 +216,9 @@ function NotificationRow({ item, onRead }: { item: Notification; onRead: () => v
             )}
           </span>
 
-          {item.beatTitle ? <span className="truncate text-xs text-mute/70">{item.beatTitle}</span> : null}
+          {item.beatTitle ? <span className="truncate text-xs text-mute">{item.beatTitle}</span> : null}
 
-          <TimeAgo iso={item.createdAt} locale={locale} className="label text-mute/60" />
+          <TimeAgo iso={item.createdAt} locale={locale} className="label text-mute" />
         </span>
 
         {unread ? (

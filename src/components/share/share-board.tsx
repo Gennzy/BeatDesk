@@ -116,7 +116,7 @@ export function ShareBoard({ beats, channels, published }: Props) {
                       ? "label border border-signal bg-signal px-3 py-1.5 text-ink"
                       : channel.connected
                         ? "tab border border-line px-3 py-1.5 text-mute transition-colors hover:border-line-2 hover:text-paper"
-                        : "tab cursor-not-allowed border border-line px-3 py-1.5 text-mute/50"
+                        : "tab cursor-not-allowed border border-line px-3 py-1.5 text-mute"
                   }
                   title={channel.connected ? platform.label : t("sharing.notConnected")}
                 >

@@ -244,7 +244,7 @@ function CommentRow({
           ) : (
             <span className="label text-paper">{name}</span>
           )}
-          <TimeAgo iso={comment.createdAt} locale={locale} className="label text-mute/70" />
+          <TimeAgo iso={comment.createdAt} locale={locale} className="label text-mute" />
         </div>
 
         <p className="text-sm leading-relaxed whitespace-pre-wrap text-mute">{comment.body}</p>

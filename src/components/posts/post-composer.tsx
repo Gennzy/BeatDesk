@@ -80,7 +80,7 @@ export function PostComposer({ parentId = null, beats, loggedIn = true, myUserna
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-line bg-ink-2 p-4">
+    <div className="flex flex-col gap-3 rounded-lg border border-line bg-ink-2 p-4 transition-colors focus-within:border-signal">
       <div className="flex items-start gap-3">
         <Avatar username={myUsername ?? "?"} size="sm" />
         <textarea
@@ -91,7 +91,7 @@ export function PostComposer({ parentId = null, beats, loggedIn = true, myUserna
           maxLength={POST_BODY_LIMIT + 40}
           autoFocus={autoFocus}
           className={cn(
-            "w-full resize-y bg-transparent text-sub text-pretty text-paper outline-none placeholder:text-mute",
+            "w-full resize-y bg-transparent text-sub text-pretty text-paper outline-none placeholder:text-mute focus-visible:outline-none",
             tooLong && "text-amber",
           )}
         />

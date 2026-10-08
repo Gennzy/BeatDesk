@@ -220,7 +220,7 @@ export function BeatCard({
           <span>{beat.bpm} BPM</span>
           {beat.musicalKey ? (
             <>
-              <span aria-hidden className="text-mute/40">
+              <span aria-hidden className="text-mute">
                 ·
               </span>
               <span>{beat.musicalKey}</span>
@@ -228,7 +228,7 @@ export function BeatCard({
           ) : null}
           {ownPlays > 0 ? (
             <>
-              <span aria-hidden className="text-mute/40">
+              <span aria-hidden className="text-mute">
                 ·
               </span>
               <span>
@@ -251,7 +251,7 @@ export function BeatCard({
               </li>
             ))}
             {artists.length > 3 ? (
-              <li className="px-1 text-[11px] text-mute/70">+{artists.length - 3}</li>
+              <li className="px-1 text-[11px] text-mute">+{artists.length - 3}</li>
             ) : null}
           </ul>
         ) : null}
@@ -285,7 +285,7 @@ export function BeatCard({
           */}
           {cheapest !== null ? (
             <span className="flex items-baseline gap-1.5">
-              <span className="label text-mute/70">{t("beat.from")}</span>
+              <span className="label text-mute">{t("beat.from")}</span>
               <span className="font-mono text-base text-paper tabular-nums">
                 {formatMoney(cheapest, beat.currency)}
               </span>
@@ -297,7 +297,7 @@ export function BeatCard({
 
         {/* Что входит в цену: одна короткая строка вместо четырёх строк. */}
         {tiers.length > 1 ? (
-          <p className="label text-mute/70">
+          <p className="label text-mute">
             {tiers.map((tier) => tier.label).join(" · ")}
           </p>
         ) : null}

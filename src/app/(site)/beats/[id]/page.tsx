@@ -150,7 +150,7 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
           <Link href="/" className="transition-colors hover:text-paper">
             {t("beat.crumbHome")}
           </Link>
-          <Icon name="chevronRight" className="size-3 text-mute/50" />
+          <Icon name="chevronRight" className="size-3 text-mute" />
           <span>{t("beat.crumbCatalog")}</span>
         </nav>
 

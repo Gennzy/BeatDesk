@@ -130,7 +130,7 @@ export function BeatHero({ beat, isOwner }: { beat: BeatHeroData; isOwner: boole
             */}
             {beat.typeBeatArtists.length > 0 ? (
               <span className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                <span className="label text-mute/70">{t("feed.typeOf")}</span>
+                <span className="label text-mute">{t("feed.typeOf")}</span>
                 <span className="text-sm text-paper">{beat.typeBeatArtists.join(", ")}</span>
               </span>
             ) : null}

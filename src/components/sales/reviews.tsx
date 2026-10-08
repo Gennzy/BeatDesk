@@ -100,12 +100,12 @@ export async function Reviews({
                   <Stars rating={review.rating} />
                   <span className="label text-paper">{review.authorUsername ?? t("review.anonymous")}</span>
                 </span>
-                <TimeAgo iso={review.createdAt} locale={locale} className="label text-mute/70" />
+                <TimeAgo iso={review.createdAt} locale={locale} className="label text-mute" />
               </div>
 
               {review.body ? <p className="text-sm leading-relaxed text-mute">{review.body}</p> : null}
 
-              {review.beatTitle ? <span className="label text-mute/70">{review.beatTitle}</span> : null}
+              {review.beatTitle ? <span className="label text-mute">{review.beatTitle}</span> : null}
             </li>
           ))}
         </ul>
