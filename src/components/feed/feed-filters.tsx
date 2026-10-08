@@ -10,18 +10,27 @@ import { MUSICAL_KEYS } from "@/lib/keys";
 import { pluralEn, pluralRu } from "@/lib/plural";
 
 export type FeedFilterState = {
-  sort: "new" | "popular";
+  sort: "top" | "new" | "popular";
   query: string;
   key: string;
   bpmMin: string;
   bpmMax: string;
 };
 
-export const EMPTY_FILTERS: FeedFilterState = { sort: "new", query: "", key: "", bpmMin: "", bpmMax: "" };
+export const EMPTY_FILTERS: FeedFilterState = { sort: "top", query: "", key: "", bpmMin: "", bpmMax: "" };
+
+/**
+ * Сортировка из адреса. Значение приходит от клиента, поэтому берём только
+ * известные: иначе в запрос уйдёт строка, на которую нет сортировки, и
+ * человек получит ленту без объяснения, почему она вдруг другая.
+ */
+function parseSort(raw: string | null): FeedFilterState["sort"] {
+  return raw === "new" || raw === "popular" ? raw : "top";
+}
 
 function readFilters(params: URLSearchParams): FeedFilterState {
   return {
-    sort: params.get("sort") === "popular" ? "popular" : "new",
+    sort: parseSort(params.get("sort")),
     query: params.get("q") ?? "",
     key: params.get("key") ?? "",
     bpmMin: params.get("bpmMin") ?? "",
@@ -31,7 +40,7 @@ function readFilters(params: URLSearchParams): FeedFilterState {
 
 export function filtersToParams(filters: FeedFilterState): string {
   const params = new URLSearchParams();
-  if (filters.sort !== "new") params.set("sort", filters.sort);
+  if (filters.sort !== "top") params.set("sort", filters.sort);
   if (filters.query.trim()) params.set("q", filters.query.trim());
   if (filters.key) params.set("key", filters.key);
   if (filters.bpmMin) params.set("bpmMin", filters.bpmMin);
@@ -67,7 +76,7 @@ function FiltersBar({ search, resultCount }: { search: string; resultCount: numb
   }
 
   const active =
-    filters.sort !== "new" ||
+    filters.sort !== "top" ||
     Boolean(filters.query.trim() || filters.key || filters.bpmMin || filters.bpmMax);
 
   const count =
@@ -84,7 +93,7 @@ function FiltersBar({ search, resultCount }: { search: string; resultCount: numb
           оставляли поле шириной с три буквы. Там отдаём приоритет поиску.
         */}
         <div className="hidden shrink-0 items-center sm:flex">
-          {(["new", "popular"] as const).map((sort) => (
+          {(["top", "new", "popular"] as const).map((sort) => (
             <button
               key={sort}
               type="button"
@@ -95,7 +104,7 @@ function FiltersBar({ search, resultCount }: { search: string; resultCount: numb
                 filters.sort === sort ? "bg-signal text-ink" : "text-mute hover:text-paper",
               )}
             >
-              {sort === "new" ? t("feed.new") : t("feed.popular")}
+              {t(`feed.sort${sort[0].toUpperCase()}${sort.slice(1)}` as "feed.sortTop")}
             </button>
           ))}
         </div>

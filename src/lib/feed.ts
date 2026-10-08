@@ -4,7 +4,16 @@ import type { Prices } from "@/lib/prices";
 
 export const FEED_PAGE_SIZE = 12;
 
-export type FeedSort = "new" | "popular";
+/*
+ * Сортировки ленты.
+ *
+ * "top" — по скору, и это сортировка по умолчанию. Скор затухает, поэтому
+ * новый бит с первыми прослушиваниями встаёт рядом со старым с тысячей: у
+ * обоих есть шанс. Сортировка "new" была по умолчанию и делала вторую
+ * половину площадки невидимой, а "popular" по голым прослушиваниям держал
+ * верх ленты у тех, кто выложился первым.
+ */
+export type FeedSort = "top" | "new" | "popular";
 
 export type FeedFilters = {
   sort?: FeedSort;
@@ -37,6 +46,10 @@ export type FeedBeat = {
    */
   saleState: SaleState;
   plays: number;
+  /** Скор ранжирования: показывается в кабинете, в ленте сортирует. */
+  score: number;
+  /** Уровень продавца 1..10: поднимает бит, но не перевешивает содержание. */
+  sellerLevel: number;
   createdAt: string;
   updatedAt: string | null;
 };
@@ -55,13 +68,17 @@ type BeatRow = {
   is_public: boolean;
   sale_state?: SaleState | null;
   plays?: number;
+  score?: number | null;
   created_at: string;
   updated_at?: string | null;
-  profiles: { username: string; avatar_url: string | null } | { username: string; avatar_url: string | null }[] | null;
+  profiles:
+    | { username: string; avatar_url: string | null; level?: number }
+    | { username: string; avatar_url: string | null; level?: number }[]
+    | null;
 };
 
 const BEAT_COLUMNS =
-  "id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, created_at, updated_at, profiles(username, avatar_url)";
+  "id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, created_at, updated_at, profiles(username, avatar_url, level)";
 
 /** Пока не применена миграция 0007, колонок plays и updated_at ещё нет в базе. */
 const LEGACY_BEAT_COLUMNS =
@@ -86,6 +103,8 @@ function serialize(row: BeatRow): FeedBeat {
     isPublic: row.is_public,
     saleState: (row.sale_state ?? "draft") as SaleState,
     plays: row.plays ?? 0,
+    score: Number(row.score ?? 0),
+    sellerLevel: profile?.level ?? 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? null,
   };
@@ -137,9 +156,18 @@ async function queryBeats(supabase: SupabaseServerClient, columns: string, optio
   if (typeof filters.bpmMin === "number" && Number.isFinite(filters.bpmMin)) query = query.gte("bpm", filters.bpmMin);
   if (typeof filters.bpmMax === "number" && Number.isFinite(filters.bpmMax)) query = query.lte("bpm", filters.bpmMax);
 
-  const canSortByPlays = columns.includes("plays") && filters.sort === "popular";
-
-  if (canSortByPlays) {
+  /*
+   * Порядок трёх сортировок.
+   *
+   * Скор может отсутствовать: до миграции 0029 колонки не было, и запрос с
+   * ней упал бы целиком вместе с лентой. Поэтому выбор идёт по наличию
+   * колонки в перечне, а не по флажку.
+   */
+  if (columns.includes("score") && filters.sort === "top") {
+    // created_at вторым порядком: при равном скоре свежий выше, и страница
+    // не дрожит при пересчёте.
+    query = query.order("score", { ascending: false }).order("created_at", { ascending: false });
+  } else if (columns.includes("plays") && filters.sort === "popular") {
     query = query.order("plays", { ascending: false }).order("created_at", { ascending: false });
   } else {
     query = query.order("created_at", { ascending: false });
