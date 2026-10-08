@@ -6,7 +6,20 @@
  * В компоненте с директивой сервер вызвать такую функцию не может.
  */
 
+/**
+ * Область ленты.
+ *
+ * "all" — витрина площадки. "following" — биты тех, на кого подписан
+ * человек. "liked" — те, что понравились.
+ *
+ * Личные вкладки и есть тот цикл, из-за которого возвращаются: подписался,
+ * увидел новое, отреагировал, получил уведомление. Без них площадка остаётся
+ * витриной, за которой не следишь.
+ */
+export type FeedScope = "all" | "following" | "liked";
+
 export type FeedFilterState = {
+  scope: FeedScope;
   sort: "top" | "new" | "popular";
   query: string;
   key: string;
@@ -14,7 +27,14 @@ export type FeedFilterState = {
   bpmMax: string;
 };
 
-export const EMPTY_FILTERS: FeedFilterState = { sort: "top", query: "", key: "", bpmMin: "", bpmMax: "" };
+export const EMPTY_FILTERS: FeedFilterState = {
+  scope: "all",
+  sort: "top",
+  query: "",
+  key: "",
+  bpmMin: "",
+  bpmMax: "",
+};
 
 /**
  * Сортировка из адреса. Значение приходит от клиента, поэтому берём только
@@ -23,6 +43,10 @@ export const EMPTY_FILTERS: FeedFilterState = { sort: "top", query: "", key: "",
  */
 function parseSort(raw: string | null): FeedFilterState["sort"] {
   return raw === "new" || raw === "popular" ? raw : "top";
+}
+
+function parseScope(raw: string | null): FeedScope {
+  return raw === "following" || raw === "liked" ? raw : "all";
 }
 
 /** Число из адреса: пустое или мусорное значение отбрасывается. */
@@ -34,6 +58,7 @@ function parseNumber(raw: string | null): string {
 
 export function readFilters(params: URLSearchParams): FeedFilterState {
   return {
+    scope: parseScope(params.get("view")),
     sort: parseSort(params.get("sort")),
     query: params.get("q") ?? "",
     key: params.get("key") ?? "",
@@ -45,6 +70,7 @@ export function readFilters(params: URLSearchParams): FeedFilterState {
 /** Параметры в адрес. Сортировка по умолчанию в ссылку не попадает. */
 export function filtersToParams(filters: FeedFilterState): string {
   const params = new URLSearchParams();
+  if (filters.scope !== "all") params.set("view", filters.scope);
   if (filters.sort !== "top") params.set("sort", filters.sort);
   if (filters.query.trim()) params.set("q", filters.query.trim());
   if (filters.key) params.set("key", filters.key);
@@ -62,6 +88,7 @@ export function toFeedFilters(filters: FeedFilterState) {
   };
 
   return {
+    scope: filters.scope,
     sort: filters.sort,
     query: filters.query.trim() || undefined,
     key: filters.key || undefined,

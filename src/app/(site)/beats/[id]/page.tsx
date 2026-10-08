@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { BeatComments, type BeatComment } from "@/components/beat/beat-comments";
 import { BeatCover } from "@/components/beat/beat-cover";
 import { BeatViewCounter } from "@/components/beat/beat-view-counter";
 import { BeatStats } from "@/components/beat/beat-stats";
@@ -101,6 +102,39 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
   const sellable = saleState === "on_sale";
   const cheapest = sellable ? tiers.reduce<number | null>((min, tier) => (min === null || tier.value < min ? tier.value : min), null) : null;
 
+  /*
+   * Обсуждение грузится отдельно от товара. Раньше оно шло одним запросом, но
+   * обсуждения у бита не было вовсе, и правило на будущее: комментариев может
+   * быть сколько угодно, а показ цены не должен ждать их.
+   */
+  const { data: commentRows } = await supabase
+    .from("beat_comments")
+    .select("id, body, created_at, author_id, parent_id, profiles!beat_comments_author_id_fkey(username, avatar_url)")
+    .eq("beat_id", id)
+    .order("created_at", { ascending: true })
+    .limit(100);
+
+  const comments = ((commentRows ?? []) as {
+    id: string;
+    body: string;
+    created_at: string;
+    author_id: string | null;
+    parent_id: string | null;
+    profiles: { username: string; avatar_url: string | null } | { username: string; avatar_url: string | null }[] | null;
+  }[]).map<BeatComment>((row) => {
+    const author = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+
+    return {
+      id: row.id,
+      body: row.body,
+      createdAt: row.created_at,
+      authorId: row.author_id,
+      authorUsername: author?.username ?? null,
+      authorAvatar: author?.avatar_url ?? null,
+      parentId: row.parent_id,
+    };
+  });
+
   const createdLabel = new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" }).format(
     new Date(beat.created_at),
   );
@@ -174,6 +208,12 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
             </div>
 
             <BeatOffer beatId={beat.id} tiers={tiers} currency={beat.currency ?? "RUB"} isOwner={isOwner} />
+
+            {/*
+              Обсуждение после блока покупки: человек сначала решает, брать ли,
+              и уже потом спорит с автором. Наоборот разговор уводил бы от кнопки.
+            */}
+            <BeatComments beatId={beat.id} initial={comments} loggedInUserId={user?.id ?? null} />
           </div>
 
           {/* Правая колонка липнет при прокрутке: цена и продавец остаются

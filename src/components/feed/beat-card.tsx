@@ -9,6 +9,7 @@ import { ProgressLine } from "@/components/ui/progress";
 import { cn } from "@/lib/cn";
 import { BeatReactions } from "@/components/feed/beat-reactions";
 import { formatMoney } from "@/lib/currency";
+import { SALE_STATE_LABELS } from "@/lib/sales/state";
 import type { FeedBeat } from "@/lib/feed";
 import { PRICE_KEYS, priceLabel } from "@/lib/prices";
 import { trackFromBeat } from "@/lib/player";
@@ -60,6 +61,15 @@ export function BeatCard({ beat, signedIn = false }: { beat: FeedBeat; signedIn?
     const told = new Set(artists.map((artist) => artist.toLowerCase()));
     return beat.tags.filter((tag) => !told.has(tag.toLowerCase())).slice(0, 3);
   }, [artists, beat.tags]);
+
+  /*
+   * Цена «от» — самая дешёвая из доступных уровней. На карточке нужна одна
+   * цифра, чтобы сравнивать биты между собой, а не изучать четыре позиции.
+   */
+  const cheapest = useMemo(
+    () => (tiers.length === 0 ? null : Math.min(...tiers.map((tier) => tier.value as number))),
+    [tiers],
+  );
 
   function listen() {
     const next = trackFromBeat(beat);
@@ -163,37 +173,45 @@ export function BeatCard({ beat, signedIn = false }: { beat: FeedBeat; signedIn?
         ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        <div className="flex flex-col gap-2">
-          <Link href={`/beats/${beat.id}`} className="group/title focusable w-fit">
-            <h3 className="font-display text-lg leading-tight tracking-tight text-paper uppercase transition-colors">
-              {beat.title}
-            </h3>
-          </Link>
+      <div className="flex flex-1 flex-col gap-2.5 p-4">
+        <Link href={`/beats/${beat.id}`} className="group/title focusable w-fit">
+          <h3 className="font-display text-[17px] leading-tight tracking-tight text-paper uppercase transition-colors">
+            {beat.title}
+          </h3>
+        </Link>
 
-          <Link
-            href={`/beatmakers/${beat.username}`}
-            className="flex w-fit items-center gap-2 transition-opacity hover:opacity-75 focusable"
-          >
-            <Avatar username={beat.username} src={beat.avatarUrl} size="xs" />
-            <span className="label text-mute">@{beat.username}</span>
-          </Link>
-        </div>
+        <Link
+          href={`/beatmakers/${beat.username}`}
+          className="flex w-fit items-center gap-2 transition-opacity hover:opacity-75 focusable"
+        >
+          <Avatar username={beat.username} src={beat.avatarUrl} size="xs" />
+          <span className="label text-mute">@{beat.username}</span>
 
-        <div className="mono flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12px] text-mute">
+          {beat.sellerLevel >= 3 ? (
+            <span
+              title={t("feed.levelHint")}
+              className="flex items-center gap-1 rounded-pill border border-line px-1.5 py-0.5 text-[10px] text-mute"
+            >
+              <span aria-hidden className="size-1 bg-signal" />
+              <span className="font-mono tabular-nums">{beat.sellerLevel}</span>
+            </span>
+          ) : null}
+        </Link>
+
+        <div className="mono flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-mute">
           <span>{beat.bpm} BPM</span>
           {beat.musicalKey ? (
             <>
-              <span aria-hidden className="text-mute/50">
-                /
+              <span aria-hidden className="text-mute/40">
+                ·
               </span>
               <span>{beat.musicalKey}</span>
             </>
           ) : null}
           {ownPlays > 0 ? (
             <>
-              <span aria-hidden className="text-mute/50">
-                /
+              <span aria-hidden className="text-mute/40">
+                ·
               </span>
               <span>
                 {ownPlays} {t("posts.playsShort")}
@@ -203,29 +221,34 @@ export function BeatCard({ beat, signedIn = false }: { beat: FeedBeat; signedIn?
         </div>
 
         {/*
-          Чей это бит показываем отдельно от тегов. Раньше карточка выводила
-          только теги, а они оказались копией артистов: «Slayr & Pittkiid»
-          читалось как набор случайных слов. Заодно убираем из тегов то, что
-          уже сказано строкой выше.
+          Чей это бит идёт плашками, а не строкой: перечисление через запятую
+          («polo g, lil tjay, lil durk, tikotheceo») превращалось в кашу, а
+          плашки читаются как теги, чем они и являются для покупателя.
         */}
         {artists.length > 0 ? (
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className="label text-mute/60">{t("feed.typeOf")}</span>
-            <span className="text-xs text-paper">{artists.join(", ")}</span>
-          </div>
+          <ul className="flex flex-wrap gap-1">
+            {artists.slice(0, 3).map((artist) => (
+              <li key={artist} className="rounded-pill border border-line px-2 py-0.5 text-[11px] text-mute">
+                {artist}
+              </li>
+            ))}
+            {artists.length > 3 ? (
+              <li className="px-1 py-0.5 text-[11px] text-mute/70">+{artists.length - 3}</li>
+            ) : null}
+          </ul>
         ) : null}
 
         {looseTags.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <ul className="flex flex-wrap gap-1">
             {looseTags.map((tag) => (
-              <span key={tag} className="label text-mute">
+              <li key={tag} className="rounded-pill border border-line px-2 py-0.5 text-[11px] text-mute">
                 {tag}
-              </span>
+              </li>
             ))}
-          </div>
+          </ul>
         ) : null}
 
-        <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-3">
+        <div className="mt-auto flex items-center justify-between gap-3 pt-3">
           <BeatReactions
             beatId={beat.id}
             initialLikes={beat.likes}
@@ -234,40 +257,30 @@ export function BeatCard({ beat, signedIn = false }: { beat: FeedBeat; signedIn?
             initialSaved={beat.saved}
             signedIn={signedIn}
           />
+
           {/*
-            Уровень продавца виден покупателю только с третьего: до этого он
-            ничего не значит и был бы пустой рамкой. Число прослушиваний здесь
-            дублировало бы строку BPM выше.
+            На карточке одна цена, а не таблица уровней. Таблица занимала
+            половину высоты и читалась как список услуг: покупатель в ленте
+            выбирает, слушать или нет, а состав уровней решается на странице
+            бита, где для этого есть место.
           */}
-          {beat.sellerLevel >= 3 ? (
-            <span
-              title={t("feed.levelHint")}
-              className="flex items-center gap-1.5 rounded-pill border border-line px-2 py-1 text-[11px] text-mute"
-            >
-              <span aria-hidden className="size-1 bg-signal" />
-              <span className="font-mono tabular-nums">{beat.sellerLevel}</span>
+          {cheapest !== null ? (
+            <span className="flex items-baseline gap-1.5">
+              <span className="label text-mute/70">{t("beat.from")}</span>
+              <span className="font-mono text-base text-paper tabular-nums">
+                {formatMoney(cheapest, beat.currency)}
+              </span>
             </span>
-          ) : null}
+          ) : (
+            <span className="label text-mute">{SALE_STATE_LABELS[beat.saleState]}</span>
+          )}
         </div>
 
-        {/*
-          Тарифы отделены волосяной линией: без линии пустое место между
-          реакциями и ценой читалось как недоделанная вёрстка.
-        */}
-        {tiers.length > 0 ? (
-          <ul className="rows mt-auto border-t border-line pt-px">
-            {tiers.map((tier) => (
-              <li
-                key={tier.key}
-                className="row flex items-baseline justify-between gap-3 py-2 transition-colors hover:bg-ink-3"
-              >
-                <span className="label text-mute">{tier.label}</span>
-                <span className="font-mono text-[13px] text-paper tabular-nums">
-                  {formatMoney(tier.value as number, beat.currency)}
-                </span>
-              </li>
-            ))}
-          </ul>
+        {/* Что входит в цену: одна короткая строка вместо четырёх строк. */}
+        {tiers.length > 1 ? (
+          <p className="label text-mute/70">
+            {tiers.map((tier) => tier.label).join(" · ")}
+          </p>
         ) : null}
       </div>
     </article>

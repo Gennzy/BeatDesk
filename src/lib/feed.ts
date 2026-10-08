@@ -16,6 +16,7 @@ export const FEED_PAGE_SIZE = 12;
 export type FeedSort = "top" | "new" | "popular";
 
 export type FeedFilters = {
+  scope?: FeedScope;
   sort?: FeedSort;
   query?: string;
   key?: string;
@@ -24,6 +25,7 @@ export type FeedFilters = {
 };
 
 import type { SaleState } from "@/lib/sales/state";
+import type { FeedScope } from "@/lib/feed-filters";
 
 export type FeedBeat = {
   id: string;
@@ -128,6 +130,10 @@ function serialize(row: BeatRow, viewerId?: string | null): FeedBeat {
 type QueryOptions = {
   /** Кто смотрит ленту: его реакции помечаются, чужие считаются. */
   viewerId?: string | null;
+  /** Авторы, чьи биты попадают в личную вкладку «подписки». */
+  ownerIds?: string[] | null;
+  /** Ограничение по конкретным битам: вкладка «понравившиеся». */
+  beatIds?: string[] | null;
   filters?: FeedFilters;
   ownerId?: string;
   isOwner?: boolean;
@@ -150,6 +156,42 @@ export function normalizeSearch(input: string): string {
     .slice(0, 60);
 }
 
+/**
+ * Подборка под личную вкладку.
+ *
+ * Список авторов и битов берётся отдельным запросом: PostgREST умеет фильтровать
+ * по вложенным строкам, но через !inner он меняет и форму ответа, из-за чего
+ * пришлось бы дублировать разбор коллекций ради одной вкладки.
+ */
+async function resolveScope(
+  supabase: SupabaseServerClient,
+  scope: FeedScope,
+  viewerId: string | null,
+): Promise<{ options: { ownerIds?: string[]; beatIds?: string[] } } | { unavailable: true }> {
+  if (scope === "all") return { options: {} };
+  if (!viewerId) return { unavailable: true };
+
+  if (scope === "following") {
+    const { data } = await supabase.from("follows").select("following_id").eq("follower_id", viewerId);
+    return { options: { ownerIds: [...new Set((data ?? []).map((row) => row.following_id as string))] } };
+  }
+
+  const { data } = await supabase
+    .from("beat_reactions")
+    .select("beat_id")
+    .eq("user_id", viewerId)
+    .eq("kind", "like")
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  return { options: { beatIds: (data ?? []).map((row) => row.beat_id as string) } };
+}
+
+/** Пустой успешный ответ: лента без битов и без следующей страницы. */
+function emptyResult() {
+  return { data: [], error: null } as unknown as QueryResult;
+}
+
 async function queryBeats(supabase: SupabaseServerClient, columns: string, options: QueryOptions): Promise<QueryResult> {
   const filters = options.filters ?? {};
   const limit = options.limit ?? FEED_PAGE_SIZE;
@@ -167,6 +209,22 @@ async function queryBeats(supabase: SupabaseServerClient, columns: string, optio
   if (filters.query) {
     const clean = normalizeSearch(filters.query);
     if (clean) query = query.or(`title.ilike.%${clean}%,tags.cs.{${clean}}`);
+  }
+
+  /*
+   * Личные вкладки сужают выборку до конкретных авторов или битов. Пустой
+   * список — это «ничего не показывать», а не «показать всё»: без проверки
+   * .in с пустым массивом PostgREST отвечал бы без ограничений, и вкладка
+   * подписок показывала бы витрину.
+   */
+  if (options.ownerIds) {
+    if (options.ownerIds.length === 0) return emptyResult();
+    query = query.in("owner_id", options.ownerIds);
+  }
+
+  if (options.beatIds) {
+    if (options.beatIds.length === 0) return emptyResult();
+    query = query.in("id", options.beatIds);
   }
 
   if (filters.key) query = query.eq("key", filters.key);
@@ -202,10 +260,15 @@ export async function fetchPublicBeats(
   filters: FeedFilters = {},
   viewerId: string | null = null,
 ): Promise<{ beats: FeedBeat[]; nextOffset: number | null }> {
-  let result = await queryBeats(supabase, BEAT_COLUMNS, { filters, offset, limit, viewerId });
+  const scope = await resolveScope(supabase, filters.scope ?? "all", viewerId);
+
+  // Без входа личные вкладки показывают пустоту, а не витрину.
+  if ("unavailable" in scope) return { beats: [], nextOffset: null };
+
+  let result = await queryBeats(supabase, BEAT_COLUMNS, { filters, offset, limit, viewerId, ...scope.options });
 
   if (result.error) {
-    result = await queryBeats(supabase, LEGACY_BEAT_COLUMNS, { filters, offset, limit, viewerId });
+    result = await queryBeats(supabase, LEGACY_BEAT_COLUMNS, { filters, offset, limit, viewerId, ...scope.options });
   }
 
   if (result.error) {

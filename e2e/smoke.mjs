@@ -162,6 +162,13 @@ async function main() {
     check("ветка поста закрыта от гостя", threadStatus === 401, `статус ${threadStatus}`);
 
     await guest.goto(`${BASE}/posts/00000000-0000-0000-0000-000000000000`, { waitUntil: "networkidle2", timeout: 60_000 });
+
+    /*
+     * Редирект выполняется на клиенте после гидрации, поэтому networkidle2
+     * успевает отработать раньше него. Раньше проверка читала адрес сразу и
+     * падала без всякой причины — гонка, а не поломка.
+     */
+    await guest.waitForFunction(() => location.pathname === "/login", { timeout: 15_000 }).catch(() => {});
     check("страница ветки отправляет гостя на вход", guest.url().includes("/login"), guest.url());
 
     const gated = await guest.evaluate(() => !/Ответить/.test(document.body.innerText));

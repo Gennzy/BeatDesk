@@ -74,7 +74,7 @@ export function FeedTabs({ beats, nextOffset, filters, posts, myBeats, loggedIn,
       {view === "beats" ? (
         <div id="panel-beats" role="tabpanel" aria-labelledby="tab-beats" className="flex flex-col gap-6">
           <Suspense fallback={null}>
-            <FeedFiltersBar resultCount={beats.length} />
+            <FeedFiltersBar resultCount={beats.length} loggedIn={loggedIn} />
           </Suspense>
           <FeedList initial={beats} initialNextOffset={nextOffset} filters={filters} signedIn={loggedIn} />
         </div>

@@ -14,9 +14,16 @@ export type { FeedFilterState };
 export { filtersToParams, readFilters };
 
 /** Ключ по URL: смена фильтров пересоздаёт панель, поэтому состояние не рассинхронизируется. */
-export function FeedFiltersBar({ resultCount }: { resultCount: number }) {
+export function FeedFiltersBar({ resultCount, loggedIn }: { resultCount: number; loggedIn: boolean }) {
   const searchParams = useSearchParams();
-  return <FiltersBar key={searchParams.toString()} search={searchParams.toString()} resultCount={resultCount} />;
+  return (
+    <FiltersBar
+      key={searchParams.toString()}
+      search={searchParams.toString()}
+      resultCount={resultCount}
+      loggedIn={loggedIn}
+    />
+  );
 }
 
 /**
@@ -27,7 +34,7 @@ export function FeedFiltersBar({ resultCount }: { resultCount: number }) {
  * сортировка и поиск всегда под рукой при прокрутке, а тонкие фильтры
  * раскрываются вниз и не занимают место, пока ими не пользуются.
  */
-function FiltersBar({ search, resultCount }: { search: string; resultCount: number }) {
+function FiltersBar({ search, resultCount, loggedIn }: { search: string; resultCount: number; loggedIn: boolean }) {
   const { t, locale } = useI18n();
   const router = useRouter();
   const [filters, setFilters] = useState<FeedFilterState>(() => readFilters(new URLSearchParams(search)));
@@ -73,6 +80,30 @@ function FiltersBar({ search, resultCount }: { search: string; resultCount: numb
             </button>
           ))}
         </div>
+
+        {/*
+          Область ленты живёт слева от сортировки, а не в выпадающем списке:
+          переключение между «всё» и «подписки» — это главное действие на
+          панели, и прятать его в селект значит сделать его второстепенным.
+        */}
+        {loggedIn ? (
+          <div className="flex items-center gap-1 border-l border-line pl-3">
+            {(["all", "following", "liked"] as const).map((scope) => (
+              <button
+                key={scope}
+                type="button"
+                onClick={() => apply({ ...filters, scope })}
+                aria-pressed={filters.scope === scope}
+                className={cn(
+                  "label px-2.5 py-1.5 transition-colors",
+                  filters.scope === scope ? "text-paper" : "text-mute hover:text-paper",
+                )}
+              >
+                {t(`feed.scope${scope[0].toUpperCase()}${scope.slice(1)}` as "feed.scopeAll")}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         <div className="sm:hidden">
           <Select
