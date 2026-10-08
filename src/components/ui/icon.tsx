@@ -25,7 +25,13 @@ export type IconName =
   | "close"
   | "chevronRight"
   | "search"
-  | "bookmark";
+  | "bookmark"
+  | "eye"
+  | "trend"
+  | "verified"
+  | "link"
+  | "share"
+  | "trash";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   bell: (
@@ -70,6 +76,32 @@ const PATHS: Record<IconName, React.ReactNode> = {
   close: <path d="M6 6l12 12M18 6 6 18" />,
   chevronRight: <path d="m9 5 7 7-7 7" />,
   bookmark: <path d="M6 4h12v16l-6-4.5L6 20V4Z" />,
+  eye: (
+    <>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+    </>
+  ),
+  trend: <path d="m3 16 5.5-5.5 3.5 3.5L21 5M21 5h-5m5 0v5" />,
+  verified: (
+    <>
+      <path d="M12 3.5 14.2 6l3.3-.4.9 3.2 3 1.4-1.4 3 .4 3.3-2.6 2.1-1 3.1-3.2-.9-2.2 2.2-2.2-2.2-3.2.9-1-3.1L2.6 16l.4-3.3-1.4-3 3-1.4.9-3.2L8.8 6 12 3.5Z" />
+      <path d="m9.5 12.5 1.8 1.8 3.4-3.6" />
+    </>
+  ),
+  link: (
+    <>
+      <path d="M10.5 13.5a4 4 0 0 0 5.7 0l2.3-2.3a4 4 0 0 0-5.7-5.7l-1.3 1.3" />
+      <path d="M13.5 10.5a4 4 0 0 0-5.7 0l-2.3 2.3a4 4 0 1 0 5.7 5.7l1.3-1.3" />
+    </>
+  ),
+  share: (
+    <>
+      <path d="M12 15V4m0 0L8.5 7.5M12 4l3.5 3.5" />
+      <path d="M5 13v5.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V13" />
+    </>
+  ),
+  trash: <path d="M5 7h14M10 7V5h4v2M6.5 7l1 12h9l1-12M10.5 10.5v5M13.5 10.5v5" />,
   search: (
     <>
       <path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z" />

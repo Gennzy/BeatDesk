@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-import { createT, type TranslationKey } from "./dictionaries";
+import { createT } from "./dictionaries";
 import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, type Locale } from "./locale";
 
 export async function getLocale(): Promise<Locale> {
@@ -9,6 +9,6 @@ export async function getLocale(): Promise<Locale> {
   return isLocale(value) ? value : DEFAULT_LOCALE;
 }
 
-export async function getT(): Promise<(key: TranslationKey) => string> {
+export async function getT() {
   return createT(await getLocale());
 }

@@ -387,6 +387,48 @@ const ru = {
   "review.one": "отзыв",
   "review.few": "отзыва",
   "review.many": "отзывов",
+  "beat.breadcrumb": "Навигация",
+  "beat.crumbHome": "Главная",
+  "beat.crumbCatalog": "Каталог",
+  "beat.about": "О товаре",
+  "beat.addedAt": "Дата добавления",
+  "beat.keyLabel": "Тональность",
+  "beat.bpmLabel": "Темп",
+  "beat.genreLabel": "Жанр",
+  "beat.fromPrice": "за лицензию, от",
+  "beat.notForSale": "Бит сейчас не продаётся",
+  "license.title": "Условия лицензии",
+  "license.type": "Тип лицензии",
+  "license.typeRegular": "Лизинг (неисключительная)",
+  "license.typeExclusive": "Эксклюзив",
+  "license.term": "Срок лицензии",
+  "license.termYears": "100 лет",
+  "license.files": "Файлы",
+  "license.paidStreams": "Платные прослушивания",
+  "license.paidStreamsValue": "До 200 000",
+  "license.copies": "Выпуск копий",
+  "license.copiesValue": "До 3 000",
+  "license.performances": "Коммерческие выступления",
+  "license.performancesValue": "Да",
+  "license.recordTracks": "Запись треков",
+  "license.recordTracksValue": "Да",
+  "license.sellSongs": "Распространи трек",
+  "license.sellSongsValue": "Да",
+  "license.radioStations": "Радиостанции",
+  "license.radioStationsValue": "До 10",
+  "license.musicVideos": "Клип",
+  "license.musicVideosValue": "Да",
+  "license.exclusiveAvailable": "Эксклюзив доступен",
+  "license.yes": "Да",
+  "license.no": "Нет",
+  "seller.verifiedTitle": "Подтверждённый продавец: не меньше трёх продаж и четвёртый уровень",
+  "seller.follower": "подписчик",
+  "seller.followers": "подписчиков",
+  "seller.level": "Уровень {level}. Чем выше уровень, тем выше биты в ленте",
+  "share.copyLink": "Скопировать ссылку",
+  "share.copied": "Ссылка скопирована",
+  "share.copyFailed": "Не удалось скопировать",
+  "share.open": "Поделиться",
   "notifications.title": "Уведомления",
   "notifications.empty": "Пока пусто. Ответят на пост — придёт сюда.",
   "notifications.reply": "ответил на твой пост",
@@ -869,6 +911,48 @@ const en: Record<keyof typeof ru, string> = {
   "review.one": "review",
   "review.few": "reviews",
   "review.many": "reviews",
+  "beat.breadcrumb": "Breadcrumbs",
+  "beat.crumbHome": "Home",
+  "beat.crumbCatalog": "Catalog",
+  "beat.about": "About this beat",
+  "beat.addedAt": "Added",
+  "beat.keyLabel": "Key",
+  "beat.bpmLabel": "Tempo",
+  "beat.genreLabel": "Genre",
+  "beat.fromPrice": "per license, from",
+  "beat.notForSale": "This beat is not for sale",
+  "license.title": "License terms",
+  "license.type": "License type",
+  "license.typeRegular": "Leasing (non-exclusive)",
+  "license.typeExclusive": "Exclusive",
+  "license.term": "License term",
+  "license.termYears": "100 years",
+  "license.files": "Files",
+  "license.paidStreams": "Paid streams",
+  "license.paidStreamsValue": "Up to 200,000",
+  "license.copies": "Copies",
+  "license.copiesValue": "Up to 3,000",
+  "license.performances": "Commercial performances",
+  "license.performancesValue": "Yes",
+  "license.recordTracks": "Record tracks",
+  "license.recordTracksValue": "Yes",
+  "license.sellSongs": "Distribute the track",
+  "license.sellSongsValue": "Yes",
+  "license.radioStations": "Radio stations",
+  "license.radioStationsValue": "Up to 10",
+  "license.musicVideos": "Music video",
+  "license.musicVideosValue": "Yes",
+  "license.exclusiveAvailable": "Exclusive available",
+  "license.yes": "Yes",
+  "license.no": "No",
+  "seller.verifiedTitle": "Verified seller: at least three sales and level four",
+  "seller.follower": "follower",
+  "seller.followers": "followers",
+  "seller.level": "Level {level}. The higher the level, the higher their beats rank",
+  "share.copyLink": "Copy link",
+  "share.copied": "Link copied",
+  "share.copyFailed": "Could not copy",
+  "share.open": "Share",
   "notifications.title": "Notifications",
   "notifications.empty": "Nothing yet. Replies to your posts land here.",
   "notifications.reply": "replied to your post",
@@ -967,7 +1051,25 @@ const en: Record<keyof typeof ru, string> = {
 export const dictionaries = { ru, en } satisfies Record<Locale, Record<keyof typeof ru, string>>;
 export type TranslationKey = keyof typeof ru;
 
+/**
+ * Перевод строки.
+ *
+ * Второй аргумент подставляет значения в плейсхолдеры вида {count}. Раньше
+ * подстановки не было, и тексты с числами приходилось собирать склейкой на
+ * месте — с чем не согласовались падежи и порядок слов в других языках.
+ * Неизвестный плейсхолдер остаётся как есть: молчаливая пустая строка
+ * выглядела бы как ошибка вёрстки.
+ */
 export function createT(locale: Locale) {
   const dict = dictionaries[locale];
-  return (key: TranslationKey): string => dict[key];
+
+  return (key: TranslationKey, values?: Record<string, string | number>): string => {
+    const text = dict[key];
+
+    if (!values) return text;
+
+    return text.replace(/\{(\w+)\}/g, (match, name: string) =>
+      name in values ? String(values[name]) : match,
+    );
+  };
 }

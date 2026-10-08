@@ -198,7 +198,17 @@ returns numeric language sql stable set search_path = public as $$
       * (1 + least(45, 5 * greatest(seller_level - 1, 0)) / 100.0)
       * (
           1
-          + case when jsonb_object_length(coalesce(files, '{}'::jsonb)) >= 3 then 0.15 else 0 end
+          -- Ключи дорожек проверяются оператором ?&, потому что функции
+          -- подсчёта длины объекта в PostgreSQL нет: jsonb_object_length и
+          -- json_object_length не существуют, есть только jsonb_array_length
+          -- для массивов и jsonb_object_keys для перечисления ключей.
+          --
+          -- Проверяются конкретные дорожки, а не «сколько-нибудь ключей»:
+          -- три копии одного файла ничего не значат.
+          + case
+              when coalesce(files::jsonb, '{}'::jsonb) ?& array['wav', 'trackout'] then 0.15
+              else 0
+            end
           + case when cover_url is not null then 0.08 else 0 end
         )
     )::numeric, 4)

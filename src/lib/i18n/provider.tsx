@@ -8,7 +8,7 @@ import { LOCALE_COOKIE, type Locale } from "./locale";
 type I18nContextValue = {
   locale: Locale;
   setLocale: (locale: Locale) => void;
-  t: (key: TranslationKey) => string;
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string;
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);
@@ -26,7 +26,13 @@ export function I18nProvider({ locale, children }: { locale: Locale; children: R
     () => ({
       locale: current,
       setLocale,
-      t: (key) => dictionaries[current][key] ?? key,
+      t: (key, values) => {
+        const text = dictionaries[current][key] ?? key;
+        if (!values) return text;
+        return text.replace(/\{(\w+)\}/g, (match, name: string) =>
+          name in values ? String(values[name]) : match,
+        );
+      },
     }),
     [current, setLocale],
   );
