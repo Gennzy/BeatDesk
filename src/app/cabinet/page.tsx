@@ -109,24 +109,25 @@ export default async function CabinetPage() {
           набраны моноширинным шрифтом: в display-глифе Unbounded знак рубля
           теряет засечку и читается как «Р».
         */}
-        <dl className="grid grid-cols-2 gap-px border-b border-line bg-line lg:grid-cols-4">
+        {/*
+          Заработок — первая и единственная крупная цифра на странице: за ней
+          и заходят в кабинет. Остальные идут одной строкой ниже, того же
+          размера между собой, чтобы взгляд не спотыкался на пустом месте.
+        */}
+        <dl className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { label: t("cabinet.statEarned"), value: formatMoney(earned / 100, currency), money: true },
+            { label: t("cabinet.statEarned"), value: formatMoney(earned / 100, currency), money: true, lead: true },
             { label: t("cabinet.statSold"), value: String(sold.length) },
             { label: t("cabinet.statOnSale"), value: String(stats.beatsOnSale) },
             { label: t("cabinet.statPlays"), value: String(stats.plays) },
-          ].map((item, index) => (
+          ].map((item) => (
             <div
               key={item.label}
-              className={
-                index < 2
-                  ? "flex flex-col gap-2 border-b border-line py-6 pr-6 lg:border-b-0"
-                  : "flex flex-col gap-2 border-b border-line py-6 pr-6 lg:border-b-0 lg:border-l lg:pl-6"
-              }
+              className={`panel flex flex-col gap-2 p-5 ${item.lead ? "sm:col-span-2 lg:col-span-1" : ""}`}
             >
               <dd
-                className={`text-3xl leading-none tabular-nums ${item.money ? "font-mono" : "font-display"} ${
-                  index === 0 ? "text-paper" : "text-paper/80"
+                className={`leading-none tabular-nums ${
+                  item.lead ? "font-mono text-4xl text-paper" : "font-display text-2xl text-paper/85"
                 }`}
               >
                 {item.value}

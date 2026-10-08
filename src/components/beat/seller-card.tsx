@@ -77,19 +77,19 @@ export async function SellerCard({
 
   return (
     <div className="panel flex flex-col gap-4 p-5">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Avatar username={username} src={avatarUrl} size="lg" />
-        <div className="flex min-w-0 flex-col gap-0.5">
+        <div className="flex min-w-0 flex-col gap-1">
           <LinkRow username={username}>
             {isVerified ? (
               <span className="inline-flex items-center gap-1.5">
-                <span className="truncate text-sm font-semibold text-paper">@{username}</span>
+                <span className="truncate text-base font-semibold text-paper">@{username}</span>
                 <span title={t("seller.verifiedTitle")} className="text-signal">
-                  <Icon name="verified" className="size-3.5" filled />
+                  <Icon name="verified" className="size-4" filled />
                 </span>
               </span>
             ) : (
-              <span className="truncate text-sm font-semibold text-paper">@{username}</span>
+              <span className="truncate text-base font-semibold text-paper">@{username}</span>
             )}
           </LinkRow>
           <span className="label text-mute">
@@ -109,9 +109,13 @@ export async function SellerCard({
         isOwner={isOwner}
       />
 
+      {/*
+        Уровень — плашка, а не подпись с чёрточкой: он объясняет, почему бит
+        стоит высоко в ленте, и это довод в пользу продавца.
+      */}
       {level >= 3 ? (
-        <p className="label flex items-center gap-2 border-t border-line pt-3 text-mute">
-          <span aria-hidden className="size-1 bg-signal" />
+        <p className="chip text-mute">
+          <span aria-hidden className="size-1.5 rounded-full bg-signal" />
           {t("seller.level", { level: String(level) })}
         </p>
       ) : null}

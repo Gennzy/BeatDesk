@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
+import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/currency";
 import { useI18n } from "@/lib/i18n/provider";
 import { tierContents } from "@/lib/sales/delivery";
@@ -84,7 +85,7 @@ export function BeatOffer({ beatId, tiers, currency, isOwner }: Props) {
     <div className="flex flex-col gap-4 border-t border-line pt-6">
       <span className="label text-mute">{isOwner ? t("share.pricesOwner") : t("share.pricesBuyer")}</span>
 
-      <ul className="flex flex-col gap-px">
+      <ul className="flex flex-col gap-2">
         {tiers.map((item) => {
           const chosen = item.key === tier;
 
@@ -109,11 +110,12 @@ export function BeatOffer({ beatId, tiers, currency, isOwner }: Props) {
                     type="button"
                     onClick={() => setTier(item.key)}
                     aria-pressed={chosen}
-                    className={
+                    className={cn(
+                      "label h-9 rounded-pill px-3.5 transition-colors",
                       chosen
-                        ? "label h-9 bg-signal px-3 text-ink"
-                        : "label h-9 rounded-pill border border-line px-3.5 text-mute transition-colors hover:border-line-2 hover:text-paper"
-                    }
+                        ? "bg-signal text-ink"
+                        : "border border-line text-mute hover:border-line-2 hover:text-paper",
+                    )}
                   >
                     {chosen ? t("order.selected") : t("order.choose")}
                   </button>
