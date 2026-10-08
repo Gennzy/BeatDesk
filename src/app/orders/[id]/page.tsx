@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { OrderItemDownloads } from "@/components/sales/order-item-downloads";
+import { ReviewForm } from "@/components/sales/review-form";
 import { SellerActions } from "@/components/sales/seller-actions";
 import { Container } from "@/components/ui/container";
 import { getT } from "@/lib/i18n/server";
@@ -85,6 +86,19 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
 
   const isSeller = Boolean(viewer?.user && (myItems ?? []).some((row) => row.beat_owner_id === viewer.user!.id));
 
+  /*
+   * Отзыв оставляет покупатель по оплаченному заказу, и только один на
+   * позицию. Продавцу форма не показывается, даже если он же покупал что-то
+   * у себя: отзыв идёт о битмейкере, а он свой собственный.
+   */
+  const { data: existingReviews } = rows.length
+    ? await supabase.from("reviews").select("order_item_id").in("order_item_id", rows.map((item) => item.id))
+    : { data: [] as { order_item_id: string }[] };
+
+  const reviewed = new Set(((existingReviews ?? []) as { order_item_id: string }[]).map((row) => row.order_item_id));
+
+  const canReview = typed.status === "paid" && Boolean(viewer?.user) && !isSeller;
+
   return (
     <section className="py-14 lg:py-20">
       <Container>
@@ -114,6 +128,11 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                   ) : null}
                   {typed.status === "paid" && license?.revoked_at ? (
                     <span className="text-xs text-amber">{t("order.revoked")}</span>
+                  ) : null}
+                  {canReview && !reviewed.has(item.id) ? (
+                    <div className="mt-1 sm:max-w-md">
+                      <ReviewForm orderItemId={item.id} beatTitle={item.beat_title} />
+                    </div>
                   ) : null}
                 </span>
                 <span className="font-mono text-sm text-amber">{money(item.price_minor, item.currency)}</span>

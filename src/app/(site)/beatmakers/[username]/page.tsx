@@ -11,6 +11,7 @@ import { pluralEn, pluralRu } from "@/lib/plural";
 import { fetchProfilePosts, loadFollowState } from "@/lib/posts";
 import { getSupabase } from "@/lib/supabase/user";
 import { Achievements } from "@/components/sales/achievements";
+import { Reviews } from "@/components/sales/reviews";
 import { collectBeatmakerStats, computeAchievements } from "@/lib/sales/achievements";
 
 const PLATFORM_KEYS = ["telegram", "youtube", "vk"] as const;
@@ -178,6 +179,10 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
 
         <div className="flex flex-col gap-8 pt-12">
           {isOwner && achievements.length > 0 ? <Achievements list={achievements} /> : null}
+
+          {/* Отзывы видны всем: репутация битмейкера на витрине и нужна
+              покупателю, в отличие от достижений, которые его личное дело. */}
+          {supabase ? <Reviews supabase={supabase} subjectId={profile.id} /> : null}
 
           <SectionHead
             label={t("profile.beats")}
