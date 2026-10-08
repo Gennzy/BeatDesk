@@ -67,7 +67,7 @@ export function PostComposer({ parentId = null, beats, loggedIn = true, myUserna
 
   if (!loggedIn) {
     return (
-      <div className="flex items-center gap-3 border border-line bg-ink-2 px-4 py-3.5">
+      <div className="flex items-center gap-3 rounded-lg border border-line bg-ink-2 px-4 py-3.5">
         <Avatar username="?" size="sm" className="opacity-40" />
         <a
           href={`/login?next=${encodeURIComponent(parentId ? `/posts/${parentId}` : "/")}`}
@@ -80,7 +80,7 @@ export function PostComposer({ parentId = null, beats, loggedIn = true, myUserna
   }
 
   return (
-    <div className="flex flex-col gap-3 border border-line bg-ink-2 p-4">
+    <div className="flex flex-col gap-3 rounded-lg border border-line bg-ink-2 p-4">
       <div className="flex items-start gap-3">
         <Avatar username={myUsername ?? "?"} size="sm" />
         <textarea

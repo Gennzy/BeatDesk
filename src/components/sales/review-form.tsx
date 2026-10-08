@@ -82,7 +82,7 @@ export function ReviewForm({
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3 border border-line bg-ink-2 p-3">
+    <form onSubmit={submit} className="panel flex flex-col gap-3 p-4">
       <span className="label text-paper">{t("review.title")}</span>
 
       <div className="flex items-center gap-1" role="radiogroup" aria-label={t("review.rating")}>

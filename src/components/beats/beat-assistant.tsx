@@ -72,7 +72,7 @@ export function BeatAssistant({ beat, hasStems, hasWav, onApply }: Props) {
   }, [beat, hasStems, hasWav, t]);
 
   return (
-    <div className="flex flex-col gap-4 border border-line bg-ink-2 px-5 py-5">
+    <div className="flex flex-col gap-4 rounded-lg border border-line bg-ink-2 px-5 py-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1.5">
           <span className="label text-paper">{t("edit.aiTitle")}</span>

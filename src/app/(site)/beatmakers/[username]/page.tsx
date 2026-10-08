@@ -110,7 +110,7 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
     <section className="py-14 lg:py-20">
       <Container>
         <div className="grid gap-10 border-b border-line pb-12 lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-8">
-          <div className="grid size-24 place-items-center overflow-hidden border border-line bg-ink-2 font-display text-2xl text-mute">
+          <div className="grid size-24 place-items-center overflow-hidden rounded-lg border border-line bg-ink-2 font-display text-2xl text-mute">
             {profile.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={profile.avatar_url} alt="" className="size-full object-cover" />

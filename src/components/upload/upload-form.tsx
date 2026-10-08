@@ -206,10 +206,10 @@ export function UploadForm({ userId }: { userId: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-14 pt-12 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-10">
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-5">
         <SectionHead label={t("upload.sectionFiles")} />
 
-        <div className="flex flex-col gap-7">
+        <div className="panel flex flex-col gap-4 p-4">
           {BEAT_FILE_KINDS.map((kind) => (
             <FileDrop
               key={kind}
@@ -239,19 +239,18 @@ export function UploadForm({ userId }: { userId: string }) {
             onSelect={(file) => void selectCover(file)}
           />
         </div>
-
       </div>
 
       <div className="flex flex-col gap-10">
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-5">
           <SectionHead label={t("upload.sectionMeta")} />
 
-          <div className="grid gap-6">
+          <div className="panel flex flex-col gap-5 p-5">
             <Field label={t("upload.title_field")} hint={t("upload.title_fieldHint")}>
               <Input name="title" placeholder="Night Shift" required maxLength={80} onChange={(event) => setTitle(event.target.value)} />
             </Field>
 
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className="grid gap-5 sm:grid-cols-2">
               <Field label={t("upload.typeBeat")} hint={t("upload.typeBeatHint")}>
                 <Input name="typeBeat" placeholder="MORGAN, STANLEY" />
               </Field>
@@ -260,7 +259,7 @@ export function UploadForm({ userId }: { userId: string }) {
               </Field>
             </div>
 
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className="grid gap-5 sm:grid-cols-2">
               <Field label={t("upload.key")}>
                 <KeyPicker defaultValue="F# minor" />
               </Field>
@@ -274,7 +273,7 @@ export function UploadForm({ userId }: { userId: string }) {
         <div className="flex flex-col gap-8">
           <SectionHead label={t("upload.sectionPrices")} hint={t("upload.pricesNote")} />
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="panel grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
             <Field label={t("upload.currency")}>
               <CurrencyPicker name="currency" value={currency} onChange={setCurrency} />
             </Field>

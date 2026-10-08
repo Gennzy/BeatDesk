@@ -93,7 +93,7 @@ export function BeatOffer({ beatId, tiers, currency, isOwner }: Props) {
               key={item.key}
               className={
                 isOwner
-                  ? "flex items-baseline justify-between gap-4 bg-ink-2 px-4 py-3"
+                  ? "flex items-baseline justify-between gap-4 rounded-lg border border-line bg-ink-2 px-4 py-3"
                   : cnTier(chosen)
               }
             >
@@ -112,7 +112,7 @@ export function BeatOffer({ beatId, tiers, currency, isOwner }: Props) {
                     className={
                       chosen
                         ? "label h-9 bg-signal px-3 text-ink"
-                        : "label h-9 border border-line px-3 text-mute transition-colors hover:border-signal hover:text-paper"
+                        : "label h-9 rounded-pill border border-line px-3.5 text-mute transition-colors hover:border-line-2 hover:text-paper"
                     }
                   >
                     {chosen ? t("order.selected") : t("order.choose")}
@@ -157,6 +157,6 @@ const dbTier = (key: PriceKey): string => (key === "wav" ? "bundle" : key);
 /** Выбранный уровень подсвечиваем: кнопка «Купить» относится к нему. */
 function cnTier(chosen: boolean): string {
   return chosen
-    ? "flex items-baseline justify-between gap-4 bg-ink-2 px-4 py-3 ring-1 ring-signal"
-    : "flex items-baseline justify-between gap-4 bg-ink-2 px-4 py-3";
+    ? "flex items-baseline justify-between gap-4 rounded-lg border border-signal bg-signal/10 px-4 py-3"
+    : "flex items-baseline justify-between gap-4 rounded-lg border border-line bg-ink-2 px-4 py-3 transition-colors hover:border-line-2";
 }

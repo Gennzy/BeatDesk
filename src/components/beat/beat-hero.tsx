@@ -47,7 +47,7 @@ export function BeatHero({ beat, isOwner }: { beat: BeatHeroData; isOwner: boole
   return (
     <div className="grid gap-10 lg:grid-cols-[minmax(0,30rem)_minmax(0,1fr)] lg:gap-14">
       <div className="flex flex-col gap-4">
-        <div className="group relative aspect-square overflow-hidden border border-line bg-ink-2">
+        <div className="group relative aspect-square overflow-hidden rounded-lg border border-line bg-ink-2">
           {beat.coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img

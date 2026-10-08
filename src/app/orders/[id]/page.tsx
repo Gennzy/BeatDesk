@@ -114,12 +114,15 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           </p>
         </div>
 
-        <ul className="flex flex-col gap-px pt-8">
+        <ul className="flex flex-col gap-2 pt-8">
           {rows.map((item) => {
             const license = licenseByItem.get(item.id);
 
             return (
-              <li key={item.id} className="flex flex-col gap-3 bg-ink-2 px-4 py-3 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+              <li
+              key={item.id}
+              className="panel flex flex-col gap-3 p-4 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4"
+            >
                 <span className="flex flex-col gap-1">
                   <span className="label text-paper">{item.beat_title}</span>
                   <span className="text-xs text-mute">{tierLabel(item.tier)}</span>
@@ -156,7 +159,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             {licenses.map((license) => (
               <code
                 key={license.license_key}
-                className={license.revoked_at ? "mono border border-line bg-ink-2 px-4 py-3 text-xs text-mute line-through" : "mono border border-line bg-ink-2 px-4 py-3 text-xs text-paper"}
+                className={license.revoked_at ? "mono rounded-md border border-line bg-ink-2 px-4 py-3 text-xs text-mute line-through" : "mono rounded-md border border-line bg-ink-2 px-4 py-3 text-xs text-paper"}
               >
                 {tierLabel(license.tier)}: {license.license_key}
               </code>

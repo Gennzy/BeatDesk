@@ -19,9 +19,9 @@ export function SectionHead({
   action?: ReactNode;
 }) {
   return (
-    <div className="border-b border-line pb-5">
+    <div className="flex items-center gap-3 pb-5">
       <div className="flex items-center gap-3">
-        <span aria-hidden className="size-1.5 shrink-0 bg-signal" />
+        <span aria-hidden className="size-1.5 shrink-0 bg-mute/50" />
         <span className="label text-paper">{label}</span>
         {hint ? <span className="label ml-auto hidden text-mute sm:block">{hint}</span> : null}
         {action}

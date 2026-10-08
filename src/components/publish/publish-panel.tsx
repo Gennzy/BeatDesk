@@ -297,7 +297,7 @@ export function PublishPanel({ beatId, connections, botReady, posts }: Props) {
       {posts.length > 0 ? (
         <section className="flex flex-col gap-4">
           <span className="label text-mute">{t("publish.history")}</span>
-          <div className="border border-line bg-ink-2">
+          <div className="rounded-lg border border-line bg-ink-2 p-3">
             {posts.map((post, index) => (
               <div key={index} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line px-4 py-3 last:border-b-0">
                 <span className="label text-paper">
