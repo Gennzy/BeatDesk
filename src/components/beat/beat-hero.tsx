@@ -21,6 +21,8 @@ export type BeatHeroData = {
   bpm: number;
   musicalKey: string;
   tags: string[];
+  /** Чей это бит: показывается строкой TYPE BEAT под названием. */
+  typeBeatArtists: string[];
   /** Состояние в продаже: витрина, придержан или ушёл эксклюзивом. */
   saleState: SaleState;
 };
@@ -121,6 +123,17 @@ export function BeatHero({ beat, isOwner }: { beat: BeatHeroData; isOwner: boole
           <div className="flex flex-wrap items-center gap-1.5">
             <Badge tone="outline">{beat.bpm} BPM</Badge>
             <Badge tone="outline">{beat.musicalKey}</Badge>
+            {/*
+              Чей это бит стоит под названием, а не прячется среди тегов:
+              покупатель ищет type beat по исполнителю, и строка «Slayr,
+              Pittkiid» отвечает на вопрос раньше, чем описание.
+            */}
+            {beat.typeBeatArtists.length > 0 ? (
+              <span className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span className="label text-mute/70">{t("feed.typeOf")}</span>
+                <span className="text-sm text-paper">{beat.typeBeatArtists.join(", ")}</span>
+              </span>
+            ) : null}
             {beat.tags.slice(0, 5).map((tag) => (
               <span key={tag} className="label text-mute">
                 #{tag}

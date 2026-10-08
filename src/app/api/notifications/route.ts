@@ -5,7 +5,21 @@ import { createClient } from "@/lib/supabase/server";
 
 const PAGE_SIZE = 20;
 
-export type NotificationKind = "reply" | "like" | "follow" | "sale" | "achievement";
+/**
+ * Виды уведомлений. Список закрыт миграцией 0028 проверкой на таблице:
+ * новый вид обязан появиться и там, иначе вставка упадёт в базе.
+ */
+export type NotificationKind =
+  | "reply"
+  | "like"
+  | "follow"
+  | "sale"
+  | "achievement"
+  | "beat_uploaded"
+  | "beat_failed"
+  | "beat_published"
+  | "review"
+  | "order_ready";
 
 export type Notification = {
   id: string;

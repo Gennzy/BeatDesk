@@ -56,7 +56,17 @@ function remember(id: string): boolean {
 
 type ToastKind = {
   icon: IconName;
-  label: "notifications.reply" | "notifications.like" | "notifications.follow" | "notifications.sale" | "notifications.achievement";
+  label:
+    | "notifications.reply"
+    | "notifications.like"
+    | "notifications.follow"
+    | "notifications.sale"
+    | "notifications.achievement"
+    | "notifications.beatUploaded"
+    | "notifications.beatFailed"
+    | "notifications.beatPublished"
+    | "notifications.review"
+    | "notifications.orderReady";
   href?: string;
 };
 
@@ -66,6 +76,11 @@ const TOAST_KINDS: Record<string, ToastKind> = {
   follow: { icon: "follow", label: "notifications.follow" },
   sale: { icon: "sale", label: "notifications.sale", href: "/notifications" },
   achievement: { icon: "achievement", label: "notifications.achievement" },
+  beat_uploaded: { icon: "upload", label: "notifications.beatUploaded", href: "/cabinet/beats" },
+  beat_failed: { icon: "close", label: "notifications.beatFailed", href: "/cabinet/upload" },
+  beat_published: { icon: "check", label: "notifications.beatPublished", href: "/cabinet/beats" },
+  review: { icon: "heart", label: "notifications.review", href: "/notifications" },
+  order_ready: { icon: "download", label: "notifications.orderReady", href: "/notifications" },
 };
 
 /**

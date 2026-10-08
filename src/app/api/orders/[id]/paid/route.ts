@@ -57,7 +57,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
    * оплачен, а всплывашка — украшение.
    */
   try {
-    await getAdminClient().rpc("notify_sale", { p_order_id: id });
+    const admin = getAdminClient();
+    await admin.rpc("notify_sale", { p_order_id: id });
+
+    /*
+     * Продавцу уведомление о продаже приходит из notify_sale, а покупателю
+     * нужен другой повод: у него заказ висел «ожидает оплату», и он не знал,
+     * что продавец уже подтвердил и файлы можно забирать.
+     */
+    const { data: order } = await admin
+      .from("orders")
+      .select("buyer_id")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (order?.buyer_id) {
+      await admin.rpc("notify_user", {
+        p_user: order.buyer_id,
+        p_kind: "order_ready",
+        p_order: id,
+      });
+    }
   } catch {
     // уведомление не ушло, заказ при этом оплачен
   }

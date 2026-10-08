@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { validateBeat } from "@/lib/beat-validation";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
+import { notifySelf } from "@/lib/notifications/self";
 import { createClient } from "@/lib/supabase/server";
 import { pricesForDb } from "@/lib/prices";
 
@@ -94,6 +95,16 @@ export async function POST(request: Request) {
     })
     .select("id, title")
     .single();
+
+  /*
+   * Итог загрузки попадает в уведомления: файл в 500 МБ идёт долго, и к
+   * концу человек уже ушёл с вкладки. Уведомление — способ узнать, чем
+   * закончилось дело, вернувшись.
+   *
+   * Само уведомление не должно ломать загрузку: бит уже создан, и ошибка
+   * записи уведомления не повод отвечать 500 на успешный запрос.
+   */
+  await notifySelf(user.id, error ? "beat_failed" : "beat_uploaded", (data as { id?: string } | null)?.id ?? null);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

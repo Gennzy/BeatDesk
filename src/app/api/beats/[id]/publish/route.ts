@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { decryptSecret } from "@/lib/crypto";
 import type { PublishBeat } from "@/lib/platforms/payload";
 import { isPlatformId } from "@/lib/platforms/registry";
+import { notifySelf } from "@/lib/notifications/self";
 import { loadConnections, publishBeat, recordPost } from "@/lib/platforms/publish";
 import { getBotToken } from "@/lib/platforms/telegram-client";
 import { getSiteUrl } from "@/lib/site";
@@ -85,5 +86,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     results.push({ platform, ...result });
   }
 
-  return NextResponse.json({ results });
+  /*
+   * Публикация на витрину — событие площадки, а не внешнего канала: о ней
+   * полезно знать и тогда, когда внешние площадки отказали. Отдельным
+   * уведомлением, а не в общем списке результатов, потому что человек
+   * вернулся с вкладки и хочет понять, появился ли бит в ленте.
+   */
+  const published = results.some((item) => "ok" in item && item.ok);
+
+  await notifySelf(user.id, "beat_published", beat.id);
+
+  return NextResponse.json({ results, published });
 }

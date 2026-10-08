@@ -61,6 +61,11 @@ try {
     console.log(`\n=== ${shot.path} ===\n${text.replace(/\n{2,}/g, "\n").slice(0, 400)}`);
   }
 
+  // Страница бита: проверяем метку TYPE BEAT.
+  await page.goto(`${BASE}/beats/3282f961-352b-4276-96aa-57a17886357f`, { waitUntil: "networkidle2", timeout: 60_000 });
+  await wait(1000);
+  await page.screenshot({ path: join(OUT, "06-beat.png"), fullPage: true });
+
   // Мобильный вид кабинета.
   await page.setViewport({ width: 390, height: 900 });
   await page.goto(`${BASE}/cabinet`, { waitUntil: "networkidle2", timeout: 60_000 });

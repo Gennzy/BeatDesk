@@ -19,7 +19,17 @@ import type { Notification, NotificationKind } from "@/app/api/notifications/rou
  */
 type Row = {
   icon: IconName;
-  label: "notifications.reply" | "notifications.like" | "notifications.follow" | "notifications.sale" | "notifications.achievement";
+  label:
+    | "notifications.reply"
+    | "notifications.like"
+    | "notifications.follow"
+    | "notifications.sale"
+    | "notifications.achievement"
+    | "notifications.beatUploaded"
+    | "notifications.beatFailed"
+    | "notifications.beatPublished"
+    | "notifications.review"
+    | "notifications.orderReady";
   href: (item: Notification) => string;
 };
 
@@ -53,6 +63,11 @@ const KINDS: Record<NotificationKind, Row> = {
     // живут на публичном профиле.
     href: () => "/profile",
   },
+  beat_uploaded: { icon: "upload", label: "notifications.beatUploaded", href: (item) => item.beatId ? `/beats/${item.beatId}` : "/cabinet/beats" },
+  beat_failed: { icon: "close", label: "notifications.beatFailed", href: () => "/cabinet/upload" },
+  beat_published: { icon: "check", label: "notifications.beatPublished", href: (item) => item.beatId ? `/beats/${item.beatId}` : "/cabinet/beats" },
+  review: { icon: "heart", label: "notifications.review", href: () => "/notifications" },
+  order_ready: { icon: "download", label: "notifications.orderReady", href: (item) => item.orderId ? `/orders/${item.orderId}` : "/notifications" },
 };
 
 export function NotificationsList({ initial }: { initial: Notification[] }) {

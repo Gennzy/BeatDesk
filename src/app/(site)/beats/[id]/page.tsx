@@ -86,6 +86,7 @@ export default async function BeatDistributionPage({ params }: { params: Promise
             bpm: beat.bpm,
             musicalKey: beat.key,
             tags: beat.tags ?? [],
+            typeBeatArtists: beat.type_beat_artists ?? [],
             saleState: (beat.sale_state ?? "draft") as BeatHeroData["saleState"],
           }}
           isOwner={isOwner}
