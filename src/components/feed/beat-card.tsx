@@ -137,7 +137,7 @@ export function BeatCard({
           />
         ) : (
           <div className="cover-grid relative size-full">
-            <span aria-hidden className="absolute top-3 right-3 size-2 bg-signal" />
+            <span aria-hidden className="absolute top-3 right-3 size-1.5 rounded-full bg-mute/50" />
             <span aria-hidden className="absolute inset-0 grid place-items-center">
               <span className="size-10 border border-line-2" />
             </span>
@@ -145,9 +145,15 @@ export function BeatCard({
           </div>
         )}
 
-        {/* Затемнение снизу нужно только под кнопкой: без него кнопка
-            «висит» на светлой обложке и теряется. */}
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-ink/80 to-transparent" />
+        {/*
+          Затемнение по нижней трети плюс общий градиент, усиливающийся при
+          наведении. Без него светлая обложка сливается со страницей и
+          карточка выглядит плоской; с ним она читается как объект.
+        */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/70 via-transparent to-transparent transition-opacity duration-500 group-hover:from-ink/80"
+        />
 
         {playable ? (
           <button
