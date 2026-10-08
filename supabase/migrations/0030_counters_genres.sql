@@ -64,6 +64,11 @@ grant execute on function public.bump_beat_counter(uuid, text) to anon, authenti
 
 create or replace function public.is_verified_seller(p_user uuid)
 returns boolean language sql stable security definer set search_path = public as $$
+  /*
+   * FROM обязателен: без него псевдоним p не существует, и PostgreSQL отвечает
+   * 42P01. Профиль берётся сам, а не предполагается — если его нет, строк не
+   * будет и ответ выйдет пустым, то есть «не проверен».
+   */
   select coalesce(p.level, 1) >= 4
      and (
        select count(distinct oi.order_id)
@@ -71,7 +76,9 @@ returns boolean language sql stable security definer set search_path = public as
          join public.orders o on o.id = oi.order_id
         where oi.beat_owner_id = p_user
           and o.status in ('paid', 'delivered')
-     ) >= 3;
+     ) >= 3
+    from public.profiles p
+   where p.id = p_user;
 $$;
 
 grant execute on function public.is_verified_seller(uuid) to anon, authenticated;

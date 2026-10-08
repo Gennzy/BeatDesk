@@ -55,7 +55,7 @@ export type Post = {
 // Без подсказки PostgREST отвечает PGRST201 и возвращает пустую выборку.
 const POST_COLUMNS = `
   id, author_id, parent_id, body, like_count, reply_count, created_at,
-  beats(id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, plays, score, prices, currency, is_public, sale_state, beat_reactions(kind, user_id)),
+  beats!posts_beat_id_fkey(id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, plays, score, prices, currency, is_public, sale_state, beat_reactions(kind, user_id)),
   profiles!posts_author_id_fkey(username, avatar_url, level)
 `;
 

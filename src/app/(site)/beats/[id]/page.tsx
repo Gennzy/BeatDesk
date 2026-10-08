@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { BeatCover } from "@/components/beat/beat-cover";
+import { BeatViewCounter } from "@/components/beat/beat-view-counter";
 import { BeatStats } from "@/components/beat/beat-stats";
 import { LicenseTerms } from "@/components/beat/license-terms";
 import { SellerCard } from "@/components/beat/seller-card";
@@ -23,7 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
   const { data } = await supabase
     .from("beats")
-    .select("title, tags, bpm, key, cover_url, profiles(username)")
+    .select("title, tags, bpm, key, cover_url, profiles!beats_owner_id_fkey(username)")
     .eq("id", id)
     .maybeSingle();
 
@@ -59,9 +60,9 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
    * каталог. Поэтому набор один, а откат на старый тот же, что в ленте.
    */
   const FULL_COLUMNS =
-    "id, title, type_beat_artists, bpm, key, tags, genre, mp3_url, cover_url, prices, currency, sale_state, owner_id, plays, views, impressions, created_at, profiles(id, username, avatar_url, bio, links, level)";
+    "id, title, type_beat_artists, bpm, key, tags, genre, mp3_url, cover_url, prices, currency, sale_state, owner_id, plays, views, impressions, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links, level)";
   const SAFE_COLUMNS =
-    "id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, currency, sale_state, owner_id, plays, created_at, profiles(id, username, avatar_url, bio, links)";
+    "id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, currency, sale_state, owner_id, plays, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links)";
 
   let result = await supabase.from("beats").select(FULL_COLUMNS).eq("id", id).maybeSingle();
 
@@ -106,6 +107,8 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
 
   return (
     <section className="py-8 lg:py-12">
+      <BeatViewCounter beatId={beat.id} isOwner={isOwner} />
+
       <Container>
         {/* Хлебные крошки: показывают, где человек находится, и дают ссылку
             назад в каталог одним кликом. */}

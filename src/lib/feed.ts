@@ -84,11 +84,11 @@ type BeatRow = {
 };
 
 const BEAT_COLUMNS =
-  "id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, created_at, updated_at, profiles(username, avatar_url, level), beat_reactions(kind, user_id)";
+  "id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, created_at, updated_at, profiles!beats_owner_id_fkey(username, avatar_url, level), beat_reactions(kind, user_id)";
 
 /** Пока не применена миграция 0007, колонок plays и updated_at ещё нет в базе. */
 const LEGACY_BEAT_COLUMNS =
-  "id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, prices, is_public, created_at, profiles(username, avatar_url)";
+  "id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, prices, is_public, created_at, profiles!beats_owner_id_fkey(username, avatar_url)";
 
 function serialize(row: BeatRow, viewerId?: string | null): FeedBeat {
   const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;

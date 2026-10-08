@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { usePlayer } from "@/components/player/player-provider";
 import { Avatar } from "@/components/ui/avatar";
@@ -36,6 +36,7 @@ import { useI18n } from "@/lib/i18n/provider";
 export function BeatCard({ beat, signedIn = false }: { beat: FeedBeat; signedIn?: boolean }) {
   const { t } = useI18n();
   const { track, isPlaying, play, toggle, plays, currentTime, duration } = usePlayer();
+  const ref = useRef<HTMLElement | null>(null);
 
   const active = track?.id === beat.id && isPlaying;
   const playable = Boolean(beat.mp3Url);
@@ -67,8 +68,34 @@ export function BeatCard({ beat, signedIn = false }: { beat: FeedBeat; signedIn?
     else play(next);
   }
 
+  /*
+   * Показ засчитывается, когда карточка реально попала в поле зрения, а не
+   * просто отрисовалась: сетка на twelve карточек и первый экран показывают
+   * пять, и разница не косметическая — по ней видно, как бит уходит дальше
+   * первого экрана.
+   */
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        observer.disconnect();
+        void fetch(`/api/beats/${beat.id}/view?kind=impressions`, { method: "POST", keepalive: true }).catch(() => {});
+      },
+      { threshold: 0.5 },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [beat.id]);
+
   return (
-    <article className={cn("surface surface-interactive group flex h-full flex-col", active && "border-signal/50")}>
+    <article
+      ref={ref}
+      className={cn("surface surface-interactive group flex h-full flex-col", active && "border-signal/50")}
+    >
       <div className="relative aspect-square overflow-hidden bg-ink-3">
         {/*
           Ссылка на обложке идёт выше картинки намеренно. При наведении картинка

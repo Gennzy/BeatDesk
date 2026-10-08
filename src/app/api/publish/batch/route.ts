@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 
   const { data: beats } = await supabase
     .from("beats")
-    .select("id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, currency, profiles(username)")
+    .select("id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, currency, profiles!beats_owner_id_fkey(username)")
     .in("id", beatIds)
     .eq("owner_id", user.id);
 

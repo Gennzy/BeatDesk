@@ -29,7 +29,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const { data: beat } = await supabase
     .from("beats")
-    .select("id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, currency, owner_id, profiles(username)")
+    .select("id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, currency, owner_id, profiles!beats_owner_id_fkey(username)")
     .eq("id", id)
     .maybeSingle();
 
