@@ -20,6 +20,8 @@ const stats = (over: Partial<BeatmakerStats> = {}): BeatmakerStats => ({
   ordersPaid: 0,
   beatsWithStems: 0,
   postsPublished: 0,
+  reviews: 0,
+  followers: 0,
   ...over,
 });
 
@@ -138,7 +140,15 @@ describe("прогресс до следующего", () => {
 
   it("когда всё взято, следующего нет", () => {
     const list = computeAchievements(
-      stats({ beatsTotal: 100, plays: 10_000, ordersPaid: 25, beatsWithStems: 10, postsPublished: 1 }),
+      stats({
+        beatsTotal: 100,
+        plays: 10_000,
+        ordersPaid: 25,
+        beatsWithStems: 10,
+        postsPublished: 1,
+        reviews: 10,
+        followers: 10,
+      }),
       at(400),
     );
 

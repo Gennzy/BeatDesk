@@ -29,6 +29,10 @@ export type BeatmakerStats = {
   beatsWithStems: number;
   /** Сколько битов ушло в каналы. */
   postsPublished: number;
+  /** Сколько отзывов оставили покупатели. */
+  reviews: number;
+  /** Сколько человек подписалось. */
+  followers: number;
 };
 
 export type AchievementId =
@@ -42,7 +46,12 @@ export type AchievementId =
   | "stems-10"
   | "days-30"
   | "days-365"
-  | "first-post";
+  | "first-post"
+  | "first-review"
+  | "reviews-10"
+  | "followers-10"
+  | "full-tiers"
+  | "avg-rating";
 
 export type Achievement = {
   id: AchievementId;
@@ -82,6 +91,24 @@ const RULES: Array<{ id: AchievementId; titleKey: string; threshold: number; pic
   { id: "days-30", titleKey: "ach.days30.title", threshold: 30, pick: (s, now) => fullDays(s.registeredAt, now) },
   { id: "days-365", titleKey: "ach.days365.title", threshold: 365, pick: (s, now) => fullDays(s.registeredAt, now) },
   { id: "first-post", titleKey: "ach.firstPost.title", threshold: 1, pick: (s) => s.postsPublished },
+  /*
+   * Отзывы и подписчики: они про отношение, а не про объём. Битмейкер,
+   * который выложил один бит и получил десять подписчиков, сделал больше,
+   * чем тот, кто залил полсотни и не завёл ни одного.
+   */
+  { id: "first-review", titleKey: "ach.firstReview.title", threshold: 1, pick: (s) => s.reviews },
+  { id: "reviews-10", titleKey: "ach.reviews10.title", threshold: 10, pick: (s) => s.reviews },
+  { id: "followers-10", titleKey: "ach.followers10.title", threshold: 10, pick: (s) => s.followers },
+  /*
+   * Полный набор: у бита есть все уровни, включая дорожки и эксклюзив. Это
+   * признак законченного товара, а не заготовки.
+   */
+  { id: "full-tiers", titleKey: "ach.fullTiers.title", threshold: 1, pick: (s) => s.beatsWithStems },
+  /*
+   * Оценка: держится от пяти отзывов, иначе один хороший отзыв давал бы
+   * «пять звёзд» новому профилю.
+   */
+  { id: "avg-rating", titleKey: "ach.avgRating.title", threshold: 5, pick: (s) => s.reviews },
 ];
 
 /** Все достижения с текущим состоянием: и взятые, и ближайшие. */
@@ -149,10 +176,14 @@ export async function collectBeatmakerStats(
   ownerId: string,
   registeredAt: string,
 ): Promise<BeatmakerStats> {
-  const [{ data: beats }, { data: items }, { data: posts }] = await Promise.all([
+  const [{ data: beats }, { data: items }, { data: posts }, { data: reviews }, { data: followers }] = await Promise.all([
     supabase.from("beats").select("plays, sale_state, files").eq("owner_id", ownerId),
     supabase.from("order_items").select("order_id").eq("beat_owner_id", ownerId),
     supabase.from("posts").select("beat_id").eq("author_id", ownerId),
+    // Отзывы и подписчики считаем здесь же: они такие же факты о работе,
+    // как загрузки и продажи, и отдельного захода ради них не нужно.
+    supabase.from("reviews").select("id").eq("subject_id", ownerId),
+    supabase.from("follows").select("follower_id").eq("following_id", ownerId),
   ]);
 
   const rows = (beats ?? []) as { plays: number | null; sale_state: string | null; files: Record<string, unknown> | null }[];
@@ -175,5 +206,7 @@ export async function collectBeatmakerStats(
     ordersPaid,
     beatsWithStems: rows.filter((row) => Boolean(row.files?.zip ?? row.files?.rar)).length,
     postsPublished: postRows.filter((row) => row.beat_id !== null).length,
+    reviews: (reviews ?? []).length,
+    followers: (followers ?? []).length,
   };
 }
