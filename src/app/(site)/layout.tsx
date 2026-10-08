@@ -21,7 +21,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
     production: process.env.VERCEL_ENV === "production",
   });
 
-  if (!gate.open) return <ComingSoon user={user} />;
+  if (!gate.open) return <ComingSoon />;
 
   return <>{children}</>;
 }

@@ -5,9 +5,14 @@
 -- оценку и текст. Отзыв без адресата не проходит проверку колонки, и
 -- покупатель видел бы ошибку вместо работающей формы.
 --
--- Почему не правка в 0025: эта миграция уже применена в базе, и изменение
--- файла её не перезапускает. Функция идёт новым объявлением — на свежей
--- установке 0027 просто переопределит её, на существующей применится.
+-- Запрет отзыва о себе раньше жил в отдельном триггере с FOLLOWS, но база
+-- его не принимает: FOLLOWS/PRECEDES появились в PostgreSQL 12, а здесь
+-- движок такой синтаксис не знает (42601 у «follows»). Поэтому обе
+-- проверки живут в одной функции — заодно исчезает вопрос о порядке
+-- срабатывания, который иначе пришлось бы решать порядком имён.
+--
+-- Отдельно от 0025 эта миграция потому, что 0025 уже применена, а правка
+-- файла её не перезапускает.
 
 create or replace function public.review_requires_paid_order() returns trigger
 language plpgsql security definer set search_path = public as $$
@@ -33,22 +38,8 @@ begin
   new.beat_id := v_item.beat_id;
   new.author_id := coalesce(v_order.buyer_id, new.author_id);
 
-  return new;
-end;
-$$;
-
-/*
- * Свою покупку похвалить нельзя: форма на странице заказа продавцу не
- * показывается, но проверка нужна и в базе.
- *
- * Порядок задан явно через FOLLOWS, а не именем триггеров. PostgreSQL
- * выполняет однотипные триггеры по алфавиту, и reviews_reject_self встал бы
- * перед reviews_require_paid_order — то есть до того, как адресат и автор
- * проставлены из позиции заказа, и проверка сравнивала бы пустые значения.
- */
-create or replace function public.reviews_reject_self_review() returns trigger
-language plpgsql security definer set search_path = public as $$
-begin
+  -- Свою покупку похвалить нельзя. Форма продавцу и не показывается, но
+  -- проверка обязана быть и в базе: правило одно на всех дорогах входа.
   if new.author_id is not null and new.author_id = new.subject_id then
     raise exception 'Отзыв о себе оставить нельзя';
   end if;
@@ -57,9 +48,6 @@ begin
 end;
 $$;
 
+-- Отдельный триггер с FOLLOWS из ранней редакции этой миграции мог остаться
+-- в базе, если её запускали частично. Убираем, иначе он продолжит падать.
 drop trigger if exists reviews_reject_self on public.reviews;
-
-create trigger reviews_reject_self
-  before insert on public.reviews
-  for each row execute function public.reviews_reject_self_review()
-  follows reviews_require_paid_order;
