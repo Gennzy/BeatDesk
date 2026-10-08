@@ -72,7 +72,7 @@ export default async function SharePage() {
             <span className="label text-paper">{t("sharing.eyebrow")}</span>
           </span>
 
-          <h1 className="font-display text-section font-black text-paper uppercase">{t("sharing.heading")}</h1>
+          <h1 className="font-display text-section font-semibold text-paper uppercase">{t("sharing.heading")}</h1>
 
           <p className="max-w-[68ch] text-sub text-mute">{t("sharing.sub")}</p>
         </div>

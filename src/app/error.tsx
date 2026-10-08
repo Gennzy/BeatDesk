@@ -18,7 +18,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
             <span aria-hidden className="size-1.5 bg-amber" />
             <span className="label text-amber">Ошибка загрузки</span>
           </span>
-          <h1 className="font-display text-section font-black text-paper uppercase">Страница не открылась</h1>
+          <h1 className="font-display text-section font-semibold text-paper uppercase">Страница не открылась</h1>
           <p className="text-sub text-mute">
             Скорее всего, нет связи с базой или сеть моргнула. Проверь соединение и попробуй ещё раз.
           </p>

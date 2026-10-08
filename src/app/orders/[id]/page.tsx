@@ -107,7 +107,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             <span aria-hidden className="size-1.5 bg-mute/50" />
             <span className="label text-mute">{t("order.title")}</span>
           </span>
-          <h1 className="font-display text-section font-black text-paper uppercase">{t("order.heading")}</h1>
+          <h1 className="font-display text-section font-semibold text-paper uppercase">{t("order.heading")}</h1>
           <p className="label text-mute">{typed.id}</p>
           <p className={typed.status === "paid" ? "label text-signal" : "label text-amber"}>
             {typed.status === "paid" ? t("order.paid") : t("order.pending")}

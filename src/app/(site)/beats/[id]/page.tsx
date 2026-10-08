@@ -154,7 +154,7 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
           <span>{t("beat.crumbCatalog")}</span>
         </nav>
 
-        <h1 className="mt-5 max-w-4xl font-display text-3xl leading-tight font-black tracking-tight text-paper lg:text-5xl">
+        <h1 className="mt-5 max-w-4xl font-display text-3xl leading-tight font-semibold tracking-tight text-paper lg:text-5xl">
           {beat.title}
         </h1>
 

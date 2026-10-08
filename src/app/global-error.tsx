@@ -19,7 +19,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
               <span aria-hidden className="size-1.5 bg-mute/50" />
               <span className="label text-mute">Ошибка 500</span>
             </span>
-            <h1 className="max-w-[18ch] font-display text-section font-black text-paper uppercase">
+            <h1 className="max-w-[18ch] font-display text-section font-semibold text-paper uppercase">
               Что-то сломалось на нашей стороне
             </h1>
             <p className="max-w-[52ch] text-sub text-mute">Перезагрузи страницу. Если не помогло, вернись позже — данные на месте.</p>

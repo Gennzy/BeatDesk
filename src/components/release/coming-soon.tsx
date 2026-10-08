@@ -19,7 +19,7 @@ export function ComingSoon() {
          * жирном дисплейном начертании не влезал в ширину и обрезался по
          * краям. Длинные слова переносим, а не обрезаем.
          */}
-        <h1 className="font-display text-[clamp(1.6rem,7.5vw,3.5rem)] leading-[1.05] font-black tracking-tight break-words text-paper uppercase">
+        <h1 className="font-display text-[clamp(1.6rem,7.5vw,3.5rem)] leading-[1.05] font-semibold tracking-tight break-words text-paper uppercase">
           BeatDesk <span className="text-signal">в разработке</span>
         </h1>
 

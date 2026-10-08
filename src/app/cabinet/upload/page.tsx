@@ -36,7 +36,7 @@ export default async function UploadPage() {
             <span aria-hidden className="size-1.5 bg-mute/50" />
             <span className="label text-mute">{t("upload.sub")}</span>
           </span>
-          <h1 className="font-display text-section font-black text-paper uppercase">{t("upload.title")}</h1>
+          <h1 className="font-display text-section font-semibold text-paper uppercase">{t("upload.title")}</h1>
           <p className="label text-mute">
             <Link href="/profile" className="underline-offset-4 hover:text-paper hover:underline">
               ← {t("profile.edit")}

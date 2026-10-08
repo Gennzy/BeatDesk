@@ -58,7 +58,7 @@ export default async function PublishPage({ params }: { params: Promise<{ id: st
           </span>
 
           <div className="flex flex-wrap items-end justify-between gap-6">
-            <h1 className="font-display text-section font-black text-paper uppercase">{beat.title}</h1>
+            <h1 className="font-display text-section font-semibold text-paper uppercase">{beat.title}</h1>
             <div className="flex items-center gap-1.5">
               <Badge tone="outline">{beat.bpm} BPM</Badge>
               <Badge tone="outline">{beat.key}</Badge>

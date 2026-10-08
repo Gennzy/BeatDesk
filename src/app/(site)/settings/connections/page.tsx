@@ -45,7 +45,7 @@ export default async function ConnectionsPage({ searchParams }: { searchParams: 
             <span className="label text-mute">{t("connections.title")}</span>
           </span>
 
-          <h1 className="font-display text-section font-black text-paper uppercase">{t("connections.heading")}</h1>
+          <h1 className="font-display text-section font-semibold text-paper uppercase">{t("connections.heading")}</h1>
 
           <p className="max-w-[68ch] text-sub text-mute">{t("connections.sub")}</p>
         </div>

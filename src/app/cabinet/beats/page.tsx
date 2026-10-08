@@ -37,7 +37,7 @@ export default async function CabinetBeatsPage() {
             ← {t("cabinet.title")}
           </Link>
           <div className="flex flex-wrap items-end justify-between gap-4">
-            <h1 className="font-display text-section font-black text-paper uppercase">{t("cabinet.beats")}</h1>
+            <h1 className="font-display text-section font-semibold text-paper uppercase">{t("cabinet.beats")}</h1>
             <Link href="/cabinet/upload" className="inline-flex h-10 w-fit items-center gap-2 rounded-pill bg-signal px-5 text-xs font-semibold tracking-[0.08em] text-ink uppercase transition-opacity hover:opacity-90">
               <Icon name="upload" className="size-4" />
               {t("cabinet.upload")}

@@ -72,7 +72,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
                 <span className="label text-paper">{t("auth.signIn")} / {t("auth.signUp")}</span>
               </span>
 
-              <h1 className="max-w-[13ch] font-display text-title font-black text-paper uppercase lg:max-w-[15ch]">
+              <h1 className="max-w-[13ch] font-display text-title font-semibold text-paper uppercase lg:max-w-[15ch]">
                 <span className="block overflow-hidden pb-[0.06em]">
                   <span data-line className="block">
                     {t("login.sub")}
@@ -106,7 +106,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </HeroIntro>
 
           <div data-fade className="signal-rail relative min-w-0 border border-line bg-ink/94 p-6 pl-7 backdrop-blur-md lg:p-8 lg:pl-9">
-            <h2 className="font-display text-title font-black text-paper uppercase">{t("login.title")}</h2>
+            <h2 className="font-display text-title font-semibold text-paper uppercase">{t("login.title")}</h2>
             <div className="mt-8">
               <AuthForm nextPath={nextPath} />
             </div>

@@ -92,7 +92,7 @@ export default async function CabinetPage() {
     <section className="py-10 lg:py-14">
       <Container>
         <div className="flex items-baseline justify-between gap-6 border-b border-line pb-5">
-          <h1 className="font-display text-title font-black text-paper uppercase">{t("cabinet.title")}</h1>
+          <h1 className="font-display text-title font-semibold text-paper uppercase">{t("cabinet.title")}</h1>
 
           {/* Одно главное действие на экран: загрузить бит. Остальное — ниже. */}
           <Link

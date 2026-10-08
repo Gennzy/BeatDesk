@@ -143,7 +143,7 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
           <div className="flex flex-col gap-5">
             <span className="label text-mute">{t("profile.title")}</span>
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="flex items-baseline gap-1 font-display text-section font-black text-paper uppercase">
+              <h1 className="flex items-baseline gap-1 font-display text-section font-semibold text-paper uppercase">
                 <span className="font-mono text-title text-mute">@</span>
                 {profile.username}
               </h1>

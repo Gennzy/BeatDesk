@@ -10,7 +10,7 @@ export default async function NotFound() {
       <Container>
         <div className="signal-rail max-w-[52ch] pl-8">
           <span className="label text-mute">{t("notfound.code")}</span>
-          <h1 className="mt-6 font-display text-section font-black text-paper uppercase">{t("notfound.title")}</h1>
+          <h1 className="mt-6 font-display text-section font-semibold text-paper uppercase">{t("notfound.title")}</h1>
           <p className="mt-5 text-sub text-mute">{t("notfound.sub")}</p>
           <Button href="/" className="mt-10" size="lg">
             {t("notfound.cta")}

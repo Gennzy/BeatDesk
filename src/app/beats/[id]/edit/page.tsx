@@ -45,7 +45,7 @@ export default async function EditBeatPage({ params }: { params: Promise<{ id: s
               <span aria-hidden className="size-1.5 bg-mute/50" />
               <span className="label text-mute">{t("edit.title")}</span>
             </span>
-            <h1 className="font-display text-section font-black text-paper uppercase">{beat.title}</h1>
+            <h1 className="font-display text-section font-semibold text-paper uppercase">{beat.title}</h1>
           </div>
 
           <div className="flex flex-col items-end gap-4">

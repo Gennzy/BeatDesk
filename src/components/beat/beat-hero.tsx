@@ -116,7 +116,7 @@ export function BeatHero({ beat, isOwner }: { beat: BeatHeroData; isOwner: boole
             </Link>
           </div>
 
-          <h1 className="font-display text-3xl leading-[1.05] font-black tracking-tight text-paper uppercase lg:text-5xl">
+          <h1 className="font-display text-3xl leading-[1.05] font-semibold tracking-tight text-paper uppercase lg:text-5xl">
             {beat.title}
           </h1>
 
