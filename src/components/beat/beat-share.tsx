@@ -21,6 +21,7 @@ export function BeatShare({ beatId, title }: { beatId: string; title: string }) 
   const { t } = useI18n();
   const toast = useToast();
   const [copied, setCopied] = useState(false);
+  const [canNativeShare, setCanNativeShare] = useState(false);
 
   /*
    * Адрес собирается после монтирования: на сервере window нет, и подстановка
@@ -31,6 +32,16 @@ export function BeatShare({ beatId, title }: { beatId: string; title: string }) 
 
   useEffect(() => {
     setUrl(`${window.location.origin}/beats/${beatId}`);
+
+    /*
+     * Возможность системного «Поделиться» выясняется здесь же.
+     *
+     * Раньше стояла проверка `typeof navigator !== "undefined" && "share" in
+     * navigator` прямо в рендере: на сервере navigator нет, в браузере есть,
+     * разметка не совпадала, и React выбрасывал всю отрисованную сервером
+     * страницу бита — содержимое пропадало целиком.
+     */
+    setCanNativeShare("share" in navigator);
   }, [beatId]);
 
   async function copy() {
@@ -54,7 +65,7 @@ export function BeatShare({ beatId, title }: { beatId: string; title: string }) 
     }
   }
 
-  const canNativeShare = typeof navigator !== "undefined" && "share" in navigator;
+
 
   return (
     <div className="flex items-center gap-2">
