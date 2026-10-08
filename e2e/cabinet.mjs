@@ -48,6 +48,7 @@ try {
   const shots = [
     { path: "/cabinet", name: "01-cabinet" },
     { path: "/cabinet/beats", name: "02-beats" },
+    { path: "/cabinet/studio", name: "05-studio" },
     { path: "/notifications", name: "03-notifications" },
   ];
 

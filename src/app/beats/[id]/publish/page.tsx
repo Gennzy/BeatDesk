@@ -19,7 +19,7 @@ export default async function PublishPage({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const [t, supabase] = await Promise.all([getT(), getSupabase()]);
 
-  if (!supabase) redirect("/login?next=/upload");
+  if (!supabase) redirect("/login?next=/cabinet/upload");
 
   const {
     data: { user },

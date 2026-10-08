@@ -59,7 +59,7 @@ export function FeedList({ initial, initialNextOffset, filters }: Props) {
 
   if (beats.length === 0) {
     return (
-      <EmptyState title={t("states.empty.title")} description={t("states.empty.sub")} action={{ label: t("states.empty.cta"), href: "/upload" }} />
+      <EmptyState title={t("states.empty.title")} description={t("states.empty.sub")} action={{ label: t("states.empty.cta"), href: "/cabinet/upload" }} />
     );
   }
 

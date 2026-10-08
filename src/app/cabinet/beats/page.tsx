@@ -38,7 +38,7 @@ export default async function CabinetBeatsPage() {
           </Link>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <h1 className="font-display text-section font-black text-paper uppercase">{t("cabinet.beats")}</h1>
-            <Link href="/upload" className="control flex h-10 w-fit items-center gap-2 px-4 text-sm">
+            <Link href="/cabinet/upload" className="control flex h-10 w-fit items-center gap-2 px-4 text-sm">
               <Icon name="upload" className="size-4" />
               {t("cabinet.upload")}
             </Link>
@@ -48,7 +48,7 @@ export default async function CabinetBeatsPage() {
         {beats.length === 0 ? (
           <div className="flex flex-col items-start gap-4 py-16">
             <p className="text-sub text-mute">{t("cabinet.beatsEmpty")}</p>
-            <Link href="/upload" className="control flex h-10 w-fit items-center px-4 text-sm">
+            <Link href="/cabinet/upload" className="control flex h-10 w-fit items-center px-4 text-sm">
               {t("cabinet.upload")}
             </Link>
           </div>

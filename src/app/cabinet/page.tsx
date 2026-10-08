@@ -35,9 +35,9 @@ type Tool = { href: string; icon: IconName; label: ToolLabel; hint: `${ToolLabel
 
 const TOOLS: Tool[] = [
   { href: "/cabinet/beats", icon: "heart", label: "cabinet.beats", hint: "cabinet.beatsHint" },
-  { href: "/upload", icon: "upload", label: "cabinet.upload", hint: "cabinet.uploadHint" },
-  { href: "/share", icon: "broadcast", label: "cabinet.channels", hint: "cabinet.channelsHint" },
-  { href: "/studio", icon: "waveform", label: "cabinet.studio", hint: "cabinet.studioHint" },
+  { href: "/cabinet/upload", icon: "upload", label: "cabinet.upload", hint: "cabinet.uploadHint" },
+  { href: "/cabinet/channels", icon: "broadcast", label: "cabinet.channels", hint: "cabinet.channelsHint" },
+  { href: "/cabinet/studio", icon: "waveform", label: "cabinet.studio", hint: "cabinet.studioHint" },
 ];
 
 export default async function CabinetPage() {

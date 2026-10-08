@@ -227,11 +227,11 @@ async function main() {
     // Проверяем на живой форме: человек ставит цену на уровень, файла для
     // которого нет, и обязан увидеть это сразу, а не после отправки.
     console.log("\nГотовность к продаже");
-    await user.goto(`${BASE}/upload`, { waitUntil: "networkidle2", timeout: 60_000 });
+    await user.goto(`${BASE}/cabinet/upload`, { waitUntil: "networkidle2", timeout: 60_000 });
     await wait(1500);
 
     const emptyReadiness = await user.evaluate(() => document.body.innerText);
-    check("форма загрузки объясняет, что без цены бит не купить", /поставьте хотя бы цену/i.test(emptyReadiness));
+    check("форма загрузки объясняет, что без цены бит не купить", /назначьте хотя бы цену/i.test(emptyReadiness));
 
     // Ставим цену на MP3, не загружая ничего: превью нет, значит уровень не готов.
     await user.evaluate(() => {
@@ -257,7 +257,7 @@ async function main() {
     await wait(1200);
 
     const cleared = await user.evaluate(() => document.body.innerText);
-    check("пустая цена снимает претензию, а не оставляет её", /поставьте хотя бы цену/i.test(cleared));
+    check("пустая цена снимает претензию, а не оставляет её", /назначьте хотя бы цену/i.test(cleared));
 
     await user.close();
 
@@ -337,7 +337,7 @@ const guestOrder = await guestContext.newPage();
     await studio.setViewport({ width: 1440, height: 1100 });
     studio.on("pageerror", (error) => errors.push(`studio: ${error}`));
 
-    await studio.goto(`${BASE}/studio`, { waitUntil: "networkidle2", timeout: 60_000 });
+    await studio.goto(`${BASE}/cabinet/studio`, { waitUntil: "networkidle2", timeout: 60_000 });
     await wait(1500);
 
     const studioText = await studio.evaluate(() => document.body.innerText);
@@ -352,7 +352,7 @@ const guestOrder = await guestContext.newPage();
     check(
       "инструментов продавца в навигации нет",
       await studio.evaluate(
-        () => !document.querySelector('a[href="/studio"]') && !document.querySelector('a[href="/upload"]'),
+        () => !document.querySelector('a[href="/cabinet/studio"]') && !document.querySelector('a[href="/cabinet/upload"]'),
       ),
     );
     // Сессия к этому моменту уже создана регистрацией, поэтому вошедший

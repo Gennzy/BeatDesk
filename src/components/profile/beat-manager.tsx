@@ -38,7 +38,7 @@ export function BeatManager({
       <EmptyState
         title={emptyTitle}
         description={emptyDescription}
-        action={isOwner ? { label: t("states.empty.cta"), href: "/upload" } : undefined}
+        action={isOwner ? { label: t("states.empty.cta"), href: "/cabinet/upload" } : undefined}
       />
     );
   }
@@ -48,7 +48,7 @@ export function BeatManager({
       {isOwner ? (
         <div className="flex flex-wrap items-center justify-between gap-3 border border-line bg-ink-2 px-4 py-3">
           <span className="label text-mute">{t("profile.yours")}</span>
-          <Link href="/upload" className="label text-signal underline-offset-4 hover:underline">
+          <Link href="/cabinet/upload" className="label text-signal underline-offset-4 hover:underline">
             + {t("states.empty.cta")}
           </Link>
         </div>
