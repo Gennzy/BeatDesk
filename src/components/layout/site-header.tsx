@@ -72,7 +72,7 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
   ];
 
   return (
-    <header className="liquid-glass liquid-glass-strong sticky top-0 z-50 border-b border-line-2 pt-[env(safe-area-inset-top)] shadow-[0_1px_0_rgb(0_0_0/0.4)]">
+    <header className="liquid-glass liquid-glass-strong sticky top-0 z-50 border-b border-line-2 pt-[env(safe-area-inset-top)] shadow-[var(--shadow-1)]">
       <Container>
         {/*
           Поиск стоит по центру шапки, между навигацией и действиями. Так он
@@ -110,7 +110,7 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
                 type="search"
                 defaultValue={searchQuery}
                 placeholder={t("feed.searchMarket")}
-                className="h-10 w-full rounded-pill border border-line bg-ink-2 pr-4 pl-10 text-sm shadow-[inset_0_1px_1px_rgb(0_0_0/0.35)] outline-none transition-colors placeholder:text-mute hover:border-line-2 focus:border-signal"
+                className="h-10 w-full rounded-pill border border-line bg-ink-2 pr-4 pl-10 text-sm shadow-[var(--edge-sunken)] outline-none transition-colors placeholder:text-mute hover:border-line-2 focus:border-signal"
               />
             </label>
           </form>

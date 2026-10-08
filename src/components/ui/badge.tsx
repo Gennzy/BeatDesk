@@ -18,5 +18,5 @@ export function Badge({ tone = "dim", className, children }: { tone?: Tone; clas
 }
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cn("rounded-lg border border-line bg-ink-2 shadow-[0_1px_2px_rgb(0_0_0/0.4)]", className)}>{children}</div>;
+  return <div className={cn("rounded-lg border border-line bg-ink-2 shadow-[var(--shadow-1)]", className)}>{children}</div>;
 }

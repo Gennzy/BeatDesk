@@ -60,7 +60,7 @@ export function PlayerFullscreen({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="relative flex flex-1 flex-col items-center justify-center gap-7 px-6 py-6">
-        <div className="aspect-square w-full max-w-[min(70vh,26rem)] overflow-hidden rounded-lg border border-line bg-ink-2 shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)]">
+        <div className="aspect-square w-full max-w-[min(70vh,26rem)] overflow-hidden rounded-lg border border-line bg-ink-2 shadow-[var(--shadow-3)]">
           {track.coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={track.coverUrl} alt="" className="size-full object-cover" />
