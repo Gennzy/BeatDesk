@@ -135,7 +135,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                     </div>
                   ) : null}
                 </span>
-                <span className="font-mono text-sm text-amber">{money(item.price_minor, item.currency)}</span>
+                <span className="font-mono text-sm text-paper">{money(item.price_minor, item.currency)}</span>
               </li>
             );
           })}

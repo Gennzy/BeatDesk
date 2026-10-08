@@ -15,9 +15,12 @@ const errors = [];
 async function register(page, username, email) {
   await page.goto(`${BASE}/login`, { waitUntil: "networkidle2", timeout: 60_000 });
   await wait(800);
+  // Форму входа ищем по полям: в шапке есть форма поиска.
   await page.evaluate(() => {
-    const form = document.querySelector("form");
-    [...form.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Регистрация")?.click();
+    const form = [...document.querySelectorAll("form")].find((node) =>
+      node.querySelector('input[name="password"]'),
+    );
+    [...(form?.querySelectorAll("button") ?? [])].find((b) => b.textContent?.trim() === "Регистрация")?.click();
   });
   await page.waitForSelector('input[name="username"]', { timeout: 15_000 });
   await page.type('input[name="username"]', username);

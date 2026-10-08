@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { LanguageSwitch } from "@/components/language-switch";
 import { Logo } from "@/components/layout/logo";
 import { Container } from "@/components/ui/container";
+import { Icon } from "@/components/ui/icon";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { NotificationBell } from "@/components/posts/notification-bell";
@@ -45,6 +46,9 @@ function Avatar({ user, size = "sm" }: { user: SessionUser; size?: "sm" | "md" }
 export function SiteHeader({ user }: { user: SessionUser | null }) {
   const { t } = useI18n();
   const pathname = usePathname();
+  const params = useSearchParams();
+  // Значение из адреса: возврат из поиска не должен терять запрос.
+  const searchQuery = params.get("q") ?? "";
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -70,23 +74,44 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
   return (
     <header className="liquid-glass liquid-glass-strong sticky top-0 z-50 border-b border-line pt-[env(safe-area-inset-top)]">
       <Container>
+        {/*
+          Поиск стоит по центру шапки, между навигацией и действиями. Так он
+          на виду у того, кто пришёл искать бит, и не занимает место рядом с
+          логотипом, где его задвигали.
+        */}
         <div className="flex h-16 items-center gap-6">
-          <Wordmark />
+          <div className="flex items-center gap-6">
+            <Wordmark />
 
-          <nav className="hidden items-center gap-6 md:flex">
-            {links.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "label transition-colors duration-150 hover:text-paper",
-                  pathname === link.href ? "text-signal" : "text-mute",
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
+            <nav className="hidden items-center gap-6 md:flex">
+              {links.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "label transition-colors duration-150 hover:text-paper",
+                    pathname === link.href ? "text-paper" : "text-mute",
+                  )}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+
+          <form action="/" className="hidden flex-1 justify-center md:flex">
+            <label className="relative block w-full max-w-md">
+              <span className="sr-only">{t("feed.searchMarket")}</span>
+              <Icon name="search" className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-mute" />
+              <input
+                name="q"
+                type="search"
+                defaultValue={searchQuery}
+                placeholder={t("feed.searchMarket")}
+                className="h-10 w-full rounded-pill border border-line bg-ink-2 pr-4 pl-10 text-sm outline-none transition-colors placeholder:text-mute hover:border-line-2 focus:border-signal"
+              />
+            </label>
+          </form>
 
           <div className="ml-auto flex items-center gap-3">
             <div className="hidden items-center gap-3 sm:flex">

@@ -103,7 +103,7 @@ export function BeatOffer({ beatId, tiers, currency, isOwner }: Props) {
               </span>
 
               <span className="flex items-baseline gap-3">
-                <span className="font-mono text-sm text-amber">{formatMoney(item.value, currency)}</span>
+                <span className="font-mono text-sm text-paper">{formatMoney(item.value, currency)}</span>
                 {isOwner ? null : (
                   <button
                     type="button"

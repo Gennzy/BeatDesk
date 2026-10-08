@@ -110,9 +110,16 @@ async function reachable() {
 async function register(page, username, email) {
   await page.goto(`${BASE}/login`, { waitUntil: "networkidle2", timeout: 60_000 });
   await wait(800);
+  /*
+   * Форму ищем по полям, а не по первому попавшему <form>: в шапке появилась
+   * форма поиска, и document.querySelector("form") указывал на неё, а не на
+   * форму входа.
+   */
   await page.evaluate(() => {
-    const form = document.querySelector("form");
-    [...form.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Регистрация")?.click();
+    const form = [...document.querySelectorAll("form")].find((node) =>
+      node.querySelector('input[name="password"]'),
+    );
+    [...(form?.querySelectorAll("button") ?? [])].find((b) => b.textContent?.trim() === "Регистрация")?.click();
   });
   await page.waitForSelector('input[name="username"]', { timeout: 15_000 });
   await page.type('input[name="username"]', username);

@@ -54,8 +54,25 @@ export type Post = {
 const POST_COLUMNS = `
   id, author_id, parent_id, body, like_count, reply_count, created_at,
   beats(id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, plays, score, prices, currency, is_public, sale_state),
+  profiles!posts_author_id_fkey(username, avatar_url, level)
+`;
+
+/*
+ * Набор колонок без полей из миграции 0029.
+ *
+ * score и level появляются вместе с миграцией, а PostgREST отвечает ошибкой на
+ * любую несуществующую колонку — и запрос падал целиком. Лента битов давно
+ * умеет откатываться на старый набор колонок, постам такой откатки не было:
+ * вкладка «посты» просто оставалась пустой.
+ */
+const POST_COLUMNS_LEGACY = `
+  id, author_id, parent_id, body, like_count, reply_count, created_at,
+  beats(id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, plays, prices, currency, is_public, sale_state),
   profiles!posts_author_id_fkey(username, avatar_url)
 `;
+
+/** Минимум формы ошибки PostgREST: в логе нужен код и текст, не вся структура. */
+type PostgrestErrorLike = { message: string; code?: string; details?: string | null };
 
 type PostRow = {
   id: string;
@@ -209,6 +226,22 @@ async function likedIds(supabase: SupabaseServerClient, viewerId: string | null,
   return new Set((data ?? []).map((row) => row.post_id as string));
 }
 
+/*
+ * Выбор набора колонок.
+ *
+ * score и level появляются с миграцией 0029, а PostgREST отвечает ошибкой на
+ * несуществующую колонку. Раньше откат был только в ленте, и страница ветки
+ * или профиль молча оставались пустыми. Теперь набор выбирается один раз, и
+ * все запросы постов ведут себя одинаково.
+ */
+async function withPostColumns<T>(supabase: SupabaseServerClient, run: (columns: string) => PromiseLike<T>): Promise<T> {
+  const first = await run(POST_COLUMNS);
+
+  if (!(first as { error?: unknown } | null)?.error) return first;
+
+  return run(POST_COLUMNS_LEGACY);
+}
+
 /**
  * Лента постов. Корень ветки стоит по времени последнего ответа, иначе
  * активная ветка уезжает вниз вслед за свежим ответом в глубоком ответе.
@@ -216,46 +249,73 @@ async function likedIds(supabase: SupabaseServerClient, viewerId: string | null,
  */
 export async function fetchPosts(
   supabase: SupabaseServerClient,
-  options: { viewerId: string | null; offset?: number; limit?: number; followingOf?: string | null },
+  options: {
+    viewerId: string | null;
+    offset?: number;
+    limit?: number;
+    followingOf?: string | null;
+    /** Уже вычисленные авторы подписок: тот же список для обоих запросов. */
+    followingIds?: string[] | null;
+  },
 ): Promise<Post[]> {
   const limit = options.limit ?? POSTS_PAGE_SIZE;
   const offset = options.offset ?? 0;
 
-  let query = supabase
-    .from("posts")
-    .select(POST_COLUMNS)
-    .is("parent_id", null)
-    .order("last_reply_at", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1);
+  /*
+   * Один и тот же запрос строится дважды: с новыми колонками и с откатом.
+   * Фильтр по подпискам и сортировка по времени ответа должны быть в обоих
+   * одинаковыми, иначе откат тихо показал бы другую ленту.
+   */
+  const build = (columns: string) => {
+    const base = supabase
+      .from("posts")
+      .select(columns)
+      .is("parent_id", null)
+      .order("last_reply_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
 
-  if (options.followingOf) {
-    const { data: followed } = await supabase
-      .from("follows")
-      .select("following_id")
-      .eq("follower_id", options.followingOf);
+    const scoped = options.followingIds ? base.in("author_id", options.followingIds) : base;
+    return scoped as unknown as PromiseLike<{ data: PostRow[] | null; error: PostgrestErrorLike | null }>;
+  };
 
-    const ids = Array.from(new Set([...(followed ?? []).map((row) => row.following_id as string), options.followingOf]));
-    if (ids.length === 0) return [];
-    query = query.in("author_id", ids);
-  }
+  if (options.followingOf && !options.followingIds) return [];
 
-  const { data, error } = await query;
+  const { data, error } = await build(POST_COLUMNS);
 
   if (error) {
-    // Молчаливый пустой массив выглядел бы как «постов нет» и прятал бы
-    // поломку запроса. Пусть причина будет видна в логах сервера.
-    console.error("posts feed query failed", error);
-    return [];
+    /*
+     * Откат на набор колонок без score и level. Ошибку логируем: если дело
+     * не в миграции, а в чём-то ещё, по молчанию это не разглядеть.
+     */
+    const fallback = await build(POST_COLUMNS_LEGACY);
+
+    if (fallback.error) {
+      // Молчаливый пустой массив выглядел бы как «постов нет» и прятал бы
+      // поломку запроса. Пусть причина будет видна в логах сервера.
+      console.error("posts feed query failed", fallback.error);
+      return [];
+    }
+
+    return decorate(supabase, (fallback.data ?? []) as PostRow[], options.viewerId);
   }
 
   if (!data) return [];
 
-  const rows = data as PostRow[];
+  return decorate(supabase, data as PostRow[], options.viewerId);
+}
+
+/** Лайки и счётчики веток собираются одинаково для обоих наборов колонок. */
+async function decorate(
+  supabase: SupabaseServerClient,
+  rows: PostRow[],
+  viewerId: string | null,
+): Promise<Post[]> {
   const ids = rows.map((row) => row.id);
+  if (ids.length === 0) return [];
 
   const [liked, totals] = await Promise.all([
-    likedIds(supabase, options.viewerId, ids),
+    likedIds(supabase, viewerId, ids),
     branchCounts(supabase, ids),
   ]);
 
@@ -269,7 +329,10 @@ export async function fetchThread(
   viewerId: string | null,
   maxDepth = THREAD_RENDER_DEPTH,
 ): Promise<{ root: Post | null; replies: Post[] }> {
-  const { data, error } = await supabase.from("posts").select(POST_COLUMNS).eq("id", rootId).maybeSingle();
+  const root = await withPostColumns(supabase, (columns) =>
+    supabase.from("posts").select(columns).eq("id", rootId).maybeSingle(),
+  );
+  const { data, error } = root as { data: unknown; error: PostgrestErrorLike | null };
 
   if (error) {
     console.error("thread query failed", error);
@@ -286,13 +349,13 @@ export async function fetchThread(
   let frontier = [rootId];
 
   for (let depth = 0; depth < maxDepth && frontier.length > 0; depth += 1) {
-    const { data: level } = await supabase
-      .from("posts")
-      .select(POST_COLUMNS)
-      .in("parent_id", frontier)
-      .order("created_at", { ascending: true });
+    const level = await withPostColumns(supabase, (columns) =>
+      supabase.from("posts").select(columns).in("parent_id", frontier).order("created_at", { ascending: true }),
+    );
 
-    const rows = ((level ?? []) as PostRow[]).filter((row) => !seen.has(row.id));
+    const rows = (((level as { data: PostRow[] | null }).data ?? []) as PostRow[]).filter(
+      (row) => !seen.has(row.id),
+    );
     if (rows.length === 0) break;
 
     for (const row of rows) seen.add(row.id);
@@ -323,14 +386,16 @@ export async function fetchReplies(
   offset: number,
   limit: number,
 ): Promise<Post[]> {
-  const { data } = await supabase
-    .from("posts")
-    .select(POST_COLUMNS)
-    .eq("parent_id", parentId)
-    .order("created_at", { ascending: true })
-    .range(offset, offset + limit - 1);
+  const result = await withPostColumns(supabase, (columns) =>
+    supabase
+      .from("posts")
+      .select(columns)
+      .eq("parent_id", parentId)
+      .order("created_at", { ascending: true })
+      .range(offset, offset + limit - 1),
+  );
 
-  const rows = (data ?? []) as PostRow[];
+  const rows = ((result as { data: PostRow[] | null }).data ?? []) as PostRow[];
   const liked = await likedIds(supabase, viewerId, rows.map((row) => row.id));
 
   return rows.map((row) => toPost(row, liked));
@@ -376,13 +441,17 @@ export async function fetchProfilePosts(
   isOwner: boolean,
   limit = 10,
 ): Promise<Post[]> {
-  const { data } = await supabase
-    .from("posts")
-    .select(POST_COLUMNS)
-    .eq("author_id", profileId)
-    .is("parent_id", null)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  const result = await withPostColumns(supabase, (columns) =>
+    supabase
+      .from("posts")
+      .select(columns)
+      .eq("author_id", profileId)
+      .is("parent_id", null)
+      .order("created_at", { ascending: false })
+      .limit(limit),
+  );
+
+  const data = (result as { data: PostRow[] | null }).data;
 
   const rows = (data ?? []) as PostRow[];
   // Лайки автора на своих постах гостя не показываем: их всё равно не увидеть

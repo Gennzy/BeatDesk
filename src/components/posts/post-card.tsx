@@ -129,7 +129,7 @@ export function PostCard({ post, loggedIn = true, depth = 0, inThread = false }:
             {beat.prices.mp3 ? (
               <span className="flex shrink-0 items-baseline gap-1.5">
                 <span className="label text-mute">{t("posts.from")}</span>
-                <span className="font-display text-lg leading-none text-amber">{formatMoney(beat.prices.mp3, beat.currency)}</span>
+                <span className="font-display text-lg leading-none text-paper">{formatMoney(beat.prices.mp3, beat.currency)}</span>
               </span>
             ) : null}
           </Link>

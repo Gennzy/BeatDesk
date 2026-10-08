@@ -23,7 +23,8 @@ export type IconName =
   | "download"
   | "check"
   | "close"
-  | "chevronRight";
+  | "chevronRight"
+  | "search";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   bell: (
@@ -67,6 +68,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
   check: <path d="m5 12.5 4.5 4.5L19 7" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,
   chevronRight: <path d="m9 5 7 7-7 7" />,
+  search: (
+    <>
+      <path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z" />
+      <path d="m16.5 16.5 4 4" />
+    </>
+  ),
 };
 
 export function Icon({
