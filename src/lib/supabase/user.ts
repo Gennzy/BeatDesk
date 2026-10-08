@@ -7,6 +7,8 @@ export type SessionUser = {
   email: string | null;
   username: string;
   avatarUrl: string | null;
+  /** Что человек делает по умолчанию: продаёт или покупает. Меняет навигацию. */
+  mode: "buyer" | "seller";
 };
 
 export async function getSupabase(): Promise<SupabaseServerClient | null> {
@@ -28,13 +30,14 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: profile } = await supabase.from("profiles").select("username, avatar_url").eq("id", user.id).maybeSingle();
+  const { data: profile } = await supabase.from("profiles").select("username, avatar_url, mode").eq("id", user.id).maybeSingle();
 
   return {
     id: user.id,
     email: user.email ?? null,
     username: profile?.username ?? (user.email ? user.email.split("@")[0] : "user"),
     avatarUrl: profile?.avatar_url ?? null,
+    mode: profile?.mode === "seller" ? "seller" : "buyer",
   };
 }
 

@@ -68,7 +68,12 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
      * кабинет, где собрано всё остальное.
      */
     { href: "/", label: t("nav.feed") },
-    ...(user ? [{ href: "/cabinet", label: t("nav.cabinet") }] : []),
+    /*
+     * Кабинет стоит в шапке у продавца и не мозолит глаза покупателю: у
+     * покупателя там нет ничего, ради чего он заходил. Переключить роль
+     * можно в профиле, и тогда кабинет появится.
+     */
+    ...(user?.mode === "seller" ? [{ href: "/cabinet", label: t("nav.cabinet") }] : []),
   ];
 
   return (

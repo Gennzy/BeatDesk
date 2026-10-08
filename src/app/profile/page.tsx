@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { PostCard } from "@/components/posts/post-card";
 import { BeatManager } from "@/components/profile/beat-manager";
 import { ProfileStats } from "@/components/profile/profile-stats";
+import { ModeSwitch } from "@/components/profile/mode-switch";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { Container, SectionHead } from "@/components/ui/container";
 import { fetchBeatsByOwner } from "@/lib/feed";
@@ -34,7 +35,7 @@ export default async function ProfilePage() {
   }
 
   const [profileResult, collaboratorsResult] = await Promise.all([
-    supabase.from("profiles").select("username, avatar_url, bio, links").eq("id", user.id).maybeSingle(),
+    supabase.from("profiles").select("username, avatar_url, bio, links, mode").eq("id", user.id).maybeSingle(),
     supabase
       .from("profile_collaborators")
       .select("name")
@@ -99,6 +100,10 @@ export default async function ProfilePage() {
               </ul>
             </div>
           ) : null}
+
+          <div className="panel flex flex-col gap-6 p-5">
+            <ModeSwitch mode={(profile.mode as "buyer" | "seller" | null) ?? "buyer"} />
+          </div>
 
           <div className="flex flex-col gap-6">
             <SectionHead label={t("profile.edit")} />
