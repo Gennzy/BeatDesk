@@ -27,7 +27,7 @@ export function CurrencyPicker({ name, value, onChange, className }: Props) {
           aria-checked={value === item.code}
           onClick={() => onChange(item.code)}
           className={cn(
-            "label flex items-center gap-1.5 border px-2.5 py-1.5 transition-colors",
+            "label flex items-center gap-1.5 rounded-pill border px-3 py-1.5 transition-colors",
             value === item.code
               ? "border-signal bg-signal text-ink"
               : "border-line text-mute hover:border-line-2 hover:text-paper",

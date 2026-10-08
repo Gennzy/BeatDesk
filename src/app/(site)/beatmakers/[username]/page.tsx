@@ -5,6 +5,7 @@ import { FollowButton } from "@/components/posts/follow-button";
 import { PostCard } from "@/components/posts/post-card";
 import { BeatManager } from "@/components/profile/beat-manager";
 import { Container, SectionHead } from "@/components/ui/container";
+import { Icon } from "@/components/ui/icon";
 import { fetchBeatsByOwner } from "@/lib/feed";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { pluralEn, pluralRu } from "@/lib/plural";
@@ -92,6 +93,21 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
   const achievements = isOwner && supabase ? computeAchievements(achievementStats) : [];
 
 
+  /*
+   * Проверка и уровень читаются одним запросом: и то и другое отвечает на
+   * вопрос покупателя «этому продавцу можно верить», и раньше на витрине
+   * профиля этого не было вовсе.
+   */
+  const [{ data: sellerFlags }, { data: verifiedData }] = supabase
+    ? await Promise.all([
+        supabase.from("profiles").select("level").eq("id", profile.id).maybeSingle(),
+        supabase.rpc("is_verified_seller", { p_user: profile.id }),
+      ])
+    : [{ data: null }, { data: false }];
+
+  const sellerLevel = ((sellerFlags as { level?: number } | null)?.level as number | undefined) ?? 1;
+  const isVerified = verifiedData === true;
+
   const [beats, follow, posts] = await Promise.all([
     fetchBeatsByOwner(supabase, profile.id, isOwner).catch(() => []),
     loadFollowState(supabase, user?.id ?? null, profile.id).catch(() => ({
@@ -109,8 +125,13 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
   return (
     <section className="py-14 lg:py-20">
       <Container>
-        <div className="grid gap-10 border-b border-line pb-12 lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-8">
-          <div className="grid size-24 place-items-center overflow-hidden rounded-lg border border-line bg-ink-2 font-display text-2xl text-mute">
+        {/*
+          Шапка профиля — панель, как везде на площадке. Раньше она лежала на
+          фоне с одной чертой снизу, и профиль читался как оглавление, а не как
+          страница человека.
+        */}
+        <div className="panel grid gap-8 p-6 lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-8 lg:p-8">
+          <div className="grid size-28 place-items-center overflow-hidden rounded-xl border border-line bg-ink-3 font-display text-3xl text-mute">
             {profile.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={profile.avatar_url} alt="" className="size-full object-cover" />
@@ -121,10 +142,25 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
 
           <div className="flex flex-col gap-5">
             <span className="label text-mute">{t("profile.title")}</span>
-            <h1 className="flex items-baseline gap-2 font-display text-section font-black text-paper uppercase">
-              <span className="font-mono text-title text-mute">@</span>
-              {profile.username}
-            </h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="flex items-baseline gap-1 font-display text-section font-black text-paper uppercase">
+                <span className="font-mono text-title text-mute">@</span>
+                {profile.username}
+              </h1>
+
+              {isVerified ? (
+                <span title={t("seller.verifiedTitle")} className="text-signal">
+                  <Icon name="verified" className="size-5" filled />
+                </span>
+              ) : null}
+
+              {sellerLevel >= 3 ? (
+                <span className="chip text-mute">
+                  <span aria-hidden className="size-1.5 rounded-full bg-signal" />
+                  {t("seller.level", { level: String(sellerLevel) })}
+                </span>
+              ) : null}
+            </div>
             <p className="max-w-[58ch] text-sub text-mute">{profile.bio ?? t("profile.bioPlaceholder")}</p>
 
             {collaborators.length > 0 ? (
@@ -143,7 +179,7 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
               </div>
             ) : null}
 
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-2">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-line pt-5">
               <FollowButton
                 profileId={profile.id}
                 username={profile.username}
@@ -154,26 +190,26 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
               />
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-2">
-              <span className="label text-mute">{t("profile.links")}</span>
-              {hasLinks
-                ? PLATFORM_KEYS.filter((key) => links[key]).map((key) => (
-                    <a
-                      key={key}
-                      href={links[key]}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="label text-paper underline-offset-4 transition-colors hover:text-bright hover:underline"
-                    >
-                      {PLATFORM_LABELS[key]}
-                    </a>
-                  ))
-                : PLATFORM_KEYS.map((key) => (
-                    <span key={key} className="label text-mute">
-                      {PLATFORM_LABELS[key]}
-                    </span>
-                  ))}
-            </div>
+            {/*
+              Площадки показываются только заполненные. Раньше при пустых
+              выводился весь список названий серым — на каждом новом профиле
+              это выглядело как недоделанная страница.
+            */}
+            {hasLinks ? (
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {PLATFORM_KEYS.filter((key) => links[key]).map((key) => (
+                  <a
+                    key={key}
+                    href={links[key]}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="chip chip-hover"
+                  >
+                    {PLATFORM_LABELS[key]}
+                  </a>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
 

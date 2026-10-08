@@ -64,7 +64,7 @@ export function ProfileStats({ username, avatarUrl, bio, beats, followers, posts
             key={card.href}
             href={card.href}
             className={cn(
-              "group flex flex-col gap-0.5 border border-line px-4 py-2.5 transition-colors hover:border-signal/60",
+              "group flex flex-col gap-0.5 rounded-lg border border-line bg-ink-2 px-4 py-3 shadow-[0_1px_2px_rgb(0_0_0/0.4)] transition-colors hover:border-line-2",
               "min-w-48 flex-1 sm:flex-none",
             )}
           >
