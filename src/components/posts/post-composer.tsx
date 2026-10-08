@@ -35,6 +35,28 @@ export function PostComposer({ parentId = null, beats, loggedIn = true, myUserna
   const [error, setError] = useState<string | null>(null);
 
   const publicBeats = beats.filter((beat) => beat.isPublic);
+
+  /** Лента и пост описывают один бит разными типами — сводим к типу поста. */
+  function toPostBeat(beat: (typeof beats)[number]): Post["beat"] {
+    return {
+      id: beat.id,
+      title: beat.title,
+      bpm: beat.bpm,
+      musicalKey: beat.musicalKey,
+      tags: beat.tags,
+      typeBeatArtists: beat.typeBeatArtists,
+      saleState: beat.saleState,
+      coverUrl: beat.coverUrl,
+      mp3Url: beat.mp3Url,
+      prices: beat.prices,
+      currency: beat.currency,
+      plays: beat.plays,
+      score: beat.score,
+      sellerLevel: beat.sellerLevel,
+      likes: beat.likes,
+      saves: beat.saves,
+    };
+  }
   const tooLong = body.length > POST_BODY_LIMIT;
   const canSend = !busy && !tooLong && (body.trim().length > 0 || beatId !== null);
 
@@ -63,12 +85,14 @@ export function PostComposer({ parentId = null, beats, loggedIn = true, myUserna
        * Отдаём созданный пост наружу. Поля ответа хватает, чтобы показать
        * запись сразу: остальное лента подставит сама.
        */
+      const attached = beatId ? publicBeats.find((item) => item.id === beatId) ?? null : null;
+
       onPosted?.({
         id: data.id ?? "",
         authorId: "",
         parentId,
         body,
-        beat: null,
+        beat: attached ? toPostBeat(attached) : null,
         author: { username: myUsername ?? "?", avatarUrl: null },
         likeCount: 0,
         replyCount: 0,
@@ -123,7 +147,7 @@ export function PostComposer({ parentId = null, beats, loggedIn = true, myUserna
             type="button"
             onClick={() => setBeatId(null)}
             className={cn(
-              "label border px-2.5 py-1.5 transition-colors",
+              "tab border px-3 py-1.5 transition-colors",
               beatId === null ? "border-signal bg-signal text-ink" : "border-line text-mute hover:text-paper",
             )}
           >
@@ -135,7 +159,7 @@ export function PostComposer({ parentId = null, beats, loggedIn = true, myUserna
               type="button"
               onClick={() => setBeatId(beat.id === beatId ? null : beat.id)}
               className={cn(
-                "label max-w-52 truncate border px-2.5 py-1.5 transition-colors",
+                "tab max-w-52 truncate border px-3 py-1.5 transition-colors",
                 beatId === beat.id ? "border-signal bg-signal text-ink" : "border-line text-mute hover:text-paper",
               )}
             >

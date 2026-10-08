@@ -185,8 +185,8 @@ export function NotificationBell() {
       href="/notifications"
       aria-label={t("notifications.title")}
       className={cn(
-        "label relative flex h-8 w-8 items-center justify-center border transition-colors",
-        unread > 0 ? "border-signal text-signal" : "border-line text-mute hover:text-paper",
+        "relative flex size-9 items-center justify-center rounded-full transition-colors",
+        unread > 0 ? "text-signal" : "text-mute hover:bg-ink-3 hover:text-paper",
       )}
     >
       {/* Раньше здесь стоял символ «◔», который рисовался как кружок с

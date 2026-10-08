@@ -276,6 +276,11 @@ export async function fetchPosts(
       .from("posts")
       .select(columns)
       .is("parent_id", null)
+      /*
+       * Первый ключ — активность ветки, второй — время создания. Без второго
+       * пост без ответов (у него last_reply_at пустой до миграции 0033)
+       * уезжал в конец списка, и свежая запись выглядела пропавшей.
+       */
       .order("last_reply_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
