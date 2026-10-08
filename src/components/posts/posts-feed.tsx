@@ -166,7 +166,21 @@ export function PostsFeed({ tab, initial, myBeats, loggedIn, myUsername, onTabCh
 
   return (
     <div className="flex flex-col gap-6">
-      <PostComposer beats={myBeats} loggedIn={loggedIn} myUsername={myUsername} />
+      <PostComposer
+        beats={myBeats}
+        loggedIn={loggedIn}
+        myUsername={myUsername}
+        onPosted={(post) => {
+          /*
+           * Свой пост ставим в ленту сразу, не дожидаясь подписки на таблицу.
+           * Раньше ждали realtime, а он мог не прийти: подписка не
+           * подключилась, страница прокручена — и человек видел, что поле
+           * очистилось, а поста нет. Это читается как поломка публикации.
+           */
+          setLive((prev) => (prev.some((item) => item.id === post.id) ? prev : [post, ...prev]));
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+      />
 
       <div className="flex items-center gap-1">
         {(["all", "following"] as Tab[]).map((item) => (

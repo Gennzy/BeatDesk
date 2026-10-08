@@ -17,6 +17,9 @@ export function BeatCover({
   coverUrl,
   audioUrl,
   title,
+  username,
+  bpm,
+  musicalKey,
   plays,
   className,
 }: {
@@ -24,6 +27,10 @@ export function BeatCover({
   coverUrl: string | null;
   audioUrl: string | null;
   title: string;
+  /** Ник, темп и тональность нужны полноэкранному плееру. */
+  username: string;
+  bpm: number;
+  musicalKey: string;
   plays: number;
   className?: string;
 }) {
@@ -34,15 +41,15 @@ export function BeatCover({
   const beat = {
     id: beatId,
     title,
-    bpm: 0,
-    musicalKey: "",
+    bpm,
+    musicalKey,
     tags: [],
     typeBeatArtists: [],
     coverUrl,
     mp3Url: audioUrl,
     prices: {},
     currency: "RUB",
-    username: "",
+    username,
     avatarUrl: null,
     isPublic: true,
     plays,

@@ -167,6 +167,9 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
                   coverUrl={beat.cover_url}
                   audioUrl={beat.mp3_url}
                   title={beat.title}
+                  username={owner?.username ?? ""}
+                  bpm={beat.bpm}
+                  musicalKey={beat.key}
                   plays={beat.plays ?? 0}
                 />
 

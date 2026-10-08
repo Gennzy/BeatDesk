@@ -78,7 +78,7 @@ export function PlayerFullscreen({ onClose }: { onClose: () => void }) {
           </span>
         </div>
 
-        <Progress value={currentTime} max={duration} onSeek={seek} className="w-full max-w-xl" />
+        <Progress value={currentTime} max={duration} onSeek={seek} size="lg" className="w-full max-w-xl" />
 
         {/* Время уже показано на полосе выше: второй раз выводить не нужно. */}
         <PlayPause isPlaying={isPlaying} onToggle={toggle} size="lg" />

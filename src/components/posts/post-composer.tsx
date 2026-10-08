@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import type { Post } from "@/lib/posts";
+
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
@@ -20,7 +22,7 @@ type Props = {
   /** Показать поле бита. Для ответа прикрепление тоже разрешено. */
   withBeat?: boolean;
   autoFocus?: boolean;
-  onPosted?: () => void;
+  onPosted?: (post: Post) => void;
 };
 
 export function PostComposer({ parentId = null, beats, loggedIn = true, myUsername, withBeat = true, autoFocus = false, onPosted }: Props) {
@@ -47,7 +49,7 @@ export function PostComposer({ parentId = null, beats, loggedIn = true, myUserna
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body, beatId, parentId }),
       });
-      const data = (await response.json()) as { error?: string };
+      const data = (await response.json()) as { error?: string; id?: string; createdAt?: string };
 
       if (!response.ok) {
         setError(data.error ?? t("posts.needText"));
@@ -56,7 +58,24 @@ export function PostComposer({ parentId = null, beats, loggedIn = true, myUserna
 
       setBody("");
       setBeatId(null);
-      onPosted?.();
+
+      /*
+       * Отдаём созданный пост наружу. Поля ответа хватает, чтобы показать
+       * запись сразу: остальное лента подставит сама.
+       */
+      onPosted?.({
+        id: data.id ?? "",
+        authorId: "",
+        parentId,
+        body,
+        beat: null,
+        author: { username: myUsername ?? "?", avatarUrl: null },
+        likeCount: 0,
+        replyCount: 0,
+        likedByMe: false,
+        createdAt: data.createdAt ?? new Date().toISOString(),
+      });
+
       router.refresh();
     } catch {
       setError(t("posts.needText"));
