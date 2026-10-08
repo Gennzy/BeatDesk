@@ -86,8 +86,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
       <div
         className={cn(
-          "pointer-events-none fixed inset-x-0 top-0 z-100 flex flex-col items-center gap-2 px-4",
-          // На телефоне - во всю ширину, на широком экране - колонкой у края,
+          // Отступ сверху равен высоте шапки: уведомление выезжало из-под самой
+          // шапки и накрывало переключатель языка.
+          "pointer-events-none fixed inset-x-0 top-[4.5rem] z-100 flex flex-col items-center gap-2 px-4",
+          // На телефоне во всю ширину, на широком экране — колонкой у края,
           // чтобы не закрывать центр страницы.
           "sm:items-end sm:pr-6",
         )}
@@ -95,7 +97,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {toasts.map((toast) => {
           const inner = (
             <>
-              <span className="flex size-9 shrink-0 items-center justify-center bg-ink-3 text-paper">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-line bg-ink text-paper">
                 {toast.avatar ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={toast.avatar} alt="" loading="lazy" decoding="async" className="size-full object-cover" />

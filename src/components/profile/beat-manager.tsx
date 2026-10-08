@@ -57,7 +57,7 @@ export function BeatManager({
       <div className="grid gap-5 sm:grid-cols-2 2xl:grid-cols-3">
         {beats.map((beat) => (
           <div key={beat.id} className="flex flex-col gap-2">
-            <BeatCard beat={beat} signedIn={isOwner} />
+            <BeatCard beat={beat} signedIn={isOwner} isOwn={isOwner} />
 
             {isOwner ? (
               <div className="flex flex-col gap-2">

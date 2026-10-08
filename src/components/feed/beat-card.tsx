@@ -34,7 +34,15 @@ import { useI18n } from "@/lib/i18n/provider";
  * рисует и серверная страница ленты, и профиль, и без признака входа кнопки
  * реакций молча не работали бы у вошедшего.
  */
-export function BeatCard({ beat, signedIn = false }: { beat: FeedBeat; signedIn?: boolean }) {
+export function BeatCard({
+  beat,
+  signedIn = false,
+  isOwn = false,
+}: {
+  beat: FeedBeat;
+  signedIn?: boolean;
+  isOwn?: boolean;
+}) {
   const { t } = useI18n();
   const { track, isPlaying, play, toggle, plays, currentTime, duration } = usePlayer();
   const ref = useRef<HTMLElement | null>(null);
@@ -121,6 +129,10 @@ export function BeatCard({ beat, signedIn = false }: { beat: FeedBeat; signedIn?
             alt=""
             loading="lazy"
             decoding="async"
+            // Размеры заданы: без них сетка прыгает, пока грузится картинка,
+            // и страница выглядит дёрганой особенно на медленной сети.
+            width={1200}
+            height={1200}
             className="size-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
           />
         ) : (
@@ -228,12 +240,12 @@ export function BeatCard({ beat, signedIn = false }: { beat: FeedBeat; signedIn?
         {artists.length > 0 ? (
           <ul className="flex flex-wrap gap-1">
             {artists.slice(0, 3).map((artist) => (
-              <li key={artist} className="rounded-pill border border-line px-2 py-0.5 text-[11px] text-mute">
+              <li key={artist} className="chip">
                 {artist}
               </li>
             ))}
             {artists.length > 3 ? (
-              <li className="px-1 py-0.5 text-[11px] text-mute/70">+{artists.length - 3}</li>
+              <li className="px-1 text-[11px] text-mute/70">+{artists.length - 3}</li>
             ) : null}
           </ul>
         ) : null}
@@ -241,7 +253,7 @@ export function BeatCard({ beat, signedIn = false }: { beat: FeedBeat; signedIn?
         {looseTags.length > 0 ? (
           <ul className="flex flex-wrap gap-1">
             {looseTags.map((tag) => (
-              <li key={tag} className="rounded-pill border border-line px-2 py-0.5 text-[11px] text-mute">
+              <li key={tag} className="chip">
                 {tag}
               </li>
             ))}
@@ -256,6 +268,7 @@ export function BeatCard({ beat, signedIn = false }: { beat: FeedBeat; signedIn?
             initialLiked={beat.liked}
             initialSaved={beat.saved}
             signedIn={signedIn}
+            isOwn={isOwn}
           />
 
           {/*

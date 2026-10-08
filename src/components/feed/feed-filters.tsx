@@ -71,10 +71,7 @@ function FiltersBar({ search, resultCount, loggedIn }: { search: string; resultC
               type="button"
               onClick={() => apply({ ...filters, sort })}
               aria-pressed={filters.sort === sort}
-              className={cn(
-                "label h-9 px-3 transition-colors",
-                filters.sort === sort ? "bg-signal text-ink" : "text-mute hover:text-paper",
-              )}
+              className="tab"
             >
               {t(`feed.sort${sort[0].toUpperCase()}${sort.slice(1)}` as "feed.sortTop")}
             </button>
@@ -94,10 +91,7 @@ function FiltersBar({ search, resultCount, loggedIn }: { search: string; resultC
                 type="button"
                 onClick={() => apply({ ...filters, scope })}
                 aria-pressed={filters.scope === scope}
-                className={cn(
-                  "label px-2.5 py-1.5 transition-colors",
-                  filters.scope === scope ? "text-paper" : "text-mute hover:text-paper",
-                )}
+                className="tab"
               >
                 {t(`feed.scope${scope[0].toUpperCase()}${scope.slice(1)}` as "feed.scopeAll")}
               </button>
@@ -117,26 +111,20 @@ function FiltersBar({ search, resultCount, loggedIn }: { search: string; resultC
           </Select>
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <Input
-            id="feed-search"
-            scale="sm"
-            value={filters.query}
-            onChange={(event) => setFilters({ ...filters, query: event.target.value })}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") apply(filters);
-            }}
-            placeholder={t("feed.search")}
-            aria-label={t("feed.search")}
-            className="font-mono"
-          />
-
+        {/*
+          Поиска здесь нет: он стоит в шапке по центру. Два одинаковых поля на
+          одном экране читались как ошибка, а не как удобство.
+        */}
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
           <button
             type="button"
             onClick={() => setOpen((value) => !value)}
             aria-expanded={open}
             aria-label={t("feed.filters")}
-            className="label h-9 shrink-0 border border-line px-3 text-mute transition-colors hover:border-line-2 hover:text-paper"
+            className={cn(
+              "label h-9 shrink-0 rounded-pill border px-3.5 transition-colors",
+              open ? "border-line-2 bg-ink-3 text-paper" : "border-line text-mute hover:border-line-2 hover:text-paper",
+            )}
           >
             {t("feed.filters")}
             {active ? <span className="text-signal"> ·</span> : null}

@@ -66,17 +66,12 @@ export default async function NotificationsPage() {
   return (
     <section className="py-14 lg:py-20">
       <Container>
-        <div className="flex flex-col gap-6 border-b border-line pb-8">
-          <span className="flex items-center gap-3">
-            <span aria-hidden className="size-1.5 bg-mute/50" />
-            <span className="label text-mute">{t("notifications.title")}</span>
-          </span>
-          <h1 className="font-display text-section font-black text-paper uppercase">{t("notifications.title")}</h1>
+        <div className="flex flex-col gap-5 pb-6">
+          <h1 className="font-display text-title font-black text-paper uppercase">{t("notifications.title")}</h1>
+          <p className="text-sm text-mute">{t("notifications.subtitle")}</p>
         </div>
 
-        <div className="pt-8">
-          <NotificationsList initial={initial} />
-        </div>
+        <NotificationsList initial={initial} />
       </Container>
     </section>
   );

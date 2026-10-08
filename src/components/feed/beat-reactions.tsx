@@ -23,7 +23,7 @@ export function BeatReactions({
   initialLiked,
   initialSaved,
   signedIn,
-  compact = false,
+  isOwn = false,
 }: {
   beatId: string;
   initialLikes: number;
@@ -31,7 +31,8 @@ export function BeatReactions({
   initialLiked: boolean;
   initialSaved: boolean;
   signedIn: boolean;
-  compact?: boolean;
+  /** Свой бит: кнопки гасятся, потому что лайк самому себе ничего не даёт. */
+  isOwn?: boolean;
 }) {
   const { t } = useI18n();
   const toast = useToast();
@@ -43,6 +44,13 @@ export function BeatReactions({
   const [busy, setBusy] = useState(false);
 
   async function react(kind: "like" | "save") {
+    /*
+     * Свой бит реагировать нельзя, и раньше об этом сообщала ошибка от
+     * сервера: человек нажимал, оптимистичный счётчик менялся и тут же
+     * откатывался. Кнопки просто гасятся — это честнее и не пугает ошибкой.
+     */
+    if (isOwn) return;
+
     if (!signedIn) {
       // Гостю нажатие не откатывается молча: понятно, что нужно войти.
       toast.show({ icon: "bell", title: t("react.signInTitle"), body: t("react.signInBody"), href: "/login" });
@@ -99,7 +107,7 @@ export function BeatReactions({
     }
   }
 
-  const size = compact ? "size-7 text-[11px]" : "size-8 text-xs";
+  const size = "size-8 text-xs";
 
   return (
     <div className="flex items-center gap-1">
@@ -107,12 +115,14 @@ export function BeatReactions({
         type="button"
         onClick={() => void react("like")}
         aria-pressed={liked}
+        disabled={isOwn}
         aria-label={t("react.like")}
-        title={t("react.like")}
+        title={isOwn ? t("react.own") : t("react.like")}
         className={cn(
-          "flex items-center gap-1.5 rounded-pill px-2 transition-colors",
+          "flex items-center gap-1.5 rounded-full px-2.5 transition-colors",
           size,
-          liked ? "bg-signal/15 text-signal" : "text-mute hover:text-paper",
+          liked ? "bg-signal/15 text-signal" : "text-mute hover:bg-ink-3 hover:text-paper",
+          isOwn && "cursor-default opacity-40",
         )}
       >
         <Icon name="heart" className="size-3.5" filled={liked} />
@@ -123,12 +133,14 @@ export function BeatReactions({
         type="button"
         onClick={() => void react("save")}
         aria-pressed={saved}
+        disabled={isOwn}
         aria-label={t("react.save")}
-        title={t("react.save")}
+        title={isOwn ? t("react.own") : t("react.save")}
         className={cn(
-          "flex items-center gap-1.5 rounded-pill px-2 transition-colors",
+          "flex items-center gap-1.5 rounded-full px-2.5 transition-colors",
           size,
-          saved ? "bg-signal/15 text-signal" : "text-mute hover:text-paper",
+          saved ? "bg-signal/15 text-signal" : "text-mute hover:bg-ink-3 hover:text-paper",
+          isOwn && "cursor-default opacity-40",
         )}
       >
         <Icon name="bookmark" className="size-3.5" filled={saved} />

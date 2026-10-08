@@ -6,17 +6,32 @@ import { cn } from "@/lib/cn";
 type Variant = "signal" | "ink" | "ghost";
 type Size = "sm" | "md" | "lg";
 
+/**
+ * Кнопка.
+ *
+ * Форма одинаковая на всех трёх размерах: раньше скругление задавалось здесь
+ * как rounded-xs, а в разметке дописывались rounded-pill, и две кнопки рядом
+ * выглядели разными инструментами.
+ *
+ * Нажатие слегка приседает — на чёрном без этого кнопка кажется неотзывчивой,
+ * потому что цвет мгновенно не меняется.
+ */
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-xs font-display uppercase tracking-[0.14em] whitespace-nowrap transition-colors duration-150 select-none disabled:pointer-events-none disabled:opacity-40";
+  "inline-flex items-center justify-center gap-2 font-display uppercase tracking-[0.14em] whitespace-nowrap " +
+  "transition-[background-color,border-color,color,transform,box-shadow] duration-150 select-none " +
+  "active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40";
 
 const variants: Record<Variant, string> = {
-  signal: "bg-signal text-ink hover:bg-paper",
-  ink: "border border-line bg-ink-2 text-paper hover:border-line-2 hover:bg-ink-3",
-  ghost: "text-mute hover:text-paper",
+  // Главное действие. Светлая заливка даёт глубину и поднимает кнопку над
+  // тёмным фоном без всякой тени.
+  signal: "rounded-pill bg-signal text-ink hover:bg-paper",
+  // Обычное действие: та же форма, но рамка и подложка отделяют её от фона.
+  ink: "rounded-pill border border-line-2 bg-ink-2 text-paper hover:border-line-2 hover:bg-ink-3",
+  ghost: "rounded-pill text-mute hover:bg-ink-2 hover:text-paper",
 };
 
 const sizes: Record<Size, string> = {
-  sm: "h-8 px-3 text-[11px]",
+  sm: "h-8 px-3.5 text-[11px]",
   md: "h-11 px-5 text-xs",
   lg: "h-14 px-7 text-sm",
 };
