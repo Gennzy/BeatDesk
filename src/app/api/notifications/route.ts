@@ -20,7 +20,8 @@ export type NotificationKind =
   | "beat_published"
   | "review"
   | "order_ready"
-  | "beat_comment";
+  | "beat_comment"
+  | "follow_beat";
 
 export type Notification = {
   id: string;

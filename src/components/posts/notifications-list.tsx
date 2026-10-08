@@ -32,7 +32,8 @@ type Row = {
     | "notifications.beatPublished"
     | "notifications.review"
     | "notifications.orderReady"
-    | "notifications.beatComment";
+    | "notifications.beatComment"
+    | "notifications.followBeat";
   href: (item: Notification) => string;
 };
 
@@ -48,6 +49,7 @@ const KINDS: Record<NotificationKind, Row> = {
   review: { icon: "heart", from: "person", label: "notifications.review", href: (item) => (item.beatId ? `/beats/${item.beatId}` : "/notifications") },
   order_ready: { icon: "download", from: "system", label: "notifications.orderReady", href: (item) => (item.orderId ? `/orders/${item.orderId}` : "/notifications") },
   beat_comment: { icon: "reply", from: "person", label: "notifications.beatComment", href: (item) => (item.beatId ? `/beats/${item.beatId}#comments` : "/notifications") },
+  follow_beat: { icon: "waveform", from: "person", label: "notifications.followBeat", href: (item) => (item.beatId ? `/beats/${item.beatId}` : "/notifications") },
 };
 
 type Filter = "all" | "sales" | "social";
