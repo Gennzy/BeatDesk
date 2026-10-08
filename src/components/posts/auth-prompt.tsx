@@ -33,7 +33,7 @@ export function AuthPrompt({ nextPath, username, action }: Props) {
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-6">
       <div className="pointer-events-auto flex w-full max-w-md flex-col gap-3 border border-signal/40 bg-ink-2 p-5 shadow-[0_20px_60px_rgba(0,0,0,.6)]">
         <div className="flex items-center gap-3">
-          <span aria-hidden className="size-1.5 bg-signal" />
+          <span aria-hidden className="size-1.5 bg-mute/50" />
           <p className="font-display text-sm text-paper uppercase">{TITLES[action]}</p>
         </div>
 

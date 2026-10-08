@@ -153,7 +153,7 @@ export function PostsFeed({ tab, initial, myBeats, loggedIn, myUsername, onTabCh
     return (
       <div className="flex flex-col items-start gap-5 border border-line bg-ink-2 p-6">
         <div className="flex items-center gap-3">
-          <span aria-hidden className="size-1.5 bg-signal" />
+          <span aria-hidden className="size-1.5 bg-mute/50" />
           <span className="label text-paper">{t("posts.gatedTitle")}</span>
         </div>
         <p className="max-w-[52ch] text-sub text-mute">{t("posts.gatedHint")}</p>

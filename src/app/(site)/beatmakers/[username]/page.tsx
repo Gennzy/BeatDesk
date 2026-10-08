@@ -163,7 +163,7 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
                       href={links[key]}
                       target="_blank"
                       rel="noreferrer noopener"
-                      className="label text-paper underline-offset-4 transition-colors hover:text-signal hover:underline"
+                      className="label text-paper underline-offset-4 transition-colors hover:text-bright hover:underline"
                     >
                       {PLATFORM_LABELS[key]}
                     </a>

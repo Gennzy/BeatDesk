@@ -68,7 +68,7 @@ export function ProfileStats({ username, avatarUrl, bio, beats, followers, posts
               "min-w-48 flex-1 sm:flex-none",
             )}
           >
-            <span className="label text-paper transition-colors group-hover:text-signal">{card.label}</span>
+            <span className="label text-paper transition-colors group-hover:text-bright">{card.label}</span>
             <span className="text-[11px] text-mute">{card.hint}</span>
           </Link>
         ))}

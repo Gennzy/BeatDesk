@@ -157,9 +157,9 @@ export function ShareBoard({ beats, channels, published }: Props) {
       {error ? <p className="label text-amber">{error}</p> : null}
 
       {results ? (
-        <div className="flex flex-col gap-3 border border-signal/30 bg-ink-2 p-5">
+        <div className="flex flex-col gap-3 border border-line-2 bg-ink-2 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="label text-signal">
+            <span className="label text-paper">
               {t("sharing.done")} · {results.length - failures.length}/{results.length}
             </span>
             {failures.length > 0 ? (
@@ -261,7 +261,7 @@ export function ShareBoard({ beats, channels, published }: Props) {
                           href={post.externalUrl}
                           target="_blank"
                           rel="noreferrer noopener"
-                          className="label border border-signal/40 px-2 py-1 text-signal"
+                          className="label border border-line-2 px-2 py-1 text-paper"
                         >
                           {platform.label}
                         </a>

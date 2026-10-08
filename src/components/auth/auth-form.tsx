@@ -145,7 +145,7 @@ export function AuthForm({ nextPath = "/" }: { nextPath?: string }) {
       </Field>
 
       {status.kind === "error" ? <p className="label leading-relaxed text-amber">{status.message}</p> : null}
-      {status.kind === "checkEmail" ? <p className="label leading-relaxed text-signal">{t("auth.checkEmail")}</p> : null}
+      {status.kind === "checkEmail" ? <p className="label leading-relaxed text-paper">{t("auth.checkEmail")}</p> : null}
 
       <Button type="submit" size="lg" disabled={status.kind === "loading" || !configured}>
         {t(`auth.${mode}` as "auth.signIn" | "auth.signUp")}
@@ -186,7 +186,7 @@ export function AuthForm({ nextPath = "/" }: { nextPath?: string }) {
             setMode(mode === "signIn" ? "signUp" : "signIn");
             setStatus({ kind: "idle" });
           }}
-          className="text-signal underline-offset-4 hover:underline"
+          className="text-paper underline-offset-4 hover:underline"
         >
           {mode === "signIn" ? t("login.toSignup") : t("login.toLogin")}
         </button>

@@ -74,9 +74,9 @@ export function ReviewForm({
 
   if (done) {
     return (
-      <div className="flex items-center gap-2 border border-signal/40 bg-signal/10 px-3 py-2">
-        <Icon name="check" className="size-4 text-signal" />
-        <span className="text-xs text-signal">{t("review.sent")}</span>
+      <div className="flex items-center gap-2 border border-line-2 bg-ink-3 px-3 py-2">
+        <Icon name="check" className="size-4 text-paper" />
+        <span className="text-xs text-paper">{t("review.sent")}</span>
       </div>
     );
   }

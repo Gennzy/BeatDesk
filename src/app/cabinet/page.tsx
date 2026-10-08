@@ -158,7 +158,7 @@ export default async function CabinetPage() {
                     className="group flex items-baseline justify-between gap-4 border-b border-line py-3.5 transition-colors hover:bg-ink-2"
                   >
                     <span className="flex min-w-0 flex-col gap-1">
-                      <span className="truncate text-sm text-paper transition-colors group-hover:text-signal">
+                      <span className="truncate text-sm text-paper transition-colors group-hover:text-bright">
                         {row.beat_title}
                       </span>
                       <span className="label text-mute">{tierLabel(row.tier)}</span>
@@ -187,7 +187,7 @@ export default async function CabinetPage() {
                     <Icon name={tool.icon} className="size-4" />
                   </span>
                   <span className="flex flex-col gap-0.5">
-                    <span className="label text-paper transition-colors group-hover:text-signal">
+                    <span className="label text-paper transition-colors group-hover:text-bright">
                       {t(tool.label)}
                     </span>
                     <span className="text-[11px] text-mute">{t(tool.hint)}</span>

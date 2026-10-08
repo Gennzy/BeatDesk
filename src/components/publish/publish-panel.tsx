@@ -141,7 +141,7 @@ export function PublishPanel({ beatId, connections, botReady, posts }: Props) {
           <section key={group} className="flex flex-col gap-6">
             <header className="flex flex-col gap-2 border-b border-line pb-4">
               <div className="flex flex-wrap items-center gap-3">
-                <span aria-hidden className="size-1.5 bg-signal" />
+                <span aria-hidden className="size-1.5 bg-mute/50" />
                 <span className="label text-paper">{GROUP_LABELS[group]}</span>
               </div>
               <p className="max-w-[76ch] text-sm leading-relaxed text-mute">{GROUP_HINTS[group]}</p>
@@ -173,7 +173,7 @@ export function PublishPanel({ beatId, connections, botReady, posts }: Props) {
                     key={platform.id}
                     className={cn(
                       "flex flex-col gap-4 border bg-ink-2 p-5",
-                      isConnected ? "border-signal/30" : "border-line",
+                      isConnected ? "border-line-2" : "border-line",
                     )}
                   >
                     <div className="flex items-start justify-between gap-4">
@@ -182,7 +182,7 @@ export function PublishPanel({ beatId, connections, botReady, posts }: Props) {
                         <span
                           className={cn(
                             "label",
-                            platform.level === "live" ? "text-signal" : "text-amber",
+                            platform.level === "live" ? "text-paper" : "text-amber",
                           )}
                         >
                           {LEVEL_LABELS[platform.level]}
@@ -220,7 +220,7 @@ export function PublishPanel({ beatId, connections, botReady, posts }: Props) {
                     {platform.kind === "api" && platform.fields ? (
                       connection ? (
                         <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
-                          <span className="label text-signal">{t("publish.connected")}</span>
+                          <span className="label text-paper">{t("publish.connected")}</span>
                           <button
                             type="button"
                             onClick={() => void disconnect(platform.id)}
@@ -275,7 +275,7 @@ export function PublishPanel({ beatId, connections, botReady, posts }: Props) {
                     ) : null}
 
                     {result ? (
-                      <p className={result.ok ? "label text-signal" : "label text-amber"}>
+                      <p className={result.ok ? "label text-paper" : "label text-amber"}>
                         {result.url ? (
                           <a href={result.url} target="_blank" rel="noreferrer noopener" className="underline-offset-4 hover:underline">
                             {result.message}
@@ -303,7 +303,7 @@ export function PublishPanel({ beatId, connections, botReady, posts }: Props) {
                 <span className="label text-paper">
                   {platformsByGroup("broadcast").find((item) => item.id === post.platform)?.label ?? post.platform}
                 </span>
-                <span className={post.status === "published" ? "label text-signal" : "label text-amber"}>
+                <span className={post.status === "published" ? "label text-paper" : "label text-amber"}>
                   {post.status === "published" ? t("publish.sent") : (post.error ?? t("publish.error"))}
                 </span>
                 <span className="label text-mute">{absoluteDateTime(post.createdAt, "ru")}</span>

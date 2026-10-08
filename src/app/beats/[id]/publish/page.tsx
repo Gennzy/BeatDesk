@@ -53,7 +53,7 @@ export default async function PublishPage({ params }: { params: Promise<{ id: st
       <Container>
         <div className="flex flex-col gap-6 border-b border-line pb-8">
           <span className="flex items-center gap-3">
-            <span aria-hidden className="size-1.5 bg-signal" />
+            <span aria-hidden className="size-1.5 bg-mute/50" />
             <span className="label text-mute">{t("publish.title")}</span>
           </span>
 

@@ -270,7 +270,7 @@ export function EditBeatForm({ beat }: Props) {
 
       <Switch label={t("upload.publish")} hint={t("upload.publishHint")} name="isPublic" defaultChecked={beat.isPublic} />
 
-      {message ? <p className={state === "error" ? "label text-amber" : "label text-signal"}>{message}</p> : null}
+      {message ? <p className={state === "error" ? "label text-amber" : "label text-paper"}>{message}</p> : null}
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" size="lg" disabled={state === "saving"}>

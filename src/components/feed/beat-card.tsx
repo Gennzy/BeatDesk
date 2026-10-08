@@ -131,7 +131,7 @@ export function BeatCard({ beat }: { beat: FeedBeat }) {
       <div className="flex flex-1 flex-col gap-3 p-4">
         <div className="flex flex-col gap-2">
           <Link href={`/beats/${beat.id}`} className="group/title focusable w-fit">
-            <h3 className="font-display text-lg leading-tight tracking-tight text-paper uppercase transition-colors group-hover/title:text-signal">
+            <h3 className="font-display text-lg leading-tight tracking-tight text-paper uppercase transition-colors">
               {beat.title}
             </h3>
           </Link>

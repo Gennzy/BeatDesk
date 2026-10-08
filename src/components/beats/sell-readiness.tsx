@@ -54,7 +54,7 @@ export function SellReadiness({ prices, title, tags, roles }: Props) {
   return (
     <section className="flex flex-col gap-4 border-t border-line pt-6">
       <div className="flex items-center gap-3">
-        <span aria-hidden className="size-1.5 bg-signal" />
+        <span aria-hidden className="size-1.5 bg-mute/50" />
         <span className="label text-mute">{t("readiness.title")}</span>
       </div>
 

@@ -80,7 +80,7 @@ export async function Reviews({
 
         {rated ? (
           <span className="flex items-baseline gap-2">
-            <Stars rating={Math.round(summary.average ?? 0)} className="text-signal" />
+            <Stars rating={Math.round(summary.average ?? 0)} className="text-paper" />
             <span className="font-mono text-sm text-paper tabular-nums">{(summary.average ?? 0).toFixed(1)}</span>
             <span className="label text-mute">
               {summary.count} {locale === "ru" ? pluralRu(summary.count, "отзыв", "отзыва", "отзывов") : "reviews"}

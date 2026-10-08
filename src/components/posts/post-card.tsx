@@ -96,7 +96,7 @@ export function PostCard({ post, loggedIn = true, depth = 0, inThread = false }:
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <Link
             href={`/beatmakers/${post.author.username}`}
-            className="font-display text-sm text-paper uppercase hover:text-signal"
+            className="font-display text-sm text-paper uppercase hover:text-bright"
           >
             {post.author.username}
           </Link>
@@ -129,7 +129,7 @@ export function PostCard({ post, loggedIn = true, depth = 0, inThread = false }:
             {beat.prices.mp3 ? (
               <span className="flex shrink-0 items-baseline gap-1.5">
                 <span className="label text-mute">{t("posts.from")}</span>
-                <span className="font-display text-lg leading-none text-signal">{formatMoney(beat.prices.mp3, beat.currency)}</span>
+                <span className="font-display text-lg leading-none text-amber">{formatMoney(beat.prices.mp3, beat.currency)}</span>
               </span>
             ) : null}
           </Link>

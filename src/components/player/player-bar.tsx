@@ -32,7 +32,7 @@ export function PlayerBar() {
             <div className="min-w-0">
               <Link
                 href={`/beats/${track.id}`}
-                className="block truncate font-display text-sm uppercase text-paper hover:text-signal"
+                className="block truncate font-display text-sm uppercase text-paper hover:text-bright"
               >
                 {track.title}
               </Link>

@@ -37,10 +37,10 @@ export function Achievements({ list }: { list: Achievement[] }) {
           {unlocked.map((achievement) => (
             <li
               key={achievement.id}
-              className="border border-signal/40 bg-signal/10 px-3 py-2"
+              className="border border-line-2 bg-ink-3 px-3 py-2"
               title={t(achievement.titleKey as "ach.firstBeat.title")}
             >
-              <span className="label text-signal">{t(achievement.titleKey as "ach.firstBeat.title")}</span>
+              <span className="label text-paper">{t(achievement.titleKey as "ach.firstBeat.title")}</span>
             </li>
           ))}
         </ul>

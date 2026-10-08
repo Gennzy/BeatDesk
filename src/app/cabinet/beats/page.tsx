@@ -65,7 +65,7 @@ export default async function CabinetBeatsPage() {
                   </div>
 
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <Link href={`/beats/${beat.id}`} className="truncate text-sm text-paper hover:text-signal">
+                    <Link href={`/beats/${beat.id}`} className="truncate text-sm text-paper hover:text-bright">
                       {beat.title}
                     </Link>
                     <span className="label text-mute">
@@ -85,7 +85,7 @@ export default async function CabinetBeatsPage() {
                     is_public, и проданный эксклюзивом бит выглядел в списке
                     так же, как лежащий на витрине.
                   */}
-                  <span className={beat.saleState === "sold_exclusive" ? "label text-signal" : "label text-mute"}>
+                  <span className={beat.saleState === "sold_exclusive" ? "label text-paper" : "label text-mute"}>
                     {SALE_STATE_LABELS[beat.saleState]}
                   </span>
 

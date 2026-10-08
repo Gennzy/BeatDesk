@@ -182,7 +182,7 @@ export function ConnectionsBoard({ connected, platforms, groups, oauthReturn }: 
           <section key={group} className="flex flex-col gap-6">
             <header className="flex flex-col gap-2 border-b border-line pb-4">
               <div className="flex items-center gap-3">
-                <span aria-hidden className="size-1.5 bg-signal" />
+                <span aria-hidden className="size-1.5 bg-mute/50" />
                 <span className="label text-paper">{GROUP_LABELS[group]}</span>
               </div>
               <p className="max-w-[68ch] text-sub text-mute">{t(`connections.groupHint.${group}` as "connections.groupHint.broadcast")}</p>

@@ -16,8 +16,8 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
         <Container>
           <div className="flex min-h-svh flex-col justify-center gap-6 py-24">
             <span className="flex items-center gap-3">
-              <span aria-hidden className="size-1.5 bg-signal" />
-              <span className="label text-signal">Ошибка 500</span>
+              <span aria-hidden className="size-1.5 bg-mute/50" />
+              <span className="label text-mute">Ошибка 500</span>
             </span>
             <h1 className="max-w-[18ch] font-display text-section font-black text-paper uppercase">
               Что-то сломалось на нашей стороне

@@ -68,7 +68,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <HeroIntro>
             <div data-scene className="relative flex min-w-0 flex-col gap-10">
               <span data-fade className="flex items-center gap-3">
-                <span aria-hidden className="size-1.5 bg-signal" />
+                <span aria-hidden className="size-1.5 bg-mute/50" />
                 <span className="label text-paper">{t("auth.signIn")} / {t("auth.signUp")}</span>
               </span>
 
@@ -89,7 +89,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
                   >
                     <span
                       aria-hidden
-                      className="mt-0.5 grid size-9 shrink-0 place-items-center border border-line/70 text-signal"
+                      className="mt-0.5 grid size-9 shrink-0 place-items-center border border-line/70 text-mute"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" className="size-4.5">
                         {benefit.icon}

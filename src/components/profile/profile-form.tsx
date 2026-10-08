@@ -241,7 +241,7 @@ export function ProfileForm({ userId, profile }: { userId: string; profile: Prof
         <Button type="submit" size="lg" disabled={state === "saving"}>
           {t("profile.save")}
         </Button>
-        {state === "saved" ? <span className="label text-signal">{t("profile.saved")}</span> : null}
+        {state === "saved" ? <span className="label text-paper">{t("profile.saved")}</span> : null}
         {state === "error" ? <span className="label text-amber">{t("profile.saveError")}</span> : null}
         <Link href={`/beatmakers/${profile.username}`} className="label text-mute underline-offset-4 hover:text-paper hover:underline">
           {t("nav.feed")}

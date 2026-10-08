@@ -129,7 +129,7 @@ export function NotificationsList({ initial }: { initial: Notification[] }) {
               <span
                 className={cn(
                   "flex size-9 shrink-0 items-center justify-center",
-                  item.readAt ? "bg-ink-3 text-mute" : "bg-signal/15 text-signal",
+                  item.readAt ? "bg-ink-3 text-mute" : "bg-ink-3 text-paper",
                 )}
               >
                 {item.actorAvatar ? (

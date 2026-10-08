@@ -34,7 +34,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
       <Container>
         <div className="flex flex-col gap-6 border-b border-line pb-8">
           <span className="flex items-center gap-3">
-            <span aria-hidden className="size-1.5 bg-signal" />
+            <span aria-hidden className="size-1.5 bg-mute/50" />
             <span className="label text-mute">{t("posts.thread")}</span>
           </span>
           <h1 className="font-display text-section font-black text-paper uppercase">{thread.root.author.username}</h1>

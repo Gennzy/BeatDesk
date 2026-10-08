@@ -98,7 +98,7 @@ export function BeatAssistant({ beat, hasStems, hasWav, onApply }: Props) {
                     onClick={() => onApply({ title })}
                     className={cn(
                       "border border-line-2 px-3 py-1.5 text-sm text-paper transition-colors",
-                      "hover:border-signal",
+                      "hover:border-line-2",
                     )}
                   >
                     {title}

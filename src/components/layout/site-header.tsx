@@ -186,7 +186,7 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
                     {t("connections.title")}
                   </Link>
                   <form action={signOut} className="py-5">
-                    <button type="submit" className="font-display text-lg uppercase text-signal">
+                    <button type="submit" className="font-display text-lg uppercase text-paper">
                       {t("auth.logOut")}
                     </button>
                   </form>
@@ -196,7 +196,7 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
                   <Link href="/login" onClick={close} className="py-5 font-display text-lg uppercase text-paper">
                     {t("nav.login")}
                   </Link>
-                  <Link href="/login" onClick={close} className="py-5 font-display text-lg uppercase text-signal">
+                  <Link href="/login" onClick={close} className="py-5 font-display text-lg uppercase text-paper">
                     {t("nav.signup")}
                   </Link>
                 </>

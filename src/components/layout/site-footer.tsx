@@ -19,17 +19,20 @@ export async function SiteFooter({ user }: { user: SessionUser | null }) {
 
           <div className="flex flex-col gap-4">
             <span className="label text-mute">{t("footer.nav")}</span>
-            <Link href="/" className="text-sm text-paper transition-colors hover:text-signal">
+            <Link href="/" className="text-sm text-paper transition-colors hover:text-paper">
               {t("nav.feed")}
             </Link>
-            <Link href="/cabinet" className="text-sm text-paper transition-colors hover:text-signal">
-              {t("nav.cabinet")}
-            </Link>
-            {!user ? (
-              <Link href="/login" className="text-sm text-paper transition-colors hover:text-signal">
+            {/* Кабинет гостю не показываем: он отправляет на вход, и ссылка
+                в подвале была бы обещанием, которого не выполнится. */}
+            {user ? (
+              <Link href="/cabinet" className="text-sm text-paper transition-colors hover:text-paper">
+                {t("nav.cabinet")}
+              </Link>
+            ) : (
+              <Link href="/login" className="text-sm text-paper transition-colors hover:text-paper">
                 {t("nav.login")}
               </Link>
-            ) : null}
+            )}
           </div>
 
           <div className="flex flex-col gap-4 md:items-end md:text-right">

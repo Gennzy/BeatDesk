@@ -237,7 +237,7 @@ function Card({
   return (
     <section className="flex flex-col gap-5 border border-line bg-ink-2 p-6">
       <div className="flex items-baseline gap-3 border-b border-line pb-4">
-        <span aria-hidden className="size-1.5 bg-signal" />
+        <span aria-hidden className="size-1.5 bg-mute/50" />
         <span className="label text-mute">{label}</span>
         {note ? <span className="label ml-auto text-mute">{note}</span> : null}
       </div>

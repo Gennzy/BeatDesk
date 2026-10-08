@@ -60,7 +60,7 @@ export default async function ProfilePage() {
     <section className="py-14 lg:py-20">
       <Container>
         <span className="flex items-center gap-3">
-          <span aria-hidden className="size-1.5 bg-signal" />
+          <span aria-hidden className="size-1.5 bg-mute/50" />
           <span className="label text-mute">{t("profile.edit")}</span>
         </span>
 

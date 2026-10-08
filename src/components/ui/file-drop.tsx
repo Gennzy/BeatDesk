@@ -76,7 +76,7 @@ export function FileDrop({ label, hint, prompt, accept, format, selected, error,
       >
         {selected ? (
           <>
-            <span className="truncate font-display text-sm text-signal uppercase">{selected.name}</span>
+            <span className="truncate font-display text-sm text-paper uppercase">{selected.name}</span>
             <span className="label text-mute">{formatSize(selected.size)}</span>
           </>
         ) : (

@@ -305,7 +305,7 @@ export function UploadForm({ userId }: { userId: string }) {
               {status === "uploading" ? t("upload.submitting") : t("upload.submit")}
             </Button>
             {status === "uploading" && step ? (
-              <span className="label max-w-72 truncate text-signal">{step}</span>
+              <span className="label max-w-72 truncate text-paper">{step}</span>
             ) : status === "uploading" ? (
               <span className="label animate-pulse text-signal">{t("upload.submitting")}</span>
             ) : null}
