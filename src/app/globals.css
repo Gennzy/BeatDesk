@@ -454,6 +454,30 @@
   }
 }
 
+/*
+ * Появление карточек ленты.
+ *
+ * Задержка задаётся переменной --rise-index, и карточки входят одна за
+ * другой. Это читается как собранная сетка, а не как одновременно
+ * вывалившийся список. Раньше для того же лежал GSAP-компонент, которым
+ * никто не пользовался: на одну анимацию стилей достаточно.
+ */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: rise var(--duration-slow) var(--ease-out) both;
+  animation-delay: calc(var(--rise-index, 0) * 45ms);
+}
+
 @keyframes shimmer {
   to {
     background-position: -200% 0;

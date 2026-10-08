@@ -18,8 +18,8 @@ export function EmptyState({
   action?: { label: string; href: string };
 }) {
   return (
-    <div className="signal-rail flex flex-col items-start gap-4 py-14 pl-6">
-      <span aria-hidden className="size-2 bg-signal" />
+    <div className="panel flex flex-col items-start gap-4 px-6 py-10">
+      <span aria-hidden className="size-1.5 bg-mute/50" />
       <h3 className="font-display text-title uppercase text-paper">{title}</h3>
       <p className="max-w-[46ch] text-sub text-mute">{description}</p>
       {action ? (
@@ -33,8 +33,8 @@ export function EmptyState({
 
 export function ErrorState({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-start gap-4 border border-amber/30 bg-amber/5 py-10 px-6">
-      <span className="label text-amber">Ошибка / error</span>
+    <div className="flex flex-col items-start gap-4 rounded-lg border border-amber/30 bg-amber/5 px-6 py-10">
+      <span className="label text-amber">Ошибка</span>
       <h3 className="font-display text-title uppercase text-paper">{title}</h3>
       <p className="max-w-[46ch] text-sm text-mute">{description}</p>
       {action}

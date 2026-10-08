@@ -67,8 +67,13 @@ export function FeedList({ initial, initialNextOffset, filters, signedIn }: Prop
   return (
     <div className="flex flex-col gap-8">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {beats.map((beat) => (
-          <BeatCard key={beat.id} beat={beat} signedIn={signedIn} />
+        {beats.map((beat, index) => (
+          // Индекс появления считается по позиции внутри первой порции:
+          // на догруженных страницах он не растёт до сотни, и задержка не
+          // превращается в минуту ожидания.
+          <div key={beat.id} className="rise" style={{ "--rise-index": index % 12 } as React.CSSProperties}>
+            <BeatCard beat={beat} signedIn={signedIn} />
+          </div>
         ))}
       </div>
 
