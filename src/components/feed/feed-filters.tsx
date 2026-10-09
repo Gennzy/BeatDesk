@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { Input, Select } from "@/components/ui/input";
+import { GENRE_SLUGS } from "@/lib/beat-validation";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n/provider";
 import type { FeedScope } from "@/lib/feed-filters";
@@ -24,6 +25,53 @@ export function FeedFiltersBar({ resultCount, loggedIn }: { resultCount: number;
       resultCount={resultCount}
       loggedIn={loggedIn}
     />
+  );
+}
+
+/**
+ * Жанровые чипы.
+ *
+ * Вынесены отдельно, потому что это единственный фильтр, который виден без
+ * клика, и у него своё поведение: повторный клик по активному жанру
+ * снимает его, а не выбирает заново. Иначе «вернуть всё обратно» стоило бы
+ * двух кликов и одного захода в панель.
+ */
+function GenreChips({ current, onPick }: { current: string; onPick: (genre: string) => void }) {
+  const { t } = useI18n();
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => onPick("")}
+        aria-pressed={current === ""}
+        className={cn(
+          "h-8 rounded-pill border px-3 text-[13px] transition-colors",
+          current === ""
+            ? "border-accent/40 bg-accent/12 text-paper"
+            : "border-line text-mute hover:border-line-2 hover:text-paper",
+        )}
+      >
+        {t("genre.all")}
+      </button>
+
+      {GENRE_SLUGS.map((slug) => (
+        <button
+          key={slug}
+          type="button"
+          onClick={() => onPick(current === slug ? "" : slug)}
+          aria-pressed={current === slug}
+          className={cn(
+            "h-8 rounded-pill border px-3 text-[13px] transition-colors",
+            current === slug
+              ? "border-accent/40 bg-accent/12 text-paper"
+              : "border-line text-mute hover:border-line-2 hover:text-paper",
+          )}
+        >
+          {t(`genre.${slug}` as "genre.trap")}
+        </button>
+      ))}
+    </>
   );
 }
 
@@ -57,7 +105,7 @@ function FiltersBar({ search, resultCount, loggedIn }: { search: string; resultC
 
   const active =
     filters.sort !== "top" ||
-    Boolean(filters.query.trim() || filters.key || filters.bpmMin || filters.bpmMax);
+    Boolean(filters.query.trim() || filters.key || filters.genre || filters.bpmMin || filters.bpmMax);
 
   const count =
     locale === "ru"
@@ -148,6 +196,16 @@ function FiltersBar({ search, resultCount, loggedIn }: { search: string; resultC
         ) : null}
 
         <span className="label ml-auto hidden shrink-0 text-mute sm:inline">{count}</span>
+      </div>
+
+      {/*
+        Жанр живёт здесь, а не в раскрывающейся панели. По жанру ищут
+        первым делом, и прятать его за кнопкой «Фильтры» — значит сделать
+        главный способ навигации второстепенным. Тональность и темп остались
+        внутри: их выбирают реже и по умолчанию оставляют пустыми.
+      */}
+      <div className="flex flex-wrap items-center gap-1.5 pb-4">
+        <GenreChips current={filters.genre} onPick={(genre) => apply({ ...filters, genre })} />
       </div>
 
       {open ? (

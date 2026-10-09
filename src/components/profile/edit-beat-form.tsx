@@ -5,6 +5,7 @@ import { CURRENCIES, DEFAULT_CURRENCY, formatMoney, isCurrency, type CurrencyCod
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import { GenreSelect } from "@/components/beat/genre-select";
 import { BeatAssistant } from "@/components/beats/beat-assistant";
 import { SellReadiness } from "@/components/beats/sell-readiness";
 import { CurrencyPicker } from "@/components/profile/currency-picker";
@@ -14,6 +15,7 @@ import { KeyPicker } from "@/components/ui/key-picker";
 import { Switch } from "@/components/ui/switch";
 import type { FeedBeat } from "@/lib/feed";
 import { compressImage } from "@/lib/image";
+import type { GenreSlug } from "@/lib/beat-validation";
 import type { TierId } from "@/lib/audio/delivery-rules";
 import { beatRoles } from "@/lib/beats";
 import { applyDiscount, emptyPrices, parsePrice as toPrice, normalizeDiscount } from "@/lib/prices";
@@ -36,6 +38,8 @@ type Props = {
     hasWav: boolean;
     /** Роли файлов в бите: "mp3", "wav", "stems", "artwork". */
     fileRoles: string[];
+    /** Жанр бита: null — без жанра. */
+    genre: GenreSlug | null;
     /** Действующая скидка в процентах: ноль — скидки нет. */
     discountPercent: number;
     /** Цены до скидки, для зачёркивания. Пусто, если скидки нет. */

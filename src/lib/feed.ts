@@ -22,10 +22,12 @@ export type FeedFilters = {
   key?: string;
   bpmMin?: number;
   bpmMax?: number;
+  genre?: string;
 };
 
 import type { SaleState } from "@/lib/sales/state";
 import type { FeedScope } from "@/lib/feed-filters";
+import { GENRE_SLUGS, normalizeGenre, type GenreSlug } from "@/lib/beat-validation";
 
 export type FeedBeat = {
   id: string;
@@ -50,6 +52,8 @@ export type FeedBeat = {
   plays: number;
   /** Скор ранжирования: показывается в кабинете, в ленте сортирует. */
   score: number;
+  /** Жанр бита: null — без жанра. */
+  genre: GenreSlug | null;
   /** Скидка в процентах: ноль — скидки нет. */
   discountPercent: number;
   /** Цены до скидки, для зачёркивания. */
@@ -80,6 +84,7 @@ type BeatRow = {
   sale_state?: SaleState | null;
   plays?: number;
   score?: number | null;
+  genre?: string | null;
   discount_percent?: number | null;
   prices_before?: Record<string, number | null> | null;
   created_at: string;
@@ -92,7 +97,7 @@ type BeatRow = {
 };
 
 const BEAT_COLUMNS =
-  "id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, discount_percent, prices_before, created_at, updated_at, profiles!beats_owner_id_fkey(username, avatar_url, level), beat_reactions(kind, user_id)";
+  "id, title, bpm, key, genre, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, discount_percent, prices_before, created_at, updated_at, profiles!beats_owner_id_fkey(username, avatar_url, level), beat_reactions(kind, user_id)";
 
 /**
  * Пока не применена миграция 0035, колонок скидки ещё нет.
@@ -102,7 +107,7 @@ const BEAT_COLUMNS =
  * уровней. Здесь теряется только скидка — сайт продолжает работать.
  */
 const PRE_DISCOUNT_BEAT_COLUMNS =
-  "id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, created_at, updated_at, profiles!beats_owner_id_fkey(username, avatar_url, level), beat_reactions(kind, user_id)";
+  "id, title, bpm, key, genre, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, created_at, updated_at, profiles!beats_owner_id_fkey(username, avatar_url, level), beat_reactions(kind, user_id)";
 
 /** Пока не применена миграция 0007, колонок plays и updated_at ещё нет в базе. */
 const LEGACY_BEAT_COLUMNS =
@@ -129,6 +134,7 @@ function serialize(row: BeatRow, viewerId?: string | null): FeedBeat {
     saleState: (row.sale_state ?? "draft") as SaleState,
     plays: row.plays ?? 0,
     score: Number(row.score ?? 0),
+    genre: normalizeGenre(row.genre),
     discountPercent: Number(row.discount_percent ?? 0),
     pricesBefore: row.prices_before ? normalizePrices(row.prices_before) : null,
     sellerLevel: profile?.level ?? 1,
@@ -260,6 +266,15 @@ async function queryBeats(supabase: SupabaseServerClient, columns: string, optio
    */
   if (options.discountedOnly && columns.includes("discount_percent")) {
     query = query.gt("discount_percent", 0).order("discount_percent", { ascending: false });
+  }
+
+  /*
+   * Жанр приходит из адреса, поэтому сверяется со списком: иначе в запрос
+   * уехала бы любая строка, а это возможность подбирать себе что угодно
+   * через ручную правку ссылки.
+   */
+  if (filters.genre && GENRE_SLUGS.includes(filters.genre as GenreSlug)) {
+    query = query.eq("genre", filters.genre);
   }
 
   if (filters.key) query = query.eq("key", filters.key);

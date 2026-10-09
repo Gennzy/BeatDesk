@@ -23,6 +23,8 @@ export type FeedFilterState = {
   sort: "top" | "new" | "popular";
   query: string;
   key: string;
+  /** Жанр из закрытого списка: пусто — все жанры сразу. */
+  genre: string;
   bpmMin: string;
   bpmMax: string;
 };
@@ -32,6 +34,7 @@ export const EMPTY_FILTERS: FeedFilterState = {
   sort: "top",
   query: "",
   key: "",
+  genre: "",
   bpmMin: "",
   bpmMax: "",
 };
@@ -64,6 +67,7 @@ export function readFilters(params: URLSearchParams): FeedFilterState {
     key: params.get("key") ?? "",
     bpmMin: parseNumber(params.get("bpmMin")),
     bpmMax: parseNumber(params.get("bpmMax")),
+    genre: params.get("genre") ?? "",
   };
 }
 
@@ -76,6 +80,7 @@ export function filtersToParams(filters: FeedFilterState): string {
   if (filters.key) params.set("key", filters.key);
   if (filters.bpmMin) params.set("bpmMin", filters.bpmMin);
   if (filters.bpmMax) params.set("bpmMax", filters.bpmMax);
+  if (filters.genre) params.set("genre", filters.genre);
   return params.toString();
 }
 
@@ -92,6 +97,7 @@ export function toFeedFilters(filters: FeedFilterState) {
     sort: filters.sort,
     query: filters.query.trim() || undefined,
     key: filters.key || undefined,
+    genre: filters.genre || undefined,
     bpmMin: bpm(filters.bpmMin),
     bpmMax: bpm(filters.bpmMax),
   };

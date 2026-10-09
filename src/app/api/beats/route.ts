@@ -14,6 +14,7 @@ type Body = {
   tags?: unknown;
   prices?: unknown;
   discount_percent?: unknown;
+  genre?: unknown;
   currency?: unknown;
   mp3_url?: unknown;
   cover_url?: unknown;
@@ -65,6 +66,7 @@ export async function POST(request: Request) {
     tags: body.tags,
     prices: body.prices,
     currency: body.currency,
+    genre: body.genre,
   });
 
   if (!validated.ok) {
@@ -103,6 +105,7 @@ export async function POST(request: Request) {
       prices_before: discountPercent > 0 ? basePrices : null,
       discount_percent: discountPercent,
       currency: validated.value.currency,
+      genre: validated.value.genre,
       mp3_url: mp3Url,
       cover_url: coverUrl,
       files: typeof body.files === "object" && body.files !== null ? body.files : {},

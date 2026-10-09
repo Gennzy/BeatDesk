@@ -331,6 +331,8 @@ export type BeatInsert = {
    * рядом, поэтому клиент присылает процент, а не посчитанную цену.
    */
   discount_percent?: number;
+  /** Жанр из закрытого списка: сервер сверяет и отбрасывает лишнее. */
+  genre?: string | null;
   is_public: boolean;
 };
 

@@ -49,6 +49,7 @@ export function PostComposer({ parentId = null, beats, loggedIn = true, myUserna
       coverUrl: beat.coverUrl,
       mp3Url: beat.mp3Url,
       prices: beat.prices,
+      genre: beat.genre,
       discountPercent: beat.discountPercent,
       pricesBefore: beat.pricesBefore,
       currency: beat.currency,

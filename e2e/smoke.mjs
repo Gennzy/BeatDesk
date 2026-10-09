@@ -273,6 +273,41 @@ async function main() {
     const cleared = await user.evaluate(() => document.body.innerText);
     check("пустая цена снимает претензию, а не оставляет её", /назначьте хотя бы цену/i.test(cleared));
 
+    // --- жанр ----------------------------------------------------------
+    /*
+     * Проверяется то, что можно проверить без файла: чипы жанра видны
+     * гостю без единого клика, выбранный жанр отмечен, а фильтр из адреса
+     * действительно сужает ленту, а не игнорируется.
+     *
+     * Запись жанра сюда не вошла намеренно: создание бита требует
+     * аудиофайл, а он в прогоне не задаётся. Проверка формы на жанр живёт
+     * в юнит-тестах, сквозная запись — в Studio с настоящим битом.
+     */
+    console.log("\nЖанр на витрине");
+    const genreGuest = await browser.newPage();
+    await genreGuest.setViewport({ width: 1440, height: 1000 });
+    await genreGuest.goto(`${BASE}/`, { waitUntil: "networkidle2", timeout: 60_000 });
+
+    const chips = await genreGuest.evaluate(() =>
+      [...document.querySelectorAll('button[aria-pressed]')]
+        .map((node) => node.textContent?.trim() ?? "")
+        .filter(Boolean),
+    );
+    check("гость видит все жанры без раскрытия панели",
+      ["Трейп", "Хип-хоп", "Опиум", "Бум-бап"].every((genre) => chips.includes(genre)),
+      `видно: ${chips.join(", ")}`);
+
+    await genreGuest.goto(`${BASE}/?genre=trap`, { waitUntil: "networkidle2", timeout: 60_000 });
+    const pressed = await genreGuest.evaluate(() =>
+      [...document.querySelectorAll('button[aria-pressed="true"]')].map((node) => node.textContent?.trim() ?? ""),
+    );
+    check("выбранный жанр отмечен в панели", pressed.includes("Трейп"), `отмечено: ${pressed.join(", ")}`);
+
+    const narrow = await genreGuest.evaluate(() => document.body.innerText);
+    check("пустой жанр не выдаёт всю витрину", !narrow.includes("Загрузки битов"), "показан весь каталог");
+    await genreGuest.close();
+
+
     await user.close();
 
     // --- заказ: маршруты закрыты от чужих -------------------------------
@@ -310,6 +345,7 @@ const guestOrder = await guestContext.newPage();
     const orderGated = await guestOrder.evaluate(() => !document.body.innerText.includes("Итого"));
     check("страница чужого заказа не показывает содержимое", orderGated);
     await guestContext.close();
+
 
     // --- публичная страница бита -------------------------------------
     console.log("\nПубличная страница бита");

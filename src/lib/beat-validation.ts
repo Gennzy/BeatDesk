@@ -27,6 +27,7 @@ export type BeatDraft = {
   tags?: unknown;
   prices?: unknown;
   currency?: unknown;
+  genre?: unknown;
 };
 
 export type ValidatedBeat = {
@@ -37,6 +38,8 @@ export type ValidatedBeat = {
   tags: string[];
   prices: Prices;
   currency: CurrencyCode;
+  /** Жанр из закрытого списка или null, если бит не жанровый. */
+  genre: string | null;
 };
 
 const TAG_PATTERN = /^[\p{L}\p{N} _-]+$/u;
@@ -180,6 +183,43 @@ export function validateBeat(draft: BeatDraft): { ok: true; value: ValidatedBeat
       // Валюта приходит строкой из формы: неизвестное значение молча
       // становится рублями, а не падает — форма могла прислать мусор.
       currency: isCurrency(draft.currency) ? draft.currency : "RUB",
+      // Жанр сверяется со списком, а не принимается как есть: иначе в
+      // колонке осели бы «Трэп», «TRAP» и «trap» тремя разными жанрами,
+      // и фильтр по жанру молча развалился бы на три пустых вкладки.
+      genre: normalizeGenre(draft.genre),
     },
   };
+}
+/**
+ * Жанры витрины.
+ *
+ * Список повторяет миграцию 0030. Дублируется, а не читается из базы,
+ * потому что проверка должна работать без запроса и без сети: форма
+ * отвергает мусор до похода на сервер. Расхождение с базой видно тестами
+ * сверки — при добавлении жанра правится оба места.
+ */
+export const GENRE_SLUGS = [
+  "trap",
+  "hip-hop",
+  "opium",
+  "dark",
+  "drill",
+  "rage",
+  "jerk",
+  "boom-bap",
+  "ambient",
+  "rock",
+  "pop",
+  "other",
+] as const;
+
+export type GenreSlug = (typeof GENRE_SLUGS)[number];
+
+/** Жанр из формы: неизвестное значение — это «не жанровый», а не ошибка. */
+export function normalizeGenre(value: unknown): GenreSlug | null {
+  if (value === null || value === undefined || value === "") return null;
+
+  const slug = String(value).trim().toLowerCase();
+
+  return (GENRE_SLUGS as readonly string[]).includes(slug) ? (slug as GenreSlug) : null;
 }

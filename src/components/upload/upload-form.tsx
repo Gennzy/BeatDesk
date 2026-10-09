@@ -25,9 +25,11 @@ import {
 import type { TranslationKey } from "@/lib/i18n/dictionaries";
 import { CURRENCIES, formatMoney, type CurrencyCode } from "@/lib/currency";
 import { compressImage } from "@/lib/image";
+import { GenreSelect } from "@/components/beat/genre-select";
 import { SellReadiness } from "@/components/beats/sell-readiness";
 import { beatRoles } from "@/lib/beats";
 import type { TierId } from "@/lib/audio/delivery-rules";
+import { normalizeGenre, type GenreSlug } from "@/lib/beat-validation";
 import { applyDiscount, emptyPrices, parsePrice as toPrice, normalizeDiscount } from "@/lib/prices";
 import { parseTags } from "@/lib/tags";
 import { useI18n } from "@/lib/i18n/provider";
@@ -96,6 +98,7 @@ export function UploadForm({ userId }: { userId: string }) {
     trackout: null,
     exclusive: null,
   });
+  const [genre, setGenre] = useState<GenreSlug | null>(null);
   const [discount, setDiscount] = useState(0);
 
   /*
@@ -201,6 +204,7 @@ export function UploadForm({ userId }: { userId: string }) {
        * старая и объясняет покупателю, почему цена вдруг ниже.
        */
       discount_percent: normalizeDiscount(form.get("discountPercent")),
+      genre: normalizeGenre(form.get("genre")),
       // Форма хранит валюту в состоянии и кладёт в hidden-поле, но берём
       // именно из состояния: hidden-поле может не отправиться.
       currency,
@@ -335,6 +339,10 @@ export function UploadForm({ userId }: { userId: string }) {
               ним. Показываем результат сразу, иначе битмейкер задаёт процент
               и гадает, во сколько обойдётся бит.
             */}
+            <GenreSelect name="genre" value={genre} />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t("discount.label")} hint={t("discount.hint")} optional={t("discount.optional")}>
               <Input
                 name="discountPercent"

@@ -212,7 +212,12 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
                     <BeatFact label={t("beat.addedAt")} value={createdLabel} />
                     <BeatFact label={t("beat.keyLabel")} value={beat.key} />
                     <BeatFact label={t("beat.bpmLabel")} value={`${beat.bpm} BPM`} />
-                    {beat.genre ? <BeatFact label={t("beat.genreLabel")} value={beat.genre} /> : null}
+                    {beat.genre ? (
+                      <BeatFact
+                        label={t("beat.genreLabel")}
+                        value={t(`genre.${beat.genre}` as "genre.trap")}
+                      />
+                    ) : null}
                     {beat.type_beat_artists && beat.type_beat_artists.length > 0 ? (
                       <BeatFact label={t("feed.typeOf")} value={beat.type_beat_artists.join(", ")} />
                     ) : null}

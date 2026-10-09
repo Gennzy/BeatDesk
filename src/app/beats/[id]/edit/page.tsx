@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/ui/container";
 import { beatRoles } from "@/lib/beats";
 import { getT } from "@/lib/i18n/server";
+import { normalizeGenre } from "@/lib/beat-validation";
 import { normalizePrices } from "@/lib/prices";
 import { getSupabase } from "@/lib/supabase/user";
 
@@ -29,7 +30,7 @@ export default async function EditBeatPage({ params }: { params: Promise<{ id: s
 
   const { data: beat } = await supabase
     .from("beats")
-    .select("id, title, type_beat_artists, bpm, key, tags, prices, prices_before, discount_percent, is_public, mp3_url, cover_url, owner_id, files")
+    .select("id, title, type_beat_artists, bpm, key, tags, genre, prices, prices_before, discount_percent, is_public, mp3_url, cover_url, owner_id, files")
     .eq("id", id)
     .maybeSingle();
 
@@ -71,6 +72,7 @@ export default async function EditBeatPage({ params }: { params: Promise<{ id: s
               bpm: beat.bpm,
               musicalKey: beat.key,
               tags: beat.tags ?? [],
+              genre: normalizeGenre(beat.genre),
               prices: normalizePrices(beat.prices),
               discountPercent: beat.discount_percent ?? 0,
               pricesBefore: beat.prices_before ? normalizePrices(beat.prices_before) : null,

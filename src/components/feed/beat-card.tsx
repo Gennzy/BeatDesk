@@ -228,6 +228,25 @@ export function BeatCard({
               <span>{beat.musicalKey}</span>
             </>
           ) : null}
+          {beat.genre ? (
+            <>
+              <span aria-hidden className="text-mute">
+                ·
+              </span>
+              {/*
+                Жанр кликабелен и ведёт в отфильтрованную ленту: иначе это
+                просто слово на карточке, по которому ничего нельзя сделать.
+                Ссылка переживает перерисовку панели фильтров, поэтому
+                адрес собирается руками.
+              */}
+              <Link
+                href={`/?genre=${beat.genre}#feed`}
+                className="transition-colors hover:text-paper focusable"
+              >
+                {t(`genre.${beat.genre}` as "genre.trap")}
+              </Link>
+            </>
+          ) : null}
           {ownPlays > 0 ? (
             <>
               <span aria-hidden className="text-mute">

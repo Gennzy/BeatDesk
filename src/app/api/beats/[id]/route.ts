@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { MAX_COVER_BYTES, extensionOf, validateCoverFile } from "@/lib/beats";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeGenre } from "@/lib/beat-validation";
 import { applyDiscount, normalizeDiscount, normalizePrices, pricesForDb } from "@/lib/prices";
 
 async function requireOwner(beatId: string) {
@@ -81,6 +82,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const musicalKey = text("key");
   if (musicalKey) patch.key = musicalKey;
+
+  /*
+   * Жанр сверяется со списком. Пустая строка — это честное «снять жанр»,
+   * а не ошибка: бит может перестать быть жанровым, и фильтр должен это
+   * увидеть, а не держать его в старой категории.
+   */
+  if (form.has("genre")) {
+    const genre = normalizeGenre(form.get("genre"));
+
+    if (form.get("genre") && !genre) {
+      return NextResponse.json({ error: "Такого жанра нет" }, { status: 400 });
+    }
+
+    patch.genre = genre;
+  }
 
   const tags = parseJson<string[]>(form.get("tags"));
   if (tags) {
