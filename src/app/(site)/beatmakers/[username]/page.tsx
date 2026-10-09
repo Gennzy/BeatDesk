@@ -59,7 +59,7 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, username, avatar_url, bio, links, created_at")
+    .select("id, username, avatar_url, bio, links, created_at, pinned_beat_id")
     .eq("username", username)
     .maybeSingle();
 
@@ -119,6 +119,20 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
     // единственный бэкфилльный пост того же бита, он уже есть в каталоге.
     fetchProfilePosts(supabase, profile.id, isOwner).catch(() => []),
   ]);
+  /*
+   * Закреплённый бит показывается сверху и убирается из общего списка.
+   *
+   * Убирается, а не просто повторяется: иначе один и тот же бит стоял бы
+   * наверху и среди остальных, и человек, выбирающий что купить, видел бы
+   * его дважды — как будто это разные вещи.
+   *
+   * Если закреплённый бит исчез — его удалили или он снят с продажи и
+   * стал черновиком, — витрина просто остаётся прежней. Профиль не должен
+   * падать из-за чужой настройки продавца.
+   */
+  const pinned = beats.find((beat) => beat.id === profile.pinned_beat_id) ?? null;
+  const rest = pinned ? beats.filter((beat) => beat.id !== pinned.id) : beats;
+
   const links = (profile.links ?? {}) as Record<string, string>;
   const hasLinks = PLATFORM_KEYS.some((key) => Boolean(links[key]));
 
@@ -216,18 +230,37 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
         <div className="flex flex-col gap-8 pt-12">
           {isOwner && achievements.length > 0 ? <Achievements list={achievements} /> : null}
 
+          {/*
+            Закреплённый бит. Заголовок у него свой: покупатель должен
+            понять, что этот бит продавец выбрал сам, а не что он случайно
+            оказался первым. Иначе верхняя позиция читается как «новое» и
+            ничего не сообщает.
+          */}
+          {pinned ? (
+            <>
+              <SectionHead label={t("profile.pinned")} />
+              <BeatManager
+                beats={[pinned]}
+                isOwner={isOwner}
+                pinnedId={pinned.id}
+                redirectTo={`/beatmakers/${profile.username}`}
+              />
+            </>
+          ) : null}
+
           {/* Отзывы видны всем: репутация битмейкера на витрине и нужна
               покупателю, в отличие от достижений, которые его личное дело. */}
           {supabase ? <Reviews supabase={supabase} subjectId={profile.id} /> : null}
 
           <SectionHead
             label={t("profile.beats")}
-            hint={beats.length > 0 ? `${beats.length} ${locale === "ru" ? pluralRu(beats.length, "бит", "бита", "битов") : pluralEn(beats.length, "beat", "beats")}` : undefined}
+            hint={rest.length > 0 ? `${rest.length} ${locale === "ru" ? pluralRu(rest.length, "бит", "бита", "битов") : pluralEn(rest.length, "beat", "beats")}` : undefined}
           />
 
           <BeatManager
-            beats={beats}
+            beats={rest}
             isOwner={isOwner}
+            pinnedId={pinned?.id ?? null}
             redirectTo={`/beatmakers/${profile.username}`}
             emptyTitle={t("profile.empty")}
             emptyDescription={isOwner ? t("profile.emptyOwner") : t("profile.emptyGuest")}

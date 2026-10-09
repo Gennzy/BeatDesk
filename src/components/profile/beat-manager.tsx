@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { BeatCard } from "@/components/feed/beat-card";
 import { DeleteBeatButton } from "@/components/profile/edit-beat-form";
+import { PinBeatToggle } from "@/components/profile/pin-beat-toggle";
 import { VisibilityToggle } from "@/components/profile/visibility-toggle";
 import { EmptyState } from "@/components/ui/states";
 import type { FeedBeat } from "@/lib/feed";
@@ -21,23 +22,26 @@ function playsLabel(locale: string, plays: number): string {
 export function BeatManager({
   beats,
   isOwner,
+  pinnedId = null,
   redirectTo,
   emptyTitle,
   emptyDescription,
 }: {
   beats: FeedBeat[];
   isOwner: boolean;
+  /** Что закреплено наверху: null — ничего. Видно только владельцу. */
+  pinnedId?: string | null;
   redirectTo: string;
-  emptyTitle: string;
-  emptyDescription: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
 }) {
   const { t, locale } = useI18n();
 
   if (beats.length === 0) {
     return (
       <EmptyState
-        title={emptyTitle}
-        description={emptyDescription}
+        title={emptyTitle ?? t("profile.empty")}
+        description={emptyDescription ?? t("profile.emptyGuest")}
         action={isOwner ? { label: t("states.empty.cta"), href: "/cabinet/upload" } : undefined}
       />
     );
@@ -65,6 +69,9 @@ export function BeatManager({
 
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                   <VisibilityToggle beatId={beat.id} initialPublic={beat.isPublic} />
+                  {pinnedId !== beat.id ? (
+                    <PinBeatToggle beatId={beat.id} pinnedBeatId={pinnedId} />
+                  ) : null}
                   <Link
                     href={`/beats/${beat.id}/edit`}
                     className="label text-mute underline-offset-4 transition-colors hover:text-paper hover:underline"

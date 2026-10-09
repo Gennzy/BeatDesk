@@ -425,6 +425,58 @@ async function main() {
     check("жанров в списке все двенадцать", genreForm.selectable.length === 12, `в списке ${genreForm.selectable.length}`);
     check("поле жанра помечено обязательным", genreForm.required === true, "поле не required");
 
+    // --- закрепление бита ---------------------------------------------
+    /*
+     * Проверяется то, что можно сломать тихо: закрепление не должно быть
+     * видно постороннему и не должно позволять приколоть чужой бит.
+     * Владелец в этом прогоне — свежезарегистрированный, битов у него нет,
+     * поэтому проверка идёт через отказ на чужом бите и через то, что
+     * кнопки не видно там, где её быть не должно.
+     */
+    console.log("Закрепление бита");
+    // Своя гостевая страница: та, что была в начале прогона, давно закрыта,
+    // а правило закрепления важно проверить именно без сессии.
+    /*
+     * Именно createBrowserContext, а не browser.newPage: во второй раз
+     * newPage отдаёт страницу с уже заведённой сессией, и проверка «гость
+     * не может» незаметно превращалась в «вошедший не может». Маршрут
+     * отвечал «бит не найден», то есть авторизацию проходил — гостя там не
+     * было вовсе.
+     */
+    const pinContext = await browser.createBrowserContext();
+    const pinGuest = await pinContext.newPage();
+    await pinGuest.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    const pinAsGuest = await pinGuest.evaluate(async () => {
+      const response = await fetch("/api/profile/pinned-beat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ beatId: "00000000-0000-0000-0000-000000000000" }),
+      });
+      return { status: response.status, body: (await response.text()).slice(0, 80) };
+    });
+    await pinContext.close();
+    check("гость не закрепляет биты", pinAsGuest.status === 401, `статус ${pinAsGuest.status}: ${pinAsGuest.body}`);
+
+    const pinMissing = await user.evaluate(async () => {
+      const response = await fetch("/api/profile/pinned-beat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ beatId: "00000000-0000-0000-0000-000000000000" }),
+      });
+      return response.status;
+    });
+    check("закрепить несуществующий бит нельзя", pinMissing === 404, `статус ${pinMissing}`);
+
+    const pinUnknownGenre = await user.evaluate(async () => {
+      const response = await fetch("/api/profile/pinned-beat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      return response.status;
+    });
+    check("закрепление без бита отвергается", pinUnknownGenre === 400, `статус ${pinUnknownGenre}`);
+
     await user.close();
 
     // --- заказ: маршруты закрыты от чужих -------------------------------

@@ -313,6 +313,10 @@ const ru = {
 
   "profile.title": "Профиль битмейкера",
   "profile.beats": "Биты",
+  "profile.pinned": "Закреплённый",
+  "profile.pin": "Закрепить наверху",
+  "profile.unpin": "Снять закрепление",
+  "profile.pinError": "Не удалось изменить закрепление",
   "profile.links": "Площадки",
   "profile.memberSince": "В сервисе с",
   "profile.bioPlaceholder": "Битмейкер ещё не написал о себе.",
@@ -902,6 +906,10 @@ const en: Record<keyof typeof ru, string> = {
 
   "profile.title": "Beatmaker profile",
   "profile.beats": "Beats",
+  "profile.pinned": "Pinned",
+  "profile.pin": "Pin to top",
+  "profile.unpin": "Unpin",
+  "profile.pinError": "Could not change the pinned beat",
   "profile.links": "Platforms",
   "profile.memberSince": "On BeatDesk since",
   "profile.bioPlaceholder": "This beatmaker has not written a bio yet.",
