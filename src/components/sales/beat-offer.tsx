@@ -3,6 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import Link from "next/link";
+
+import { CartButton } from "@/components/sales/cart-button";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
@@ -20,6 +23,8 @@ type Props = {
   discountPercent: number;
   currency: string;
   isOwner: boolean;
+  /** Вошедший ли человек: корзина серверная и гостю недоступна. */
+  signedIn: boolean;
 };
 
 /**
@@ -30,7 +35,7 @@ type Props = {
  * «MP3 + WAV за 1 500 ₽» в шапке с кнопкой рядом. Теперь список один,
  * и кнопка стоит на своём уровне.
  */
-export function BeatOffer({ beatId, tiers, pricesBefore, discountPercent, currency, isOwner }: Props) {
+export function BeatOffer({ beatId, tiers, pricesBefore, discountPercent, currency, isOwner, signedIn }: Props) {
   const { t, locale } = useI18n();
   const router = useRouter();
   const [tier, setTier] = useState<PriceKey | null>(tiers[0]?.key ?? null);
@@ -135,7 +140,24 @@ export function BeatOffer({ beatId, tiers, pricesBefore, discountPercent, curren
         })}
       </ul>
 
-      {isOwner ? null : (
+      {/*
+        Владельцу блок покупки не выводится: купить свой бит нельзя. Но раньше
+        здесь была просто пустота, и страница у продавца выглядела сломанной
+        — у покупателя панель стоит, у него ничего. Теперь сказано прямо, что
+        это его бит и что делать вместо покупки.
+      */}
+      {isOwner ? (
+        <div className="flex flex-col gap-3 rounded-panel border border-line px-5 py-6">
+          <span className="label text-mute">{t("order.ownBeat")}</span>
+          <p className="max-w-[46ch] text-sub text-mute">{t("order.ownBeatNote")}</p>
+          <Link
+            href="/cabinet/orders"
+            className="label w-fit text-paper underline underline-offset-4 transition-opacity hover:opacity-75 focusable"
+          >
+            {t("order.ownBeatLink")}
+          </Link>
+        </div>
+      ) : (
         <div className="flex flex-col gap-4">
           <Field label={t("order.email")} hint={t("order.emailHint")}>
             <Input
@@ -149,13 +171,23 @@ export function BeatOffer({ beatId, tiers, pricesBefore, discountPercent, curren
 
           {error ? <p className="label leading-relaxed text-amber">{error}</p> : null}
 
-          <Button type="button" size="lg" className="sm:min-w-64 sm:self-start" disabled={status === "busy" || !selected} onClick={() => void buy()}>
-            {status === "busy"
-              ? t("order.creating")
-              : selected
-                ? `${t("order.buy")} · ${formatMoney(selected.value, currency)}`
-                : t("order.buy")}
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" size="lg" className="sm:min-w-64 sm:self-start" disabled={status === "busy" || !selected} onClick={() => void buy()}>
+              {status === "busy"
+                ? t("order.creating")
+                : selected
+                  ? `${t("order.buy")} · ${formatMoney(selected.value, currency)}`
+                  : t("order.buy")}
+            </Button>
+
+            {/*
+              Корзина — второе действие, а не замена покупке. Один бит чаще
+              всего покупают сразу, и требовать «сначала в корзину, потом
+              оформлять» значит добавлять шаг на путь, который человек и так
+              проходит за один клик.
+            */}
+            <CartButton beatId={beatId} tier={tier} signedIn={signedIn} />
+          </div>
         </div>
       )}
     </div>

@@ -237,6 +237,7 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
                   discountPercent={discountPercent}
                   currency={beat.currency ?? "RUB"}
                   isOwner={isOwner}
+                  signedIn={Boolean(user)}
                 />
 
             {/*
