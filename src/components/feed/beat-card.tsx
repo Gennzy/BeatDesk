@@ -44,12 +44,11 @@ export function BeatCard({
   isOwn?: boolean;
 }) {
   const { t } = useI18n();
-  const { track, isPlaying, play, toggle, plays, currentTime, duration } = usePlayer();
+  const { track, isPlaying, play, toggle, currentTime, duration } = usePlayer();
   const ref = useRef<HTMLElement | null>(null);
 
   const active = track?.id === beat.id && isPlaying;
   const playable = Boolean(beat.mp3Url);
-  const ownPlays = active ? plays : beat.plays;
 
   const tiers = useMemo(
     () =>
@@ -64,10 +63,20 @@ export function BeatCard({
     [beat.typeBeatArtists],
   );
 
-  /** Теги, которые не повторяют артистов строкой выше. */
-  const looseTags = useMemo(() => {
+  /*
+   * Артисты и теги в один ряд, а не в два.
+   *
+   * Раньше артисты занимали свою строку, теги — следующую, и карточка
+   * выглядела списком, а не товаром: глаз успевал прочитать два ряда
+   * одинаковых плашек и путал их между собой. Теперь это один ряд с
+   * общим пределом, где артисты идут первыми: они и есть главное, ради чего
+   * открывают бит.
+   */
+  const chips = useMemo(() => {
     const told = new Set(artists.map((artist) => artist.toLowerCase()));
-    return beat.tags.filter((tag) => !told.has(tag.toLowerCase())).slice(0, 3);
+    const loose = beat.tags.filter((tag) => !told.has(tag.toLowerCase()));
+
+    return { shown: [...artists, ...loose].slice(0, 3), rest: [...artists, ...loose].length - 3 };
   }, [artists, beat.tags]);
 
   /*
@@ -247,43 +256,27 @@ export function BeatCard({
               </Link>
             </>
           ) : null}
-          {ownPlays > 0 ? (
-            <>
-              <span aria-hidden className="text-mute">
-                ·
-              </span>
-              <span>
-                {ownPlays} {t("posts.playsShort")}
-              </span>
-            </>
-          ) : null}
+          {/*
+            Прослушивания убраны из строки свойств. Реакции под ней уже
+            показывают вовлечённость, а «31 прослуш.» рядом с «0 лайков»
+            читалось как противоречие: человек ставит лайк, потому что его
+            послушали, и обе цифры рядом сбивали с толку.
+          */}
         </div>
 
         {/*
-          Чей это бит идёт плашками, а не строкой: перечисление через запятую
-          («polo g, lil tjay, lil durk, tikotheceo») превращалось в кашу, а
-          плашки читаются как теги, чем они и являются для покупателя.
+          Один ряд плашек на артистов и теги вместе. Значение «+N» вместо
+          «+1» выглядело как ошибка: единица ничего не говорит о том,
+          сколько ещё спрятано, и стоит рядом с тремя такими же плашками.
         */}
-        {artists.length > 0 ? (
+        {chips.shown.length > 0 ? (
           <ul className="flex flex-wrap gap-1">
-            {artists.slice(0, 3).map((artist) => (
-              <li key={artist} className="chip">
-                {artist}
+            {chips.shown.map((chip) => (
+              <li key={chip} className="chip">
+                {chip}
               </li>
             ))}
-            {artists.length > 3 ? (
-              <li className="px-1 text-[11px] text-mute">+{artists.length - 3}</li>
-            ) : null}
-          </ul>
-        ) : null}
-
-        {looseTags.length > 0 ? (
-          <ul className="flex flex-wrap gap-1">
-            {looseTags.map((tag) => (
-              <li key={tag} className="chip">
-                {tag}
-              </li>
-            ))}
+            {chips.rest > 0 ? <li className="px-1 text-[11px] text-mute">+{chips.rest}</li> : null}
           </ul>
         ) : null}
 
@@ -318,13 +311,6 @@ export function BeatCard({
             <span className="label text-mute">{SALE_STATE_LABELS[beat.saleState]}</span>
           )}
         </div>
-
-        {/* Что входит в цену: одна короткая строка вместо четырёх строк. */}
-        {tiers.length > 1 ? (
-          <p className="label text-mute">
-            {tiers.map((tier) => tier.label).join(" · ")}
-          </p>
-        ) : null}
       </div>
     </article>
   );
