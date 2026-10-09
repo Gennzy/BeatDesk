@@ -6,14 +6,18 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
+import { DiscountPrice, beforePrice } from "@/components/beat/discount-price";
 import { formatMoney } from "@/lib/currency";
 import { useI18n } from "@/lib/i18n/provider";
 import { tierContents } from "@/lib/sales/delivery";
-import { priceLabel, type PriceKey } from "@/lib/prices";
+import { priceLabel, type PriceKey, type Prices } from "@/lib/prices";
 
 type Props = {
   beatId: string;
   tiers: { key: PriceKey; value: number }[];
+  /** Цены до скидки: null, если скидки нет. */
+  pricesBefore: Prices | null;
+  discountPercent: number;
   currency: string;
   isOwner: boolean;
 };
@@ -26,7 +30,7 @@ type Props = {
  * «MP3 + WAV за 1 500 ₽» в шапке с кнопкой рядом. Теперь список один,
  * и кнопка стоит на своём уровне.
  */
-export function BeatOffer({ beatId, tiers, currency, isOwner }: Props) {
+export function BeatOffer({ beatId, tiers, pricesBefore, discountPercent, currency, isOwner }: Props) {
   const { t, locale } = useI18n();
   const router = useRouter();
   const [tier, setTier] = useState<PriceKey | null>(tiers[0]?.key ?? null);
@@ -104,7 +108,12 @@ export function BeatOffer({ beatId, tiers, currency, isOwner }: Props) {
               </span>
 
               <span className="flex items-baseline gap-3">
-                <span className="font-mono text-sm text-paper">{formatMoney(item.value, currency)}</span>
+                <DiscountPrice
+                  price={item.value}
+                  before={beforePrice(pricesBefore, item.key)}
+                  percent={discountPercent}
+                  currency={currency}
+                />
                 {isOwner ? null : (
                   <button
                     type="button"

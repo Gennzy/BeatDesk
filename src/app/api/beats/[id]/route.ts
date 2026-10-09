@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { MAX_COVER_BYTES, extensionOf, validateCoverFile } from "@/lib/beats";
 import { createClient } from "@/lib/supabase/server";
-import { pricesForDb } from "@/lib/prices";
+import { applyDiscount, normalizeDiscount, normalizePrices, pricesForDb } from "@/lib/prices";
 
 async function requireOwner(beatId: string) {
   const supabase = await createClient();
@@ -92,17 +92,25 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const prices = parseJson<Record<string, unknown>>(form.get("prices"));
   if (prices) {
-    const toNumber = (value: unknown) => {
-      const parsed = Number(value);
-      return value !== null && value !== "" && Number.isFinite(parsed) ? parsed : null;
-    };
-    patch.prices = pricesForDb({
-      mp3: toNumber(prices.mp3),
-      // bundle — историческое имя колонки для уровня WAV.
-      wav: toNumber(prices.wav) ?? toNumber(prices.bundle),
-      trackout: toNumber(prices.trackout),
-      exclusive: toNumber(prices.exclusive),
-    });
+    const base = normalizePrices(prices);
+
+    /*
+     * Скидка применяется здесь, до записи. В prices уходит цена, которую
+     * спишет заказ, в prices_before — прежняя, для зачёркивания на витрине.
+     * Так списание и показ берут одно и то же число: оформление заказа уже
+     * читает prices и про скидку ничего знать не должен.
+     */
+    const percent = normalizeDiscount(form.get("discountPercent"));
+
+    if (percent > 0) {
+      patch.prices = pricesForDb(applyDiscount(base, percent));
+      patch.prices_before = pricesForDb(base);
+      patch.discount_percent = percent;
+    } else {
+      patch.prices = pricesForDb(base);
+      patch.prices_before = null;
+      patch.discount_percent = 0;
+    }
   }
 
   const isPublic = text("isPublic");

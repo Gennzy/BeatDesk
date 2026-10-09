@@ -29,7 +29,7 @@ export default async function EditBeatPage({ params }: { params: Promise<{ id: s
 
   const { data: beat } = await supabase
     .from("beats")
-    .select("id, title, type_beat_artists, bpm, key, tags, prices, is_public, mp3_url, cover_url, owner_id, files")
+    .select("id, title, type_beat_artists, bpm, key, tags, prices, prices_before, discount_percent, is_public, mp3_url, cover_url, owner_id, files")
     .eq("id", id)
     .maybeSingle();
 
@@ -72,6 +72,8 @@ export default async function EditBeatPage({ params }: { params: Promise<{ id: s
               musicalKey: beat.key,
               tags: beat.tags ?? [],
               prices: normalizePrices(beat.prices),
+              discountPercent: beat.discount_percent ?? 0,
+              pricesBefore: beat.prices_before ? normalizePrices(beat.prices_before) : null,
               isPublic: beat.is_public,
               coverUrl: beat.cover_url,
               hasStems: Boolean(beat.files?.zip ?? beat.files?.rar),

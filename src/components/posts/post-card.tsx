@@ -6,7 +6,7 @@ import { useState } from "react";
 import { usePlayer } from "@/components/player/player-provider";
 import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/cn";
-import { formatMoney } from "@/lib/currency";
+import { DiscountPrice, beforePrice } from "@/components/beat/discount-price";
 import { TimeAgo } from "@/components/ui/time-ago";
 import { useI18n } from "@/lib/i18n/provider";
 import { beatToFeedCard, type Post } from "@/lib/posts";
@@ -129,7 +129,12 @@ export function PostCard({ post, loggedIn = true, depth = 0, inThread = false }:
             {beat.prices.mp3 ? (
               <span className="flex shrink-0 items-baseline gap-1.5">
                 <span className="label text-mute">{t("posts.from")}</span>
-                <span className="font-display text-lg leading-none text-paper">{formatMoney(beat.prices.mp3, beat.currency)}</span>
+                <DiscountPrice
+                  price={beat.prices.mp3}
+                  before={beforePrice(beat.pricesBefore, "mp3")}
+                  percent={beat.discountPercent}
+                  currency={beat.currency}
+                />
               </span>
             ) : null}
           </Link>

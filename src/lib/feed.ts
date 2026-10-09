@@ -50,6 +50,10 @@ export type FeedBeat = {
   plays: number;
   /** Скор ранжирования: показывается в кабинете, в ленте сортирует. */
   score: number;
+  /** Скидка в процентах: ноль — скидки нет. */
+  discountPercent: number;
+  /** Цены до скидки, для зачёркивания. */
+  pricesBefore: Prices | null;
   /** Уровень продавца 1..10: поднимает бит, но не перевешивает содержание. */
   sellerLevel: number;
   likes: number;
@@ -76,6 +80,8 @@ type BeatRow = {
   sale_state?: SaleState | null;
   plays?: number;
   score?: number | null;
+  discount_percent?: number | null;
+  prices_before?: Record<string, number | null> | null;
   created_at: string;
   updated_at?: string | null;
   profiles:
@@ -86,6 +92,16 @@ type BeatRow = {
 };
 
 const BEAT_COLUMNS =
+  "id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, discount_percent, prices_before, created_at, updated_at, profiles!beats_owner_id_fkey(username, avatar_url, level), beat_reactions(kind, user_id)";
+
+/**
+ * Пока не применена миграция 0035, колонок скидки ещё нет.
+ *
+ * Отдельный набор, а не сразу старый LEGACY: тот не знает про состояние
+ * продажи и валюту, поэтому на странице бита пропадала бы вся витрина
+ * уровней. Здесь теряется только скидка — сайт продолжает работать.
+ */
+const PRE_DISCOUNT_BEAT_COLUMNS =
   "id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, created_at, updated_at, profiles!beats_owner_id_fkey(username, avatar_url, level), beat_reactions(kind, user_id)";
 
 /** Пока не применена миграция 0007, колонок plays и updated_at ещё нет в базе. */
@@ -113,6 +129,8 @@ function serialize(row: BeatRow, viewerId?: string | null): FeedBeat {
     saleState: (row.sale_state ?? "draft") as SaleState,
     plays: row.plays ?? 0,
     score: Number(row.score ?? 0),
+    discountPercent: Number(row.discount_percent ?? 0),
+    pricesBefore: row.prices_before ? normalizePrices(row.prices_before) : null,
     sellerLevel: profile?.level ?? 1,
     likes: reactions.filter((reaction) => reaction.kind === "like").length,
     saves: reactions.filter((reaction) => reaction.kind === "save").length,
@@ -134,6 +152,8 @@ type QueryOptions = {
   ownerIds?: string[] | null;
   /** Ограничение по конкретным битам: вкладка «понравившиеся». */
   beatIds?: string[] | null;
+  /** Только биты со скидкой: вкладка «скидки». */
+  discountedOnly?: boolean;
   filters?: FeedFilters;
   ownerId?: string;
   isOwner?: boolean;
@@ -167,7 +187,14 @@ async function resolveScope(
   supabase: SupabaseServerClient,
   scope: FeedScope,
   viewerId: string | null,
-): Promise<{ options: { ownerIds?: string[]; beatIds?: string[] } } | { unavailable: true }> {
+): Promise<{ options: { ownerIds?: string[]; beatIds?: string[]; discountedOnly?: boolean } } | { unavailable: true }> {
+  /*
+   * Скидки видны всем, включая гостя: это витрина, а не личная подборка.
+   * Поэтому проверка гостя ниже её не задевает — иначе половина покупателей
+   * увидела бы пустую вкладку и решила бы, что скидок на площадке нет.
+   */
+  if (scope === "discounted") return { options: { discountedOnly: true } };
+
   if (scope === "all") return { options: {} };
   if (!viewerId) return { unavailable: true };
 
@@ -227,6 +254,14 @@ async function queryBeats(supabase: SupabaseServerClient, columns: string, optio
     query = query.in("id", options.beatIds);
   }
 
+  /*
+   * Вкладка скидок. Фильтр на саму колонку, а не на prices_before: прежние
+   * цены есть и у битов, снятых с продажи, а показывать их незачем.
+   */
+  if (options.discountedOnly && columns.includes("discount_percent")) {
+    query = query.gt("discount_percent", 0).order("discount_percent", { ascending: false });
+  }
+
   if (filters.key) query = query.eq("key", filters.key);
   if (typeof filters.bpmMin === "number" && Number.isFinite(filters.bpmMin)) query = query.gte("bpm", filters.bpmMin);
   if (typeof filters.bpmMax === "number" && Number.isFinite(filters.bpmMax)) query = query.lte("bpm", filters.bpmMax);
@@ -268,6 +303,10 @@ export async function fetchPublicBeats(
   let result = await queryBeats(supabase, BEAT_COLUMNS, { filters, offset, limit, viewerId, ...scope.options });
 
   if (result.error) {
+    result = await queryBeats(supabase, PRE_DISCOUNT_BEAT_COLUMNS, { filters, offset, limit, viewerId, ...scope.options });
+  }
+
+  if (result.error) {
     result = await queryBeats(supabase, LEGACY_BEAT_COLUMNS, { filters, offset, limit, viewerId, ...scope.options });
   }
 
@@ -286,6 +325,10 @@ export async function fetchBeatsByOwner(
   isOwner: boolean,
 ): Promise<FeedBeat[]> {
   let result = await queryBeats(supabase, BEAT_COLUMNS, { ownerId, isOwner, limit: 60 });
+
+  if (result.error) {
+    result = await queryBeats(supabase, PRE_DISCOUNT_BEAT_COLUMNS, { ownerId, isOwner, limit: 60 });
+  }
 
   if (result.error) {
     result = await queryBeats(supabase, LEGACY_BEAT_COLUMNS, { ownerId, isOwner, limit: 60 });

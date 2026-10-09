@@ -61,11 +61,24 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
    * каталог. Поэтому набор один, а откат на старый тот же, что в ленте.
    */
   const FULL_COLUMNS =
-    "id, title, type_beat_artists, bpm, key, tags, genre, mp3_url, cover_url, prices, currency, sale_state, owner_id, plays, views, impressions, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links, level)";
+    "id, title, type_beat_artists, bpm, key, tags, genre, mp3_url, cover_url, prices, prices_before, discount_percent, currency, sale_state, owner_id, plays, views, impressions, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links, level)";
   const SAFE_COLUMNS =
-    "id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, currency, sale_state, owner_id, plays, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links)";
+    "id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, prices_before, discount_percent, currency, sale_state, owner_id, plays, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links)";
+
+  /*
+   * Пока не применена миграция 0035, колонок скидки нет, и запрос с ними
+   * падает целиком — вместе со всей страницей. Поэтому третий набор, без
+   * скидки: бит открывается, покупается и показывается как обычно, просто
+   * без зачёркнутой цены. Лучше так, чем витрина, которая не грузится.
+   */
+  const PRE_DISCOUNT_COLUMNS =
+    "id, title, type_beat_artists, bpm, key, tags, genre, mp3_url, cover_url, prices, currency, sale_state, owner_id, plays, views, impressions, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links, level)";
 
   let result = await supabase.from("beats").select(FULL_COLUMNS).eq("id", id).maybeSingle();
+
+  if (result.error) {
+    result = await supabase.from("beats").select(PRE_DISCOUNT_COLUMNS).eq("id", id).maybeSingle();
+  }
 
   if (result.error) {
     result = await supabase.from("beats").select(SAFE_COLUMNS).eq("id", id).maybeSingle();
@@ -87,6 +100,8 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
   const isOwner = Boolean(user && user.id === beat.owner_id);
 
   const prices = normalizePrices(beat.prices);
+  const pricesBefore = beat.prices_before ? normalizePrices(beat.prices_before) : null;
+  const discountPercent = Number(beat.discount_percent ?? 0);
   const tiers = PRICE_KEYS.map((key) => ({ key, label: priceLabel[key], value: prices[key] })).filter(
     (tier) => tier.value !== null,
   ) as { key: (typeof PRICE_KEYS)[number]; label: string; value: number }[];
@@ -210,7 +225,14 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
               </div>
             </div>
 
-            <BeatOffer beatId={beat.id} tiers={tiers} currency={beat.currency ?? "RUB"} isOwner={isOwner} />
+            <BeatOffer
+                  beatId={beat.id}
+                  tiers={tiers}
+                  pricesBefore={pricesBefore}
+                  discountPercent={discountPercent}
+                  currency={beat.currency ?? "RUB"}
+                  isOwner={isOwner}
+                />
 
             {/*
               Обсуждение после блока покупки: человек сначала решает, брать ли,

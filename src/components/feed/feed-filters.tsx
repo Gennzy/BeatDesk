@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Input, Select } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n/provider";
+import type { FeedScope } from "@/lib/feed-filters";
 import { MUSICAL_KEYS } from "@/lib/keys";
 import { pluralEn, pluralRu } from "@/lib/plural";
 import { EMPTY_FILTERS, filtersToParams, readFilters, type FeedFilterState } from "@/lib/feed-filters";
@@ -36,6 +37,13 @@ export function FeedFiltersBar({ resultCount, loggedIn }: { resultCount: number;
  */
 function FiltersBar({ search, resultCount, loggedIn }: { search: string; resultCount: number; loggedIn: boolean }) {
   const { t, locale } = useI18n();
+
+  /*
+   * Скидки — вкладка витрины, а не личной подборки, поэтому гость её тоже
+   * видит. Скрывать её от гостей значило бы сказать человеку «скидок тут
+   * нет» тому, кто как раз за ними и пришёл.
+   */
+  const scopes: FeedScope[] = loggedIn ? ["all", "discounted", "following", "liked"] : ["all", "discounted"];
   const router = useRouter();
   const [filters, setFilters] = useState<FeedFilterState>(() => readFilters(new URLSearchParams(search)));
   const [open, setOpen] = useState(false);
@@ -80,12 +88,11 @@ function FiltersBar({ search, resultCount, loggedIn }: { search: string; resultC
 
         {/*
           Область ленты живёт слева от сортировки, а не в выпадающем списке:
-          переключение между «всё» и «подписки» — это главное действие на
-          панели, и прятать его в селект значит сделать его второстепенным.
+          переключение между «всё» и «скидки» — главное действие на панели,
+          и прятать его в селект значит сделать его второстепенным.
         */}
-        {loggedIn ? (
-          <div className="flex items-center gap-1 border-l border-line pl-3">
-            {(["all", "following", "liked"] as const).map((scope) => (
+        <div className="flex items-center gap-1 border-l border-line pl-3">
+          {scopes.map((scope) => (
               <button
                 key={scope}
                 type="button"
@@ -95,9 +102,8 @@ function FiltersBar({ search, resultCount, loggedIn }: { search: string; resultC
               >
                 {t(`feed.scope${scope[0].toUpperCase()}${scope.slice(1)}` as "feed.scopeAll")}
               </button>
-            ))}
-          </div>
-        ) : null}
+          ))}
+        </div>
 
         <div className="sm:hidden">
           <Select

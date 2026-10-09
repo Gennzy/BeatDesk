@@ -4,7 +4,7 @@ import { validateBeat } from "@/lib/beat-validation";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { notifySelf } from "@/lib/notifications/self";
 import { createClient } from "@/lib/supabase/server";
-import { pricesForDb } from "@/lib/prices";
+import { applyDiscount, normalizeDiscount, pricesForDb } from "@/lib/prices";
 
 type Body = {
   title?: unknown;
@@ -13,6 +13,7 @@ type Body = {
   key?: unknown;
   tags?: unknown;
   prices?: unknown;
+  discount_percent?: unknown;
   currency?: unknown;
   mp3_url?: unknown;
   cover_url?: unknown;
@@ -77,6 +78,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Нужен аудиофайл" }, { status: 400 });
   }
 
+  /*
+   * Скидка применяется здесь, один раз, при создании. Раньше этого делал
+   * клиент, и это была ошибка: браузер можно подделать, а цена — деньги.
+   * Теперь скидку считает сервер из присланных исходных цен, и в prices
+   * кладётся ровно то, что спишет заказ.
+   */
+  const basePrices = pricesForDb(validated.value.prices);
+  const discountPercent = normalizeDiscount(body.discount_percent);
+
   const { data, error } = await supabase
     .from("beats")
     .insert({
@@ -86,7 +96,12 @@ export async function POST(request: Request) {
       bpm: validated.value.bpm,
       key: validated.value.key,
       tags: validated.value.tags,
-      prices: pricesForDb(validated.value.prices) satisfies Record<string, number | null>,
+      prices: (discountPercent > 0
+        ? pricesForDb(applyDiscount(validated.value.prices, discountPercent))
+        : basePrices) satisfies Record<string, number | null>,
+      // Прежние цены — только для зачёркивания на витрине.
+      prices_before: discountPercent > 0 ? basePrices : null,
+      discount_percent: discountPercent,
       currency: validated.value.currency,
       mp3_url: mp3Url,
       cover_url: coverUrl,

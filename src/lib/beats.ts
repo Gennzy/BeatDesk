@@ -326,6 +326,11 @@ export type BeatInsert = {
   cover_url: string | null;
   files: BeatFilesColumn;
   prices: Prices;
+  /**
+   * Скидка в процентах. Сервер применяет её к prices и кладёт исходные цены
+   * рядом, поэтому клиент присылает процент, а не посчитанную цену.
+   */
+  discount_percent?: number;
   is_public: boolean;
 };
 

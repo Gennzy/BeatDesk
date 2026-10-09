@@ -30,6 +30,8 @@ export type PostBeat = {
   plays: number;
   score: number;
   sellerLevel: number;
+  discountPercent: number;
+  pricesBefore: Prices | null;
   likes: number;
   saves: number;
   prices: Prices;
@@ -55,7 +57,7 @@ export type Post = {
 // Без подсказки PostgREST отвечает PGRST201 и возвращает пустую выборку.
 const POST_COLUMNS = `
   id, author_id, parent_id, body, like_count, reply_count, created_at,
-  beats!posts_beat_id_fkey(id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, plays, score, prices, currency, is_public, sale_state, beat_reactions(kind, user_id)),
+  beats!posts_beat_id_fkey(id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, plays, score, discount_percent, prices_before, prices, currency, is_public, sale_state, beat_reactions(kind, user_id)),
   profiles!posts_author_id_fkey(username, avatar_url, level)
 `;
 
@@ -67,6 +69,16 @@ const POST_COLUMNS = `
  * умеет откатываться на старый набор колонок, постам такой откатки не было:
  * вкладка «посты» просто оставалась пустой.
  */
+/**
+ * Пока не применена миграция 0035, в битах нет колонок скидки. Скидка живёт
+ * внутри вложенной выборки бита, и её отсутствие убивало бы весь запрос
+ * вместе с лентой постов — поэтому она убирается из набора, а не из кода.
+ */
+const POST_COLUMNS_PRE_DISCOUNT = POST_COLUMNS.replace(
+  "discount_percent, prices_before, ",
+  "",
+);
+
 const POST_COLUMNS_LEGACY = `
   id, author_id, parent_id, body, like_count, reply_count, created_at,
   beats(id, title, bpm, key, tags, type_beat_artists, cover_url, mp3_url, plays, prices, currency, is_public, sale_state),
@@ -100,6 +112,8 @@ type PostRowBeat = {
   mp3_url: string | null;
   plays: number | null;
   score?: number | null;
+  discount_percent?: number | null;
+  prices_before?: Record<string, number | null> | null;
   beat_reactions?: { kind: string; user_id: string }[] | null;
   prices: PostBeat["prices"] | null;
   currency: string | null;
@@ -134,6 +148,8 @@ function toBeat(value: PostRowBeat | PostRowBeat[] | null): PostBeat | null {
     plays: beat.plays ?? 0,
     score: beat.score ?? 0,
     sellerLevel: 1,
+    discountPercent: beat.discount_percent ?? 0,
+    pricesBefore: beat.prices_before ? normalizePrices(beat.prices_before) : null,
     likes: (beat.beat_reactions ?? []).filter((r) => r.kind === "like").length,
     saves: (beat.beat_reactions ?? []).filter((r) => r.kind === "save").length,
     prices: normalizePrices(beat.prices),
@@ -298,6 +314,12 @@ export async function fetchPosts(
      * Откат на набор колонок без score и level. Ошибку логируем: если дело
      * не в миграции, а в чём-то ещё, по молчанию это не разглядеть.
      */
+    const preDiscount = await build(POST_COLUMNS_PRE_DISCOUNT);
+
+    if (!preDiscount.error) {
+      return decorate(supabase, (preDiscount.data ?? []) as PostRow[], options.viewerId);
+    }
+
     const fallback = await build(POST_COLUMNS_LEGACY);
 
     if (fallback.error) {
@@ -491,6 +513,8 @@ export function beatToFeedCard(beat: PostBeat, author: PostAuthor): FeedBeat {
     plays: beat.plays,
     score: beat.score,
     sellerLevel: beat.sellerLevel,
+    discountPercent: beat.discountPercent,
+    pricesBefore: beat.pricesBefore,
     likes: beat.likes,
     saves: beat.saves,
     liked: false,

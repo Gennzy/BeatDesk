@@ -8,7 +8,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { ProgressLine } from "@/components/ui/progress";
 import { cn } from "@/lib/cn";
 import { BeatReactions } from "@/components/feed/beat-reactions";
-import { formatMoney } from "@/lib/currency";
+import { DiscountPrice, beforePrice } from "@/components/beat/discount-price";
 import { SALE_STATE_LABELS } from "@/lib/sales/state";
 import type { FeedBeat } from "@/lib/feed";
 import { PRICE_KEYS, priceLabel } from "@/lib/prices";
@@ -74,10 +74,12 @@ export function BeatCard({
    * Цена «от» — самая дешёвая из доступных уровней. На карточке нужна одна
    * цифра, чтобы сравнивать биты между собой, а не изучать четыре позиции.
    */
-  const cheapest = useMemo(
-    () => (tiers.length === 0 ? null : Math.min(...tiers.map((tier) => tier.value as number))),
+  const cheapestTier = useMemo(
+    () => (tiers.length === 0 ? null : tiers.reduce((low, tier) => ((tier.value as number) < (low.value as number) ? tier : low))),
     [tiers],
   );
+
+  const cheapest = cheapestTier ? (cheapestTier.value as number) : null;
 
   function listen() {
     const next = trackFromBeat(beat);
@@ -286,9 +288,12 @@ export function BeatCard({
           {cheapest !== null ? (
             <span className="flex items-baseline gap-1.5">
               <span className="label text-mute">{t("beat.from")}</span>
-              <span className="font-mono text-base text-paper tabular-nums">
-                {formatMoney(cheapest, beat.currency)}
-              </span>
+              <DiscountPrice
+                price={cheapest}
+                before={cheapestTier ? beforePrice(beat.pricesBefore, cheapestTier.key) : null}
+                percent={beat.discountPercent}
+                currency={beat.currency}
+              />
             </span>
           ) : (
             <span className="label text-mute">{SALE_STATE_LABELS[beat.saleState]}</span>

@@ -89,3 +89,39 @@ export function parsePrice(raw: string | null | undefined): number | null {
 
   return text !== "" && Number.isFinite(value) && value > 0 ? value : null;
 }
+
+/**
+ * Скидка.
+ *
+ * Считается здесь, а не в компонентах, по той же причине, что и разбор
+ * тегов: одно правило в трёх местах расходится. Применяется к ценам до
+ * сохранения — в базе лежит то, что спишется, а прежние цены остаются рядом
+ * для зачёркивания.
+ */
+export const MAX_DISCOUNT = 90;
+
+/** Цены со скидкой. Округление до рубля вниз: скидка не должна быть меньше обещанной. */
+export function applyDiscount(prices: Prices, percent: number): Prices {
+  const share = (100 - percent) / 100;
+
+  return {
+    mp3: prices.mp3 === null ? null : Math.floor(prices.mp3 * share),
+    wav: prices.wav === null ? null : Math.floor(prices.wav * share),
+    trackout: prices.trackout === null ? null : Math.floor(prices.trackout * share),
+    exclusive: prices.exclusive === null ? null : Math.floor(prices.exclusive * share),
+  };
+}
+
+/** Есть ли что показывать как скидку: нужен хотя бы один проданный уровень. */
+export function hasDiscount(prices: Prices, discountPercent: number): boolean {
+  return discountPercent > 0 && PRICE_KEYS.some((key) => prices[key] !== null);
+}
+
+/** Процент из поля ввода: мусор и выход за пределы отбрасываются к ближайшему. */
+export function normalizeDiscount(raw: unknown): number {
+  const value = Math.round(Number(raw));
+
+  if (!Number.isFinite(value) || value <= 0) return 0;
+
+  return Math.min(MAX_DISCOUNT, value);
+}

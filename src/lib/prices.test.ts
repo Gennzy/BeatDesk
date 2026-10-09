@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { emptyPrices, normalizePrices, parsePrice, PRICE_KEYS, priceLabel, pricesForDb, pricesToForm } from "./prices";
+import {
+  applyDiscount,
+  emptyPrices,
+  hasDiscount,
+  MAX_DISCOUNT,
+  normalizeDiscount,
+  normalizePrices,
+  parsePrice,
+  PRICE_KEYS,
+  priceLabel,
+  pricesForDb,
+  pricesToForm,
+} from "./prices";
 
 describe("цены бита", () => {
   it("четыре уровня, и Track Out между WAV и эксклюзивом", () => {
@@ -88,5 +100,82 @@ describe("parsePrice: цена из поля ввода", () => {
     // Number("abc") — это NaN, и без проверки он молча уехал бы в базу.
     expect(parsePrice("abc")).toBeNull();
     expect(parsePrice("Infinity")).toBeNull();
+  });
+});
+
+/*
+ * Проверяем не «считает ли процент», а то, ради чего он введён: показ и
+ * списание не должны разойтись. Поэтому applyDiscount проверяется на
+ * границах, где обычно и вылезает расхождение, а не на круглом числе.
+ */
+
+const withPrices = (prices: Partial<Record<string, number | null>>) => ({ ...emptyPrices(), ...prices });
+
+describe("скидка на бит", () => {
+  it("снижает каждый проданный уровень на процент", () => {
+    expect(applyDiscount(withPrices({ mp3: 1000, exclusive: 5000 }), 30)).toEqual({
+      mp3: 700,
+      wav: null,
+      trackout: null,
+      exclusive: 3500,
+    });
+  });
+
+  it("не превращает непродаваемый уровень в нулевую цену", () => {
+    // Ноль — это «выставлено бесплатно», и такой уровень молча попал бы в
+    // заказ. Отсутствие цены должно остаться отсутствием.
+    expect(applyDiscount(withPrices({ mp3: 1000 }), 50).wav).toBeNull();
+  });
+
+  it("округляет вниз, чтобы скидка не оказалась меньше обещанной", () => {
+    // 10% от 999 — это 99.9. Округление вверх дало бы 900 обещанных и 899
+    // списанных: расхождение в рубль в каждом заказе.
+    expect(applyDiscount(withPrices({ mp3: 999 }), 10).mp3).toBe(899);
+  });
+
+  it("при максимальной скидке не уходит в ноль", () => {
+    expect(applyDiscount(withPrices({ mp3: 100 }), MAX_DISCOUNT).mp3).toBe(10);
+  });
+
+  it("считает от исходной цены, а не от уже скидочной", () => {
+    /*
+     * Ключевой инвариант схемы. В базе лежит цена со скидкой: 800 при скидке
+     * 20 от 1000. Если бы следующая правка считала скидку от 800, вышло бы
+     * 640 — скидка тихо съедала бы сама себя с каждой правкой, и битмейкер
+     * увидел бы это только в выручке. Поэтому процент всегда применяется к
+     * исходной цене, а форма правит именно её: прежняя лежит рядом, в
+     * prices_before.
+     */
+    const base = withPrices({ mp3: 1000 });
+
+    expect(applyDiscount(base, 20).mp3).toBe(800);
+    expect(applyDiscount(base, 40).mp3).toBe(600);
+  });
+
+  it("совпадает с формулой, которую проверяет триггер в базе", () => {
+    // Расхождение хотя бы на рубли между формой и триггером превратило бы
+    // сохранение в ошибку: база отвергала бы честно посчитанную цену.
+    expect(applyDiscount(withPrices({ mp3: 1000, trackout: 333 }), 33)).toEqual({
+      ...emptyPrices(),
+      mp3: 670,
+      trackout: 223,
+    });
+  });
+
+  it("видна покупателю только когда есть процент и что продаётся", () => {
+    expect(hasDiscount(withPrices({ mp3: 700 }), 30)).toBe(true);
+    expect(hasDiscount(withPrices({ mp3: 700 }), 0)).toBe(false);
+    // Иначе витрина покажет скидку на бит, который нельзя купить.
+    expect(hasDiscount(emptyPrices(), 30)).toBe(false);
+  });
+
+  it("процент из формы приводится к допустимому", () => {
+    expect(normalizeDiscount(30)).toBe(30);
+    expect(normalizeDiscount("45")).toBe(45);
+    // Сто процентов — это подарок, а не скидка: режем до предела.
+    expect(normalizeDiscount(150)).toBe(MAX_DISCOUNT);
+    expect(normalizeDiscount("")).toBe(0);
+    expect(normalizeDiscount("abc")).toBe(0);
+    expect(normalizeDiscount(-10)).toBe(0);
   });
 });

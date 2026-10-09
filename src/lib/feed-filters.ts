@@ -16,7 +16,7 @@
  * увидел новое, отреагировал, получил уведомление. Без них площадка остаётся
  * витриной, за которой не следишь.
  */
-export type FeedScope = "all" | "following" | "liked";
+export type FeedScope = "all" | "following" | "liked" | "discounted";
 
 export type FeedFilterState = {
   scope: FeedScope;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, useMemo } from "react";
 
 import { CurrencyPicker } from "@/components/profile/currency-picker";
 import { Button } from "@/components/ui/button";
@@ -23,12 +23,12 @@ import {
   validateCoverFile,
 } from "@/lib/beats";
 import type { TranslationKey } from "@/lib/i18n/dictionaries";
-import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
+import { CURRENCIES, formatMoney, type CurrencyCode } from "@/lib/currency";
 import { compressImage } from "@/lib/image";
 import { SellReadiness } from "@/components/beats/sell-readiness";
 import { beatRoles } from "@/lib/beats";
 import type { TierId } from "@/lib/audio/delivery-rules";
-import { parsePrice as toPrice } from "@/lib/prices";
+import { applyDiscount, emptyPrices, parsePrice as toPrice, normalizeDiscount } from "@/lib/prices";
 import { parseTags } from "@/lib/tags";
 import { useI18n } from "@/lib/i18n/provider";
 import { createClient } from "@/lib/supabase/client";
@@ -59,6 +59,17 @@ const KIND_HINTS: Record<BeatFileKind, TranslationKey> = {
 
 type Status = "idle" | "uploading";
 
+/*
+ * Ключи цен в форме загрузки. В форме правки ключ WAV — bundle, потому что
+ * так называется колонка в базе; здесь состояние уже с этими именами.
+ */
+const UPLOAD_DISCOUNT_TIERS: Partial<Record<TierId, string>> = {
+  mp3: "MP3",
+  bundle: "MP3 + WAV",
+  trackout: "Track Out",
+  exclusive: "Эксклюзив",
+};
+
 export function UploadForm({ userId }: { userId: string }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -85,6 +96,27 @@ export function UploadForm({ userId }: { userId: string }) {
     trackout: null,
     exclusive: null,
   });
+  const [discount, setDiscount] = useState(0);
+
+  /*
+   * Предпросмотр: какие цены увидит покупатель и от чего они отличаются.
+   * Считается тем же applyDiscount, что и на сервере, — иначе превью
+   * показывало бы одно, а заказ списывал бы другое.
+   */
+  const discountPreview = useMemo(() => {
+    if (discount <= 0) return null;
+
+    const rows = (Object.entries(UPLOAD_DISCOUNT_TIERS) as [TierId, string][])
+      .map(([key, label]) => {
+        const before = prices[key];
+
+        return before === null ? null : { label, before, after: applyDiscount({ ...emptyPrices(), mp3: before }, discount).mp3 ?? 0 };
+      })
+      .filter((row): row is { label: string; before: number; after: number } => row !== null);
+
+    return rows.length > 0 ? rows : null;
+  }, [discount, prices]);
+
   const [title, setTitle] = useState("");
 
   /** Роли выбранных файлов: проверка знает, что загружено, по ним. */
@@ -162,6 +194,13 @@ export function UploadForm({ userId }: { userId: string }) {
         trackout: toNumber(form.get("priceTrackout")),
         exclusive: toNumber(form.get("priceExclusive")),
       },
+      /*
+       * Отправляем исходные цены и процент, а не посчитанную цену. Скидка
+       * применяется в одном месте на сервере: если бы форма прислала уже
+       * урезанную цену, показать её было бы нечем — а именно зачёркнутая
+       * старая и объясняет покупателю, почему цена вдруг ниже.
+       */
+      discount_percent: normalizeDiscount(form.get("discountPercent")),
       // Форма хранит валюту в состоянии и кладёт в hidden-поле, но берём
       // именно из состояния: hidden-поле может не отправиться.
       currency,
@@ -290,7 +329,41 @@ export function UploadForm({ userId }: { userId: string }) {
             <Field label={t("upload.priceExclusive")} optional={currencyHint}>
               <Input name="priceExclusive" type="number" inputMode="numeric" placeholder="5000" className="font-mono" onChange={(event) => setPrices((current) => ({ ...current, exclusive: toPrice(event.target.value) }))} />
             </Field>
+
+            {/*
+              Скидка — рядом с ценами, а не отдельным шагом: она относится к
+              ним. Показываем результат сразу, иначе битмейкер задаёт процент
+              и гадает, во сколько обойдётся бит.
+            */}
+            <Field label={t("discount.label")} hint={t("discount.hint")} optional={t("discount.optional")}>
+              <Input
+                name="discountPercent"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={90}
+                placeholder="0"
+                value={discount === 0 ? "" : discount}
+                onChange={(event) => setDiscount(normalizeDiscount(event.target.value))}
+                className="font-mono"
+              />
+            </Field>
           </div>
+
+          {discount > 0 && discountPreview ? (
+            <div className="panel flex flex-col gap-3 p-4">
+              <span className="label text-mute">{t("discount.preview")}</span>
+              <ul className="flex flex-wrap gap-x-6 gap-y-2">
+                {discountPreview.map((row: { label: string; before: number; after: number }) => (
+                  <li key={row.label} className="flex items-baseline gap-2">
+                    <span className="label text-mute">{row.label}</span>
+                    <span className="font-mono text-sm text-paper tabular-nums">{formatMoney(row.after, currency)}</span>
+                    <span className="font-mono text-xs text-mute line-through tabular-nums">{formatMoney(row.before, currency)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           <SellReadiness prices={prices} title={title} tags={[]} roles={roles} />
 
