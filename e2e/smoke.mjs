@@ -442,6 +442,67 @@ async function main() {
     check("жанров в списке все двенадцать", genreForm.selectable.length === 12, `в списке ${genreForm.selectable.length}`);
     check("поле жанра помечено обязательным", genreForm.required === true, "поле не required");
 
+    // --- корзина -------------------------------------------------------
+    /*
+     * Корзина проверяется целиком: положить бит, увидеть позицию, сменить
+     * уровень, убрать. По кускам это не поймало бы главное — что позиция
+     * вообще доезжает до страницы, а схлопывается по дороге.
+     */
+    console.log("Корзина");
+    await user.goto(`${BASE}/`, { waitUntil: "networkidle2", timeout: 60_000 });
+    const firstBeat = await user.evaluate(() =>
+      document.querySelector('a[href^="/beats/"]')?.getAttribute("href") ?? null,
+    );
+    check("в ленте есть бит для корзины", Boolean(firstBeat), "ссылка не найдена");
+
+    if (firstBeat) {
+      await user.goto(`${BASE}${firstBeat}`, { waitUntil: "networkidle2", timeout: 60_000 });
+
+      await user.evaluate(() => {
+        const add = [...document.querySelectorAll("button")].find((n) => n.textContent?.trim() === "В корзину");
+        add?.scrollIntoView({ block: "center" });
+        add?.click();
+      });
+      await wait(4000);
+
+      const cartBadge = await user.evaluate(() =>
+        [...document.querySelectorAll("a[href=\"/cart\"]")].map((n) => n.textContent?.trim()).join(""),
+      );
+      check("счётчик в шапке показывает позицию", /1/.test(cartBadge), `значок: «${cartBadge}»`);
+
+      await user.goto(`${BASE}/cart`, { waitUntil: "networkidle2", timeout: 60_000 });
+      const cartText = await user.evaluate(() => document.body.innerText);
+
+      check("позиция доехала до корзины", !/Корзина пуста/i.test(cartText), "корзина пуста");
+      check("в корзине видна цена", /\d/.test(cartText) && /₽/.test(cartText), "цены нет");
+
+      // Уровень переключается на месте: у каждого бита свой набор.
+      const changed = await user.evaluate(async () => {
+        const select = document.querySelector("select.control");
+        if (!select || select.options.length < 2) return null;
+
+        select.value = select.options[1].value;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+
+        return select.options[1].value;
+      });
+      await wait(3000);
+
+      const afterTier = await user.evaluate(() => document.querySelector("select.control")?.value ?? null);
+      check("уровень в корзине меняется", changed !== null && afterTier === changed, `стало ${afterTier}`);
+
+      const removed = await user.evaluate(async () => {
+        const remove = [...document.querySelectorAll("button")].find((n) => n.textContent?.trim() === "Убрать");
+        remove?.click();
+
+        return Boolean(remove);
+      });
+      await wait(3000);
+      const afterRemove = await user.evaluate(() => document.body.innerText);
+      check("позиция убирается из корзины", removed && /Корзина пуста/i.test(afterRemove), "позиция осталась");
+    }
+
+
     // --- полоса баннеров ------------------------------------------------
     /*
      * Полоса на месте героя проверяется отдельно от остального: когда её

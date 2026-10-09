@@ -1,16 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { clientKey, rateLimit } from "@/lib/rate-limit";
-import { normalizeTier } from "@/lib/sales/tier";
+import { parseOrderItems, type OrderItemInput } from "@/lib/sales/order-items";
 import { createClient } from "@/lib/supabase/server";
 
-type Body = {
-  beatId?: unknown;
-  tier?: unknown;
+type Body = OrderItemInput & {
   email?: unknown;
   contact?: unknown;
 };
-
 
 /**
  * Ключ уровня в интерфейсе — `wav`, в базе — историческое имя `bundle`.
@@ -36,15 +33,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
   }
 
-  const beatId = typeof body.beatId === "string" ? body.beatId.trim() : "";
-  const rawTier = typeof body.tier === "string" ? body.tier.trim() : "";
-  const tier = normalizeTier(rawTier);
+  const parsed = parseOrderItems(body);
+  if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
+
   const email = typeof body.email === "string" ? body.email.trim() : "";
 
-  if (!beatId) return NextResponse.json({ error: "Нужен бит" }, { status: 400 });
-  if (!tier) {
-    return NextResponse.json({ error: "Неизвестный уровень" }, { status: 400 });
-  }
   if (!isEmail(email)) {
     return NextResponse.json({ error: "Нужен адрес для доставки файлов" }, { status: 400 });
   }
@@ -77,7 +70,7 @@ export async function POST(request: Request) {
     }
 
     const { data, error } = await supabase.rpc("create_order", {
-      p_items: [{ beat_id: beatId, tier }],
+      p_items: parsed,
       p_currency: "RUB",
       p_buyer_email: email,
       p_contact: contact,

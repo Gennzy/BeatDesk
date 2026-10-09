@@ -11,6 +11,7 @@ import { Icon } from "@/components/ui/icon";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { NotificationBell } from "@/components/posts/notification-bell";
+import { CartLink } from "@/components/sales/cart-link";
 import { useI18n } from "@/lib/i18n/provider";
 import { signOut } from "@/lib/supabase/actions";
 import type { SessionUser } from "@/lib/supabase/user";
@@ -126,6 +127,7 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
               {user ? (
                 <>
                   <NotificationBell />
+                  <CartLink />
                   <Link href="/profile" className="flex items-center gap-2 transition-opacity hover:opacity-80">
                     <Avatar user={user} />
                     <span className="label max-w-24 truncate text-paper">{user.username}</span>
@@ -172,6 +174,7 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
               {user ? (
                 <>
                   <NotificationBell />
+                  <CartLink />
                   <Link href="/profile" aria-label={t("auth.myProfile")}>
                     <Avatar user={user} size="md" />
                   </Link>

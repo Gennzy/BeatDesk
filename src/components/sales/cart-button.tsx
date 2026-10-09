@@ -60,7 +60,9 @@ export function CartButton({ beatId, tier, signedIn }: { beatId: string; tier: P
       }
 
       setState("added");
-      // Счётчик в шапке обязан увидеть новое число, а он читается с сервера.
+      // Шапка читает число с сервера, поэтому сообщаем ей событием: после
+      // refresh() счётчик всё равно остался бы старым до перезагрузки.
+      window.dispatchEvent(new Event("beatdesk:cart"));
       router.refresh();
     } catch {
       setError(t("cart.addError"));
