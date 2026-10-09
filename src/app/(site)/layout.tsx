@@ -1,27 +1,16 @@
-import { evaluateGate } from "@/lib/release";
-import { getSessionUser } from "@/lib/supabase/user";
-import { ComingSoon } from "@/components/release/coming-soon";
-
 /**
- * Раздел сайта закрыт на время разработки.
+ * Раздел сайта.
  *
- * Заглушка стоит именно здесь, а не в корневом layout: иначе она накрыла бы
- * и страницу входа. Владельца заглушка отличает по адресу, а адрес известен
- * только после входа — получился бы замок, из которого не выйти.
+ * Здесь стояла заглушка «сервис в разработке», и она закрывала сайт всем,
+ * кроме владельца. Для проверки нововведений это оказалось хуже от
+ * отсутствия страницы: человек заходил со второго аккаунта, видел
+ * «скоро» и не мог посмотреть ни каталог, ни корзину, ни оформление —
+ * то есть ровно то, ради чего и приходил.
  *
- * Поэтому `/login` и `/auth/callback` живут вне этой группы и остаются
- * доступными всегда: выйти и войти можно сколько угодно раз.
+ * Заглушка удалена целиком вместе с правилом гейта. Вернуть её — одна
+ * правка в этом файле; держать для этого отдельный модуль с тестами
+ * незачем: значение в переменной окружения не заменит отсутствующий экран.
  */
-export default async function SiteLayout({ children }: { children: React.ReactNode }) {
-  const user = await getSessionUser();
-
-  const gate = evaluateGate({
-    gate: process.env.BEATDESK_GATE,
-    email: user?.email,
-    production: process.env.VERCEL_ENV === "production",
-  });
-
-  if (!gate.open) return <ComingSoon />;
-
+export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
