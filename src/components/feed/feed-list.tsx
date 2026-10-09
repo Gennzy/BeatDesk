@@ -59,8 +59,34 @@ export function FeedList({ initial, initialNextOffset, filters, signedIn }: Prop
   }, [loadMore, nextOffset]);
 
   if (beats.length === 0) {
-    return (
+    /*
+     * Пусто и «ничего не нашлось» — разные вещи, и раньше они были
+     * одним экраном.
+     *
+     * Гость, выбравший жанр, в котором пока никого нет, видел «Загрузи
+     * первый бит». Он пришёл покупать, а его звали продавать — и каталог
+     * при этом был не пуст, пустым был его выбор. Теперь у фильтра своя
+     * формулировка и действие сброса, а приглашение загрузить бит
+     * остаётся там, где каталог действительно пуст.
+     */
+    const narrowed =
+      Boolean(filters.genre) ||
+      filters.scope !== "all" ||
+      Boolean(filters.query.trim()) ||
+      Boolean(filters.key) ||
+      Boolean(filters.bpmMin) ||
+      Boolean(filters.bpmMax);
+
+    if (narrowed) {
+      return <EmptyState title={t("states.noMatch.title")} description={t("states.noMatch.sub")} action={{ label: t("states.noMatch.cta"), href: "/#feed" }} />;
+    }
+
+    // В пустом каталоге гости и продавцы видят разное: первому нечего
+    // смотреть, второму есть что предложить.
+    return signedIn ? (
       <EmptyState title={t("states.empty.title")} description={t("states.empty.sub")} action={{ label: t("states.empty.cta"), href: "/cabinet/upload" }} />
+    ) : (
+      <EmptyState title={t("states.emptyGuest.title")} description={t("states.emptyGuest.sub")} action={{ label: t("states.emptyGuest.cta"), href: "/cabinet/upload" }} />
     );
   }
 
@@ -98,7 +124,13 @@ export function FeedList({ initial, initialNextOffset, filters, signedIn }: Prop
           />
         ) : null}
 
-        {status === "idle" && nextOffset === null ? <span className="label text-mute">{t("feed.end")}</span> : null}
+        {status === "idle" && nextOffset === null ? (
+          <p className="flex w-full items-center justify-center gap-3 pt-2 text-mute/70">
+            <span aria-hidden className="h-px w-10 bg-line" />
+            <span className="label">{t("feed.end")}</span>
+            <span aria-hidden className="h-px w-10 bg-line" />
+          </p>
+        ) : null}
       </div>
     </div>
   );

@@ -153,12 +153,21 @@ async function findRealAudio(browser) {
 
   try {
     await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 60_000 });
-    await wait(1200);
-
-    const html = await page.content();
     // Кавычки в потоке Next.js экранированы, поэтому искомое выглядит
     // как \\"mp3Url\\":\\"https://…\\" — искать надо именно так.
-    const audioUrl = html.match(/\\"mp3Url\\":\\"(https:[^\\"]+)/)?.[1];
+    //
+    // Ждём появления самой ссылки, а не фиксированной паузы: лента
+    // приходит стримом, и на domcontentloaded в потоке ещё нет данных о
+    // битах. Пауза работала то через раз, и две проверки молча выпадали —
+    // прогон показывал «51 из 51» и выглядел при этом успешным.
+    let audioUrl = null;
+
+    for (let attempt = 0; attempt < 20 && !audioUrl; attempt += 1) {
+      audioUrl = (await page.content()).match(/\\"mp3Url\\":\\"(https:[^\\"]+)/)?.[1] ?? null;
+
+      if (!audioUrl) await wait(500);
+    }
+
 
     if (!audioUrl) return null;
 
@@ -455,6 +464,20 @@ async function main() {
     );
     check("плитки каталога ведут в разделы ленты", catalog.length >= 6, `плиток: ${catalog.length}`);
     check("у плиток нет пустых адресов", catalog.every((href) => href.length > 1), "плитка ведёт в никуда");
+
+    /*
+     * Пустой выбор и пустой каталог — разные экраны. Раньше гость,
+     * выбравший жанр без битов, получал «Загрузить бит»: он пришёл
+     * покупать, а его звали продавать, и каталог при этом был не пуст.
+     */
+    const pinCtx = await browser.createBrowserContext();
+    const pinPage = await pinCtx.newPage();
+    await pinPage.goto(`${BASE}/?genre=ambient`, { waitUntil: "networkidle2", timeout: 60_000 });
+    const emptyText = await pinPage.evaluate(() => document.body.innerText);
+    await pinCtx.close();
+
+    check("пустой жанр объясняет, а не зовёт продавать", /Сбросить фильтры/i.test(emptyText), "нет действия сброса");
+    check("пустой жанр не предлагает загрузить бит", !/Загрузить бит/i.test(emptyText), "госта зовут продавать");
 
 
     // --- закрепление бита ---------------------------------------------
