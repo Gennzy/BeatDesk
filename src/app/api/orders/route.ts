@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { clientKey, rateLimit } from "@/lib/rate-limit";
+import { normalizeTier } from "@/lib/sales/tier";
 import { createClient } from "@/lib/supabase/server";
 
 type Body = {
@@ -10,13 +11,11 @@ type Body = {
   contact?: unknown;
 };
 
-const TIERS = ["mp3", "bundle", "trackout", "exclusive"] as const;
 
 /**
  * Ключ уровня в интерфейсе — `wav`, в базе — историческое имя `bundle`.
  * Без перевода покупка уровня «MP3 + WAV» падала бы на «Неизвестный уровень».
  */
-const TIER_ALIASES: Record<string, string> = { wav: "bundle" };
 
 function isEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -39,11 +38,11 @@ export async function POST(request: Request) {
 
   const beatId = typeof body.beatId === "string" ? body.beatId.trim() : "";
   const rawTier = typeof body.tier === "string" ? body.tier.trim() : "";
-  const tier = TIER_ALIASES[rawTier] ?? rawTier;
+  const tier = normalizeTier(rawTier);
   const email = typeof body.email === "string" ? body.email.trim() : "";
 
   if (!beatId) return NextResponse.json({ error: "Нужен бит" }, { status: 400 });
-  if (!(TIERS as readonly string[]).includes(tier)) {
+  if (!tier) {
     return NextResponse.json({ error: "Неизвестный уровень" }, { status: 400 });
   }
   if (!isEmail(email)) {
