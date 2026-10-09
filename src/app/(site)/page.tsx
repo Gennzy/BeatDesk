@@ -3,7 +3,8 @@ import { Suspense } from "react";
 
 import { FeedTabs } from "@/components/feed/feed-tabs";
 import type { FeedFilterState } from "@/lib/feed-filters";
-import { Container, SectionHead } from "@/components/ui/container";
+import { FeedBanners } from "@/components/feed/feed-banners";
+import { Container } from "@/components/ui/container";
 import { ErrorState } from "@/components/ui/states";
 import { fetchBeatsByOwner, fetchPublicBeats, type FeedBeat, type FeedFilters } from "@/lib/feed";
 import { readFilters, toFeedFilters } from "@/lib/feed-filters";
@@ -84,9 +85,26 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         </div>
       ) : null}
 
-      <section id="feed" className="pt-10 pb-20 lg:pt-14 lg:pb-28">
+      {/*
+        Баннеры стоят над лентой, а не вместо неё. Раньше здесь была одна
+        строка подписи: она занимала место баннеров у конкурентов, но
+        рассказывала о площадке меньше всего, и полоса выглядела как
+        недоделанная вёрстка. Её смысл — «бит можно послушать целиком» —
+        не потерян: он теперь стоит заголовком первого баннера.
+      */}
+      <div className="pt-8 lg:pt-12">
+        <FeedBanners />
+      </div>
+
+      {/*
+        Отдельного заголовка «Лента» над вкладками больше нет: два заголовка
+        подряд читались как сбой вёрстки, а его смысл — «бит можно послушать
+        целиком» — теперь стоит заголовком первого баннера, то есть сказано
+        один раз и на виду. Области остаётся доступное имя, чтобы читатель
+        с экрана знал, куда он попал.
+      */}
+      <section id="feed" aria-label={t("feed.label")} className="pt-8 pb-20 lg:pt-10 lg:pb-28">
         <Container>
-          <SectionHead label={t("feed.label")} hint={t("feed.hint")} />
 
           <div className="mt-8">
             <Suspense fallback={null}>

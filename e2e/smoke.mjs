@@ -149,11 +149,27 @@ async function findRealAudio(browser) {
 
   try {
     await page.goto(`${BASE}/`, { waitUntil: "networkidle2", timeout: 60_000 });
-    await page.evaluate(() => {
-      const play = document.querySelector('button[aria-label="Слушать"], button[aria-label="Play"]');
-      play?.click();
-    });
-    await wait(2500);
+
+    /*
+     * Кнопка ищется с ожиданием и нажимается с повтором.
+     *
+     * Раньше клик делался один раз, сразу после загрузки, и ждали 2.5
+     * секунды. Если кнопка ещё не отрисовалась или запрос ушёл позже
+     * окна, звук не ловился — и две проверки просто не выполнялись. Итог
+     * «47 из 47» выглядел как успех, хотя часть работы молча выпала.
+     */
+    for (let attempt = 0; attempt < 6 && !audioUrl; attempt += 1) {
+      await page
+        .waitForSelector('button[aria-label="Слушать"], button[aria-label="Play"]', { timeout: 8000 })
+        .catch(() => null);
+
+      await page.evaluate(() => {
+        const play = document.querySelector('button[aria-label="Слушать"], button[aria-label="Play"]');
+        play?.click();
+      });
+
+      await wait(1500);
+    }
 
     if (!audioUrl) return null;
 
@@ -424,6 +440,21 @@ async function main() {
     check("пустое значение выбрать нельзя", !genreForm.selectable.includes(""), `можно выбрать: ${genreForm.selectable.join(",")}`);
     check("жанров в списке все двенадцать", genreForm.selectable.length === 12, `в списке ${genreForm.selectable.length}`);
     check("поле жанра помечено обязательным", genreForm.required === true, "поле не required");
+
+    // --- полоса баннеров ------------------------------------------------
+    /*
+     * Полоса на месте героя проверяется отдельно от остального: когда её
+     * убрали, страница не падала и не ломалась — просто оставалось пустое
+     * место, а это не показывает ни один прогон, который смотрит на ошибки.
+     */
+    await user.goto(`${BASE}/`, { waitUntil: "networkidle2", timeout: 60_000 });
+    const banners = await user.evaluate(() =>
+      [...document.querySelectorAll('a[href]')]
+        .map((node) => node.getAttribute("href") ?? "")
+        .filter((href) => href === "/cabinet/upload" || href === "/?scope=discounted#feed"),
+    );
+    check("полоса баннеров на месте", banners.length >= 2, `найдено ссылок: ${banners.length}`);
+
 
     // --- закрепление бита ---------------------------------------------
     /*
