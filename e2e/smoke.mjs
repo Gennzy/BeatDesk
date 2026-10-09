@@ -134,57 +134,49 @@ function baseDir() {
   return existsSync(WORK_ROOT) ? WORK_ROOT : tmpdir();
 }
 
-/** Настоящий бит с площадки: ссылка достаётся из запроса, который делает плеер. */
+/**
+ * Настоящий бит с площадки.
+ *
+ * Ссылка берётся из данных страницы, а не перехватом запроса. Перехват
+ * работал через раз: браузер отдаёт аудио из кэша, сетевого запроса не
+ * происходит вовсе, и две проверки молча выпадали. Прогон при этом
+ * показывал «49 из 49» и выглядел успешным — упало не то, что ломалось.
+ *
+ * Next.js кладёт данные, переданные в компоненты, в поток self.__next_f,
+ * и mp3Url лежит там текстом. Это детерминированно: значение либо есть,
+ * либо нет, и ждать его не нужно.
+ */
 async function findRealAudio(browser) {
   // Имя метода — createBrowserContext: в этой версии Puppeteer старого newContext нет.
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
 
-  let audioUrl = null;
-
-  page.on("request", (request) => {
-    const url = request.url();
-    if (!audioUrl && /\/storage\/v1\/object\/.*\.(mp3|wav|m4a|ogg)(\?|$)/i.test(url)) audioUrl = url;
-  });
-
   try {
-    await page.goto(`${BASE}/`, { waitUntil: "networkidle2", timeout: 60_000 });
+    await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await wait(1200);
 
-    /*
-     * Кнопка ищется с ожиданием и нажимается с повтором.
-     *
-     * Раньше клик делался один раз, сразу после загрузки, и ждали 2.5
-     * секунды. Если кнопка ещё не отрисовалась или запрос ушёл позже
-     * окна, звук не ловился — и две проверки просто не выполнялись. Итог
-     * «47 из 47» выглядел как успех, хотя часть работы молча выпала.
-     */
-    for (let attempt = 0; attempt < 6 && !audioUrl; attempt += 1) {
-      await page
-        .waitForSelector('button[aria-label="Слушать"], button[aria-label="Play"]', { timeout: 8000 })
-        .catch(() => null);
-
-      await page.evaluate(() => {
-        const play = document.querySelector('button[aria-label="Слушать"], button[aria-label="Play"]');
-        play?.click();
-      });
-
-      await wait(1500);
-    }
+    const html = await page.content();
+    // Кавычки в потоке Next.js экранированы, поэтому искомое выглядит
+    // как \\"mp3Url\\":\\"https://…\\" — искать надо именно так.
+    const audioUrl = html.match(/\\"mp3Url\\":\\"(https:[^\\"]+)/)?.[1];
 
     if (!audioUrl) return null;
 
-    const declaredBpm = await page.evaluate(() => {
-      const match = document.body.innerText.match(/(\d+)\s*BPM/);
-      return match ? Number(match[1]) : null;
+    // Заявленные данные берём с самой карточки: разбор сравнивается с тем,
+    // что продавец написал руками, а не с тем, что площадка уже посчитала.
+    const card = await page.evaluate(() => {
+      const title = document.querySelector("h3")?.textContent?.trim() ?? "";
+      const bpm = document.body.innerText.match(/(\d+)\s*BPM/);
+
+      return { title, bpm: bpm ? Number(bpm[1]) : null };
     });
 
-    const title = await page.evaluate(() => document.querySelector("h3")?.textContent?.trim() ?? "");
-
-    return { url: audioUrl, declaredBpm, title };
+    return { url: audioUrl, declaredBpm: card.bpm, title: card.title };
   } finally {
     await context.close();
   }
 }
+
 
 /** Загрузка файла по ссылке: true, если файл действительно записался. */
 async function download(url, path) {
@@ -454,6 +446,15 @@ async function main() {
         .filter((href) => href === "/cabinet/upload" || href === "/?scope=discounted#feed"),
     );
     check("полоса баннеров на месте", banners.length >= 2, `найдено ссылок: ${banners.length}`);
+
+    // Каталог: плитки должны вести в реальные разделы. Плитка, ведущая в
+    // пустоту, хуже отсутствующей — человек кликает и решает, что площадка
+    // сломана, поэтому проверяются именно адреса.
+    const catalog = await user.evaluate(() =>
+      [...document.querySelectorAll('a[href*="#feed"]')].map((node) => node.getAttribute("href") ?? ""),
+    );
+    check("плитки каталога ведут в разделы ленты", catalog.length >= 6, `плиток: ${catalog.length}`);
+    check("у плиток нет пустых адресов", catalog.every((href) => href.length > 1), "плитка ведёт в никуда");
 
 
     // --- закрепление бита ---------------------------------------------

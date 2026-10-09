@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { FeedTabs } from "@/components/feed/feed-tabs";
 import type { FeedFilterState } from "@/lib/feed-filters";
+import { CatalogTiles } from "@/components/feed/catalog-tiles";
 import { FeedBanners } from "@/components/feed/feed-banners";
 import { Container } from "@/components/ui/container";
 import { ErrorState } from "@/components/ui/states";
@@ -94,6 +95,18 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       */}
       <div className="pt-8 lg:pt-12">
         <FeedBanners />
+      </div>
+
+      {/*
+        Каталог — быстрый путь, а не украшение: плитки ведут в реальные
+        разделы ленты. Между баннерами и лентой он читается как оглавление
+        площадки, а на пустой странице с двумя битами — как подсказка, куда
+        идти дальше.
+      */}
+      <div className="pt-6 lg:pt-8">
+        <Container>
+          <CatalogTiles />
+        </Container>
       </div>
 
       {/*
