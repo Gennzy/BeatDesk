@@ -13,11 +13,15 @@
  */
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import puppeteer from "puppeteer-core";
 
 const BASE = (process.env.BASE_URL ?? "http://localhost:3161").replace(/\/$/, "");
+
+/** Корень для временных файлов: тот же том, что и проект. */
+const WORK_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const CHROME =
   process.env.CHROME_PATH ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
 
@@ -108,9 +112,81 @@ function makeClickFixture() {
 let workDirPath = null;
 
 function workDir() {
-  if (!workDirPath) workDirPath = mkdtempSync(join(tmpdir(), "beatdesk-e2e-"));
+  if (!workDirPath) workDirPath = mkdtempSync(join(baseDir(), "beatdesk-e2e-"));
 
   return workDirPath;
+}
+
+/*
+ * Где держать временные файлы прогона.
+ *
+ * Системный tmpdir почти всегда лежит на C:, а проект — на D:. Стоит
+ * диску C: заполниться (а он заполнялся дважды за время работы над этим
+ * проектом), и прогон падал не на проверке, а на записи файла: ENOSPC.
+ * Поэтому по умолчанию рабочий каталог — рядом с проектом, а системный
+ * остаётся запасным вариантом и переопределяется через E2E_TMP.
+ */
+function baseDir() {
+  const custom = process.env.E2E_TMP;
+
+  if (custom && existsSync(custom)) return custom;
+
+  return existsSync(WORK_ROOT) ? WORK_ROOT : tmpdir();
+}
+
+/** Настоящий бит с площадки: ссылка достаётся из запроса, который делает плеер. */
+async function findRealAudio(browser) {
+  // Имя метода — createBrowserContext: в этой версии Puppeteer старого newContext нет.
+  const context = await browser.createBrowserContext();
+  const page = await context.newPage();
+
+  let audioUrl = null;
+
+  page.on("request", (request) => {
+    const url = request.url();
+    if (!audioUrl && /\/storage\/v1\/object\/.*\.(mp3|wav|m4a|ogg)(\?|$)/i.test(url)) audioUrl = url;
+  });
+
+  try {
+    await page.goto(`${BASE}/`, { waitUntil: "networkidle2", timeout: 60_000 });
+    await page.evaluate(() => {
+      const play = document.querySelector('button[aria-label="Слушать"], button[aria-label="Play"]');
+      play?.click();
+    });
+    await wait(2500);
+
+    if (!audioUrl) return null;
+
+    const declaredBpm = await page.evaluate(() => {
+      const match = document.body.innerText.match(/(\d+)\s*BPM/);
+      return match ? Number(match[1]) : null;
+    });
+
+    const title = await page.evaluate(() => document.querySelector("h3")?.textContent?.trim() ?? "");
+
+    return { url: audioUrl, declaredBpm, title };
+  } finally {
+    await context.close();
+  }
+}
+
+/** Загрузка файла по ссылке: true, если файл действительно записался. */
+async function download(url, path) {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(60_000) });
+
+    if (!response.ok) return false;
+
+    const bytes = Buffer.from(await response.arrayBuffer());
+
+    if (bytes.length === 0) return false;
+
+    writeFileSync(path, bytes);
+
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function reachable() {
@@ -453,6 +529,49 @@ const guestOrder = await guestContext.newPage();
       await studio.evaluate(() => !!document.querySelector('a[href="/cabinet"]')),
     );
 
+    /*
+     * Сначала настоящий бит из самой площадки.
+     *
+     * Синтетический клик-файл удобен тем, что для него известен ответ, но
+     * он проверяет только разбор WAV, который мы же и придумали. Настоящий
+     * MP3 проходит через другой путь декодирования, и он может сломаться
+     * там, где наш файл проходит. Поэтому прогон сначала берёт бит, который
+     * уже лежит на площадке: ссылка достаётся перехватом запроса при
+     * нажатии play — она не лежит в разметке, плеккер создаёт new Audio().
+     */
+    const realAudio = await findRealAudio(browser);
+
+    if (realAudio?.url) {
+      const file = join(workDir(), "real-beat.mp3");
+      const saved = await download(realAudio.url, file);
+
+      if (saved) {
+        await (await studio.$('input[type=file]')).uploadFile(file);
+        await wait(9000);
+
+        const realText = await studio.evaluate(() => document.body.innerText);
+        const realTempo = realText.match(/(\d+[.,]\d)\s*BPM/);
+
+        check("студия разбирает настоящий бит с площадки", Boolean(realTempo), "темп не показан");
+        check("на настоящем бите показана длительность", /ДЛИТЕЛЬНОСТЬ/i.test(realText));
+
+        if (realTempo && realAudio.declaredBpm) {
+          const detected = Number(realTempo[1].replace(",", "."));
+          /*
+           * Расхождение печатается, но не роняет прогон: разбор темпа для
+           * этого файла известно отличается от заявленного, и это отдельная
+           * работа. Молча пропустить проверку нельзя — тогда правка
+           * разбора не заметит, что стала лучше.
+           */
+          const delta = Math.abs(detected - realAudio.declaredBpm);
+          console.log(
+            `      настоящий бит «${realAudio.title}»: заявлено ${realAudio.declaredBpm} BPM, разбором ${detected}` +
+              (delta >= 1 ? ` (расхождение ${delta.toFixed(1)})` : ""),
+          );
+        }
+      }
+    }
+
     // Разбор настоящего файла: клики на 140 BPM, для которых ответ известен.
     const fixture = makeClickFixture();
     const input = await studio.$('input[type=file]');
@@ -507,7 +626,17 @@ const guestOrder = await guestContext.newPage();
 
       await page.close();
     } else {
-      console.log("BEAT_AUDIO_FILE или BEAT_AUDIO_URL не заданы: настоящий бит не проверен");
+      /*
+       * Здесь нужен эталон: файл и заранее известные BPM с тональностью.
+       * Без них сверять нечего, а выдуманное ожидание хуже отсутствия
+       * проверки — оно всегда проходит и потому врёт.
+       *
+       * Разбор настоящего бита самой площадки прогон всё равно проверяет
+       * выше, без эталона: важно, что декодирование не падает.
+       */
+      console.log(
+        "точность разбора на эталоне не проверялась: задайте BEAT_AUDIO_FILE или BEAT_AUDIO_URL",
+      );
     }
   } finally {
     await browser.close();
