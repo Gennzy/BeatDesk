@@ -51,6 +51,7 @@ export function Field({
   hint,
   error,
   optional,
+  required,
   children,
   className,
   htmlFor,
@@ -59,6 +60,12 @@ export function Field({
   hint?: string;
   error?: string;
   optional?: string;
+  /**
+   * Обязательность показывается явно, а не подразумевается отсутствием
+   * слова «необязательно». Пометка ставится у подписи — там, где человек
+   * ищет её взглядом, — и дублируется в подсказке поля.
+   */
+  required?: boolean;
   children: ReactNode;
   className?: string;
   /**
@@ -75,6 +82,11 @@ export function Field({
       <div className="flex items-baseline justify-between gap-4">
         <label htmlFor={htmlFor} className="label text-paper">
           {label}
+          {required ? (
+            <span className="ml-1 text-signal" aria-hidden>
+              *
+            </span>
+          ) : null}
         </label>
         {optional ? <span className="label text-mute">{optional}</span> : null}
       </div>

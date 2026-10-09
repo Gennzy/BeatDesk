@@ -84,19 +84,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (musicalKey) patch.key = musicalKey;
 
   /*
-   * Жанр сверяется со списком. Пустая строка — это честное «снять жанр»,
-   * а не ошибка: бит может перестать быть жанровым, и фильтр должен это
-   * увидеть, а не держать его в старой категории.
+   * Жанр сверяется со списком и не может быть пустым: снять его нельзя,
+   * потому что без жанра бит выпадает из фильтра и из подсчёта. Правая
+   * кнопка «Сохранить» без жанра обязана честно сказать об этом, а не
+   * сохранить бит, который потом нигде не находится.
    */
-  if (form.has("genre")) {
-    const genre = normalizeGenre(form.get("genre"));
+  const genre = normalizeGenre(form.get("genre"));
 
-    if (form.get("genre") && !genre) {
-      return NextResponse.json({ error: "Такого жанра нет" }, { status: 400 });
-    }
-
-    patch.genre = genre;
+  if (!genre) {
+    return NextResponse.json({ error: "Укажите жанр" }, { status: 400 });
   }
+
+  patch.genre = genre;
 
   const tags = parseJson<string[]>(form.get("tags"));
   if (tags) {

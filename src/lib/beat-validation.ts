@@ -160,6 +160,19 @@ export function validateBeat(draft: BeatDraft): { ok: true; value: ValidatedBeat
 
   const key = musicalKey as string;
 
+  /*
+   * Жанр обязателен, и это проверяется здесь, а не только формой.
+   *
+   * Форму можно не заполнить, а сервер вызвать напрямую. Жанр при этом —
+   * не украшение: без него бит выпадает из фильтра и из подсчёта, и
+   * покупатель видит площадку, на которой половина каталога не находится
+   * ни в одной категории. Пустое значение — это не «не указан», это
+   * «искать придётся вручную».
+   */
+  const genre = normalizeGenre(draft.genre);
+
+  if (!genre) errors.push("Укажите жанр");
+
   const artists = Array.isArray(draft.typeBeatArtists)
     ? draft.typeBeatArtists
         .map((artist) => String(artist).trim())
@@ -186,7 +199,7 @@ export function validateBeat(draft: BeatDraft): { ok: true; value: ValidatedBeat
       // Жанр сверяется со списком, а не принимается как есть: иначе в
       // колонке осели бы «Трэп», «TRAP» и «trap» тремя разными жанрами,
       // и фильтр по жанру молча развалился бы на три пустых вкладки.
-      genre: normalizeGenre(draft.genre),
+      genre,
     },
   };
 }

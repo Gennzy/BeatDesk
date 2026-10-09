@@ -11,7 +11,7 @@
  *   pnpm test:e2e
  * Либо одной строкой: BASE_URL=https://beat-desk.vercel.app pnpm test:e2e
  */
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -52,8 +52,7 @@ async function realBeatFixture() {
   const response = await fetch(url);
   if (!response.ok) return null;
 
-  const dir = mkdtempSync(join(tmpdir(), "beatdesk-e2e-real-"));
-  const path = join(dir, "beat.wav");
+  const path = join(workDir(), "beat.wav");
   writeFileSync(path, Buffer.from(await response.arrayBuffer()));
 
   return { path, bpm: 130, key: "F# major" };
@@ -92,10 +91,26 @@ function makeClickFixture() {
   header.write("data", 36);
   header.writeUInt32LE(data.length * 2, 40);
 
-  const path = join(mkdtempSync(join(tmpdir(), "beatdesk-e2e-")), `clicks-${bpm}bpm.wav`);
+  const path = join(workDir(), `clicks-${bpm}bpm.wav`);
   writeFileSync(path, Buffer.concat([header, Buffer.from(data.buffer)]));
 
   return { path, bpm };
+}
+
+/*
+ * Каталог для файлов прогона.
+ *
+ * Раньше mkdtemp вызывался в двух местах и никогда не удалялся: каждый
+ * запуск e2e оставлял после себя папку. Их набралось двадцать, а вместе с
+ * ними пришёл ENOSPC посреди прогона — провалилась не проверка, а запись
+ * файла. Каталог один на прогон и сносится в finally.
+ */
+let workDirPath = null;
+
+function workDir() {
+  if (!workDirPath) workDirPath = mkdtempSync(join(tmpdir(), "beatdesk-e2e-"));
+
+  return workDirPath;
 }
 
 async function reachable() {
@@ -308,6 +323,32 @@ async function main() {
     await genreGuest.close();
 
 
+    // --- жанр обязателен в форме --------------------------------------
+    /*
+     * Обязательность проверяется на живой форме загрузки, где человек и
+     * выбирает. Смотреть надо не на наличие слова в подписи, а на то, что
+     * пустое значение действительно нельзя выбрать: подсказка в списке
+     * остаётся, но она disabled — иначе список начинался бы Трейпом и бит
+     * молча уходил бы в трейп без всякого выбора.
+     */
+    const genreForm = await user.evaluate(() => {
+      const select = [...document.querySelectorAll("select")].find((node) =>
+        [...(node.options ?? [])].some((option) => option.value === "trap"),
+      );
+      const options = [...(select?.options ?? [])];
+
+      return {
+        found: Boolean(select),
+        selectable: options.filter((option) => !option.disabled).map((option) => option.value),
+        required: select?.required ?? false,
+      };
+    });
+
+    check("в форме загрузки есть выбор жанра", genreForm.found, "селекта жанра нет");
+    check("пустое значение выбрать нельзя", !genreForm.selectable.includes(""), `можно выбрать: ${genreForm.selectable.join(",")}`);
+    check("жанров в списке все двенадцать", genreForm.selectable.length === 12, `в списке ${genreForm.selectable.length}`);
+    check("поле жанра помечено обязательным", genreForm.required === true, "поле не required");
+
     await user.close();
 
     // --- заказ: маршруты закрыты от чужих -------------------------------
@@ -470,6 +511,13 @@ const guestOrder = await guestContext.newPage();
     }
   } finally {
     await browser.close();
+
+    // Уборка в finally: каталог должен исчезнуть даже тогда, когда прогон
+    // упал на ошибке, — иначе утечка вернётся ровно в худший момент.
+    if (workDirPath) {
+      rmSync(workDirPath, { recursive: true, force: true });
+      workDirPath = null;
+    }
   }
 
   const failed = checks.filter((item) => !item.ok);

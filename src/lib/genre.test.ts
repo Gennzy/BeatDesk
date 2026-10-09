@@ -62,6 +62,66 @@ describe("список жанров", () => {
   });
 });
 
+describe("жанр обязателен при создании бита", () => {
+  const draft = {
+    title: "Бит",
+    typeBeatArtists: [],
+    bpm: 140,
+    musicalKey: "C# minor",
+    tags: [],
+    prices: { mp3: 500 },
+    currency: "RUB",
+  };
+
+  it("бит без жанра не создаётся", async () => {
+    /*
+     * Форму можно обойти, сервер — вызвать напрямую. Проверка обязательности
+     * живёт в общей валидации бита именно поэтому: одна точка, где решается,
+     * можно ли выпустить бит в свет.
+     */
+    const { validateBeat } = await import("./beat-validation");
+    const result = validateBeat({ ...draft });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors).toContain("Укажите жанр");
+  });
+
+  it("пустая строка — тоже отсутствие жанра", async () => {
+    const { validateBeat } = await import("./beat-validation");
+
+    expect(validateBeat({ ...draft, genre: "" }).ok).toBe(false);
+    expect(validateBeat({ ...draft, genre: "   " }).ok).toBe(false);
+  });
+
+  it("жанр, которого нет в списке, не проходит", async () => {
+    const { validateBeat } = await import("./beat-validation");
+
+    expect(validateBeat({ ...draft, genre: "trepp" }).ok).toBe(false);
+  });
+
+  it("с любым жанром из списка бит создаётся", async () => {
+    const { validateBeat } = await import("./beat-validation");
+
+    for (const slug of GENRE_SLUGS) {
+      const result = validateBeat({ ...draft, genre: slug });
+
+      expect(result.ok, `жанр ${slug} не прошёл`).toBe(true);
+      if (result.ok) expect(result.value.genre).toBe(slug);
+    }
+  });
+
+  it("«Другое» — полноценный жанр, а не заглушка", async () => {
+    // Бит, которому не подошёл ни один жанр, обязан куда-то попасть.
+    // Если бы «Другое» отвергали, битмейкер был бы вынужден назвать
+    // неправду, а не выбрать честное «не знаю».
+    const { validateBeat } = await import("./beat-validation");
+    const result = validateBeat({ ...draft, genre: "other" });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.genre).toBe("other");
+  });
+});
+
 describe("normalizeGenre", () => {
   it("принимает жанр из списка", () => {
     expect(normalizeGenre("trap")).toBe("trap");

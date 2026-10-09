@@ -160,6 +160,19 @@ export function UploadForm({ userId }: { userId: string }) {
     }
 
     const form = new FormData(event.currentTarget);
+
+    /*
+     * Жанр проверяется до загрузки файлов, а не после.
+     *
+     * Порядок важен: файл на полгigabyte идёт долго, и узнать, что жанр
+     * не выбран, после его загрузки — значит заставить человека ждать
+     * ради отказа. Сначала дешёвые проверки, потом передача файлов.
+     */
+    if (!normalizeGenre(form.get("genre"))) {
+      setError(t("upload.errorGenre"));
+      return;
+    }
+
     const bpm = Number(form.get("bpm"));
 
     if (!Number.isFinite(bpm) || bpm < 40 || bpm > 300) {

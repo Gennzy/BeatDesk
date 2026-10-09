@@ -18,6 +18,7 @@ import { compressImage } from "@/lib/image";
 import type { GenreSlug } from "@/lib/beat-validation";
 import type { TierId } from "@/lib/audio/delivery-rules";
 import { beatRoles } from "@/lib/beats";
+import { normalizeGenre } from "@/lib/beat-validation";
 import { applyDiscount, emptyPrices, parsePrice as toPrice, normalizeDiscount } from "@/lib/prices";
 import { parseTags } from "@/lib/tags";
 import { useI18n } from "@/lib/i18n/provider";
@@ -116,12 +117,22 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
 
     const form = new FormData(event.currentTarget);
 
+    // Жанр обязателен и здесь: сохранить бит без него нельзя, поэтому
+    // пустое значение — понятный отказ, а не запрос, который вернёт ошибку
+    // с сервера через полсекунды.
+    if (!normalizeGenre(form.get("genre"))) {
+      setState("idle");
+      setMessage(t("upload.errorGenre"));
+      return;
+    }
+
     const payload = new FormData();
     payload.set("title", title.trim());
     payload.set("typeBeat", String(form.get("typeBeat") ?? ""));
     payload.set("bpm", String(form.get("bpm") ?? ""));
     payload.set("key", String(form.get("key") ?? ""));
     payload.set("tags", tags);
+    payload.set("genre", String(form.get("genre") ?? ""));
     payload.set("isPublic", form.get("isPublic") === "on" ? "true" : "false");
     payload.set("currency", String(form.get("currency") ?? "RUB"));
     payload.set(
