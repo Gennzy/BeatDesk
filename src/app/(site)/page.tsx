@@ -104,9 +104,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         идти дальше.
       */}
       <div className="pt-6 lg:pt-8">
-        <Container>
-          <CatalogTiles />
-        </Container>
+        <CatalogTiles />
       </div>
 
       {/*

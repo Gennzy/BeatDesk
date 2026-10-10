@@ -596,6 +596,18 @@ async function main() {
     check("плитки каталога ведут в разделы ленты", catalog.length >= 6, `плиток: ${catalog.length}`);
     check("у плиток нет пустых адресов", catalog.every((href) => href.length > 1), "плитка ведёт в никуда");
 
+    // Обложки плиток не должны совпадать: самый прослушиваемый и самый
+    // свежий бит — это часто один и тот же трек, и два одинаковых
+    // изображения в ряду читаются как ошибка.
+    const tileCovers = await user.evaluate(() =>
+      [...document.querySelectorAll('a[href*="#feed"] img')].map((node) => node.getAttribute("src") ?? ""),
+    );
+    check(
+      "у плиток каталога разные обложки",
+      tileCovers.length > 1 && new Set(tileCovers).size === tileCovers.length,
+      `обложек: ${tileCovers.length}, разных: ${new Set(tileCovers).size}`,
+    );
+
     /*
      * Пустой выбор и пустой каталог — разные экраны. Раньше гость,
      * выбравший жанр без битов, получал «Загрузить бит»: он пришёл
