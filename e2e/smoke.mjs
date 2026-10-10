@@ -574,6 +574,25 @@ async function main() {
     const catalog = await user.evaluate(() =>
       [...document.querySelectorAll('a[href*="#feed"]')].map((node) => node.getAttribute("href") ?? ""),
     );
+    /*
+     * Кнопки реакции не должны прыгать. Раньше счётчик появлялся только
+     * при ненулевом числе, и от этого менялась ширина кнопки: две соседние
+     * карточки выглядели по-разному, а цена на них стояла в разных местах.
+     * Проверяется ширина: у карточки со счётчиком и без она должна совпасть.
+     */
+    const reactionWidths = await user.evaluate(() =>
+      [...document.querySelectorAll("article")].map((card) => {
+        const control = card.querySelector('button[aria-pressed]');
+        return control ? Math.round(control.getBoundingClientRect().width) : null;
+      }),
+    );
+    const widths = reactionWidths.filter((width) => width !== null);
+    check(
+      "кнопки реакции одинаковой ширины на всех карточках",
+      widths.length > 1 && new Set(widths).size === 1,
+      `ширины: ${widths.join(", ")}`,
+    );
+
     check("плитки каталога ведут в разделы ленты", catalog.length >= 6, `плиток: ${catalog.length}`);
     check("у плиток нет пустых адресов", catalog.every((href) => href.length > 1), "плитка ведёт в никуда");
 

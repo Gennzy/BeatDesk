@@ -107,45 +107,88 @@ export function BeatReactions({
     }
   }
 
-  const size = "size-8 text-xs";
-
+  /*
+   * Разбор значков разберён на два контрола, потому что раньше они были
+   * двумя почти одинаковыми кнопками, и расхождение между ними пришлось
+   * держать в голове.
+   *
+   * Что было не так: у активной кнопки появлялась заливка и скругление,
+   * то есть она становилась пилюлей, а у неактивной ничего не было — значок
+   * голый. Рядом это читалось как два разных элемента, а не как один
+   * переключатель.
+   *
+   * Второе: счётчик показывался только при ненулевом числе, и от этого
+   * менялась ширина кнопки. Две кнопки прыгали по карточке при каждом
+   * нажатии, а цена справа от них сдвигалась вместе с ними. Слот под
+   * число теперь резервируется всегда.
+   */
   return (
-    <div className="flex items-center gap-1">
-      <button
-        type="button"
+    <div className="flex items-center gap-5">
+      <Reaction
+        icon="heart"
+        count={likes}
+        active={liked}
+        disabled={isOwn}
+        label={t("react.like")}
+        hint={isOwn ? t("react.own") : t("react.like")}
         onClick={() => void react("like")}
-        aria-pressed={liked}
-        disabled={isOwn}
-        aria-label={t("react.like")}
-        title={isOwn ? t("react.own") : t("react.like")}
-        className={cn(
-          "flex items-center gap-1.5 rounded-full px-2.5 transition-colors",
-          size,
-          liked ? "bg-signal/15 text-signal" : "text-mute hover:bg-ink-3 hover:text-paper",
-          isOwn && "cursor-default opacity-40",
-        )}
-      >
-        <Icon name="heart" className="size-3.5" filled={liked} />
-        {likes > 0 ? <span className="font-mono tabular-nums">{likes}</span> : null}
-      </button>
+      />
 
-      <button
-        type="button"
-        onClick={() => void react("save")}
-        aria-pressed={saved}
+      <Reaction
+        icon="bookmark"
+        count={saves}
+        active={saved}
         disabled={isOwn}
-        aria-label={t("react.save")}
-        title={isOwn ? t("react.own") : t("react.save")}
-        className={cn(
-          "flex items-center gap-1.5 rounded-full px-2.5 transition-colors",
-          size,
-          saved ? "bg-signal/15 text-signal" : "text-mute hover:bg-ink-3 hover:text-paper",
-          isOwn && "cursor-default opacity-40",
-        )}
-      >
-        <Icon name="bookmark" className="size-3.5" filled={saved} />
-        {saves > 0 ? <span className="font-mono tabular-nums">{saves}</span> : null}
-      </button>
+        label={t("react.save")}
+        hint={isOwn ? t("react.own") : t("react.save")}
+        onClick={() => void react("save")}
+      />
     </div>
+  );
+}
+
+/**
+ * Один контрол реакции: значок и счётчик.
+ *
+ * Активное состояние — цвет, а не заливка. Заливка превращала кнопку в
+ * кружок, и рядом с голым значком рядом смотрелся стопкой разных
+ * элементов.
+ */
+function Reaction({
+  icon,
+  count,
+  active,
+  disabled,
+  label,
+  hint,
+  onClick,
+}: {
+  icon: "heart" | "bookmark";
+  count: number;
+  active: boolean;
+  disabled: boolean;
+  label: string;
+  hint: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      aria-label={count > 0 ? `${label}: ${count}` : label}
+      title={hint}
+      className={cn(
+        "group flex items-center gap-1.5 transition-colors focusable",
+        active ? "text-signal" : "text-mute hover:text-paper",
+        disabled && "cursor-default opacity-40 hover:text-mute",
+      )}
+    >
+      <Icon name={icon} className="size-4 transition-transform group-active:scale-90" filled={active} />
+
+      {/* Слот зарезервирован: иначе соседний контрол прыгает по сетке. */}
+      <span className="min-w-3 text-right font-mono text-xs tabular-nums">{count > 0 ? count : ""}</span>
+
+    </button>
   );
 }
