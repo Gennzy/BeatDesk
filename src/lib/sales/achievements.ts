@@ -27,6 +27,8 @@ export type BeatmakerStats = {
   ordersPaid: number;
   /** Сколько дорожек онлайн — битов с архивом дорожек. */
   beatsWithStems: number;
+  /** Битов, у которых назначены все четыре уровня лицензии. */
+  beatsWithAllTiers: number;
   /** Сколько битов ушло в каналы. */
   postsPublished: number;
   /** Сколько отзывов оставили покупатели. */
@@ -49,9 +51,9 @@ export type AchievementId =
   | "first-post"
   | "first-review"
   | "reviews-10"
+  | "reviews-5"
   | "followers-10"
-  | "full-tiers"
-  | "avg-rating";
+  | "full-tiers";
 
 export type Achievement = {
   id: AchievementId;
@@ -103,12 +105,21 @@ const RULES: Array<{ id: AchievementId; titleKey: string; threshold: number; pic
    * Полный набор: у бита есть все уровни, включая дорожки и эксклюзив. Это
    * признак законченного товара, а не заготовки.
    */
-  { id: "full-tiers", titleKey: "ach.fullTiers.title", threshold: 1, pick: (s) => s.beatsWithStems },
   /*
-   * Оценка: держится от пяти отзывов, иначе один хороший отзыв давал бы
-   * «пять звёзд» новому профилю.
+   * Полный набор уровней. Раньше здесь стояло «есть дорожки», то есть
+   * совсем другое условие: значок обещал четыре уровня, а выдавался за один
+   * бит со стемами. Теперь проверяется ровно то, что написано на значке.
    */
-  { id: "avg-rating", titleKey: "ach.avgRating.title", threshold: 5, pick: (s) => s.reviews },
+  { id: "full-tiers", titleKey: "ach.fullTiers.title", threshold: 1, pick: (s) => s.beatsWithAllTiers },
+  /*
+   * Пять отзывов. Раньше значок назывался avg-rating, то есть обещал
+   * оценку, а считал отзывы, — и комментарий про «пять звёзд» тем более
+   * вводил в заблуждение, потому что средней оценки здесь нет. Теперь имя
+   * и значок совпадают с тем, что считается. Настоящая оценка — отдельное
+   * достижение, и оно появится, когда отзывов будет достаточно, чтобы
+   * среднее вообще что-то значило.
+   */
+  { id: "reviews-5", titleKey: "ach.reviews5.title", threshold: 5, pick: (s) => s.reviews },
 ];
 
 /** Все достижения с текущим состоянием: и взятые, и ближайшие. */
@@ -177,7 +188,7 @@ export async function collectBeatmakerStats(
   registeredAt: string,
 ): Promise<BeatmakerStats> {
   const [{ data: beats }, { data: items }, { data: posts }, { data: reviews }, { data: followers }] = await Promise.all([
-    supabase.from("beats").select("plays, sale_state, files").eq("owner_id", ownerId),
+    supabase.from("beats").select("plays, sale_state, files, prices").eq("owner_id", ownerId),
     supabase.from("order_items").select("order_id").eq("beat_owner_id", ownerId),
     supabase.from("posts").select("beat_id").eq("author_id", ownerId),
     // Отзывы и подписчики считаем здесь же: они такие же факты о работе,
@@ -186,7 +197,7 @@ export async function collectBeatmakerStats(
     supabase.from("follows").select("follower_id").eq("following_id", ownerId),
   ]);
 
-  const rows = (beats ?? []) as { plays: number | null; sale_state: string | null; files: Record<string, unknown> | null }[];
+  const rows = (beats ?? []) as { plays: number | null; sale_state: string | null; files: Record<string, unknown> | null; prices: Record<string, unknown> | null }[];
   const itemRows = (items ?? []) as { order_id: string }[];
   const postRows = (posts ?? []) as { beat_id: string | null }[];
 
@@ -205,6 +216,15 @@ export async function collectBeatmakerStats(
     plays: rows.reduce((sum, row) => sum + (row.plays ?? 0), 0),
     ordersPaid,
     beatsWithStems: rows.filter((row) => Boolean(row.files?.zip ?? row.files?.rar)).length,
+    /*
+     * Полный набор — это четыре цены, а не дорожки. Считаем по наличию цены
+     * у каждого уровня: bundle в базе так называется уровень WAV.
+     */
+    beatsWithAllTiers: rows.filter((row) =>
+      ["mp3", "bundle", "trackout", "exclusive"].every(
+        (tier) => Number(row.prices?.[tier]) > 0,
+      ),
+    ).length,
     postsPublished: postRows.filter((row) => row.beat_id !== null).length,
     reviews: (reviews ?? []).length,
     followers: (followers ?? []).length,

@@ -81,7 +81,7 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
   } = await supabase.auth.getUser();
   const achievementStats = supabase
     ? await collectBeatmakerStats(supabase, profile.id, profile.created_at)
-    : { registeredAt: new Date().toISOString(), beatsOnSale: 0, beatsTotal: 0, plays: 0, ordersPaid: 0, beatsWithStems: 0, postsPublished: 0, reviews: 0, followers: 0 };
+    : { registeredAt: new Date().toISOString(), beatsOnSale: 0, beatsTotal: 0, plays: 0, ordersPaid: 0, beatsWithStems: 0, beatsWithAllTiers: 0, postsPublished: 0, reviews: 0, followers: 0 };
 
   const isOwner = user?.id === profile.id;
 

@@ -150,7 +150,7 @@ const GLYPHS: Record<AchievementId, Glyph> = {
   ),
 
   // Высокая оценка: звезда в круге.
-  "avg-rating": ({ className }) => (
+  "reviews-5": ({ className }) => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={cn("size-5", className)} aria-hidden>
       <circle cx="12" cy="12" r="8.5" />
       <path d="m12 7.5 1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6L6.8 11.3l3.6-.5z" />

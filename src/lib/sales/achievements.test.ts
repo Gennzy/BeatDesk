@@ -19,6 +19,7 @@ const stats = (over: Partial<BeatmakerStats> = {}): BeatmakerStats => ({
   plays: 0,
   ordersPaid: 0,
   beatsWithStems: 0,
+  beatsWithAllTiers: 0,
   postsPublished: 0,
   reviews: 0,
   followers: 0,
@@ -145,6 +146,7 @@ describe("прогресс до следующего", () => {
         plays: 10_000,
         ordersPaid: 25,
         beatsWithStems: 10,
+        beatsWithAllTiers: 1,
         postsPublished: 1,
         reviews: 10,
         followers: 10,
@@ -162,5 +164,27 @@ describe("прогресс до следующего", () => {
 
     expect(next).not.toBeNull();
     expect(next!.unlocked).toBe(false);
+  });
+
+  it("«полный набор» ждёт четырёх уровней, а не дорожек", () => {
+    /*
+     * Значок обещает четыре уровня лицензии, поэтому и проверяться должен
+     * именно он. Раньше здесь стояла проверка дорожек, и бит с одним
+     * уровнем и стемами получал «полный набор».
+     */
+    const withStemsOnly = computeAchievements(stats({ beatsWithStems: 5, beatsWithAllTiers: 0 }), at(1));
+    expect(withStemsOnly.find((item) => item.id === "full-tiers")?.unlocked).toBe(false);
+
+    const full = computeAchievements(stats({ beatsWithStems: 5, beatsWithAllTiers: 1 }), at(1));
+    expect(full.find((item) => item.id === "full-tiers")?.unlocked).toBe(true);
+  });
+
+  it("пять отзывов не выдаются за оценку", () => {
+    // Правила с названием про оценку больше нет: средней оценки оно не
+    // считало, а значок обещал именно её.
+    const list = computeAchievements(stats({ reviews: 5 }), at(1));
+
+    expect(list.some((item) => item.id === ("avg-rating" as never))).toBe(false);
+    expect(list.find((item) => item.id === "reviews-5")?.unlocked).toBe(true);
   });
 });
