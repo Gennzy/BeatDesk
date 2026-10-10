@@ -2,6 +2,7 @@ import { FollowButton } from "@/components/posts/follow-button";
 import { Avatar } from "@/components/ui/avatar";
 import { Icon } from "@/components/ui/icon";
 import { getT } from "@/lib/i18n/server";
+import { pluralRu } from "@/lib/plural";
 import { createClient } from "@/lib/supabase/server";
 
 type ProfileLinks = {
@@ -93,7 +94,7 @@ export async function SellerCard({
             )}
           </LinkRow>
           <span className="label text-mute">
-            {followerCount} {followerCount === 1 ? t("seller.follower") : t("seller.followers")}
+            {followerCount} {pluralRu(followerCount, t("seller.follower"), t("profile.followersFew"), t("profile.followers"))}
           </span>
         </div>
       </div>

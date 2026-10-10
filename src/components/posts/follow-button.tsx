@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { buttonClass } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n/provider";
+import { pluralRu } from "@/lib/plural";
 
 type Props = {
   profileId: string;
@@ -71,8 +72,13 @@ export function FollowButton({ profileId, username, isFollowing, followerCount, 
       >
         {following ? t("profile.unfollow") : t("profile.follow")}
       </button>
+      {/*
+        «1 подписчиков» получалось склейкой числа с постоянной подписью.
+        Форма у русских слов зависит от числа, и хелпер для этого уже был —
+        его просто не вызывали: 1 подписчик, 2 подписчика, 5 подписчиков.
+      */}
       <span className="label text-mute">
-        {followers} {t("profile.followers")}
+        {followers} {pluralRu(followers, t("seller.follower"), t("profile.followersFew"), t("profile.followers"))}
       </span>
     </div>
   );

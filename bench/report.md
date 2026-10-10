@@ -10,7 +10,7 @@ straight 174 | 174 | 174.91 | 87.01 | 0.51 | 0 | G major | G major | A minor
 busy 140 | 140 | 140.3 | 70.07 | 0.32 | 0 | F major | F major | F minor
 busy 174 | 174 | 139.35 | 87.01 | 0.18 | 0 | C# minor | C# minor | C# minor
 backbeat 140 | 140 | 140.61 | 70.06 | 0.76 | 0 | D minor | D minor | F minor
-backbeat 174 | 174 | 116.29 | 87.01 | 0.49 | 0 | A# major | A# major | F minor
+backbeat 174 | 174 | 174.63 | 87.01 | 0.54 | 0 | A# major | A# major | F minor
 swing 100 | 100 | 100.26 | 100.01 | 0.78 | 0 | E minor | E minor | C major
 
 - backbeat 140: читается и как 70

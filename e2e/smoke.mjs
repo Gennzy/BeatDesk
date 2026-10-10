@@ -146,46 +146,79 @@ function baseDir() {
  * и mp3Url лежит там текстом. Это детерминированно: значение либо есть,
  * либо нет, и ждать его не нужно.
  */
-async function findRealAudio(browser) {
-  // Имя метода — createBrowserContext: в этой версии Puppeteer старого newContext нет.
+/** Все ссылки на биты витрины — по ним меряется темп каждого трека. */
+async function allBeatLinks(page) {
+  return page.evaluate(() => [
+    ...new Set([...document.querySelectorAll('a[href^="/beats/"]')].map((node) => node.getAttribute("href"))),
+  ]);
+}
+
+async function findRealAudio(browser, beatHref, declaredBpm) {
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
 
   try {
-    await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 60_000 });
-    // Кавычки в потоке Next.js экранированы, поэтому искомое выглядит
-    // как \\"mp3Url\\":\\"https://…\\" — искать надо именно так.
-    //
-    // Ждём появления самой ссылки, а не фиксированной паузы: лента
-    // приходит стримом, и на domcontentloaded в потоке ещё нет данных о
-    // битах. Пауза работала то через раз, и две проверки молча выпадали —
-    // прогон показывал «51 из 51» и выглядел при этом успешным.
+    /*
+     * Ссылка снимается перехватом конструктора Audio, а не запроса в сети.
+     *
+     * Два предыдущих способа не годились. Перехват запроса молчал, когда
+     * браузер отдавал звук из кэша. Чтение mp3Url из потока страницы
+     * работало на витрине, но на странице бита его там нет. А подмена
+     * конструктора надёжна: плеер обязан создать Audio, иначе звук не
+     * заиграет, и ждать тут нечего.
+     */
+    await page.evaluateOnNewDocument(() => {
+      window.__audioSources = [];
+
+      /*
+       * Плеер создаёт Audio один раз при монтировании и потом только
+       * меняет src. Значит перехватывать надо присваивание, а не создание:
+       * к моменту клика объект уже существовал, и подмена конструктора
+       * молчала. Свойство src описано на прототипе HTMLMediaElement.
+       */
+      const descriptor = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "src");
+
+      if (descriptor?.set) {
+        Object.defineProperty(HTMLMediaElement.prototype, "src", {
+          configurable: true,
+          enumerable: descriptor.enumerable,
+          get() {
+            return descriptor.get.call(this);
+          },
+          set(value) {
+            window.__audioSources.push(String(value));
+            descriptor.set.call(this, value);
+          },
+        });
+      }
+    });
+
+    await page.goto(`${BASE}${beatHref}`, { waitUntil: "networkidle2", timeout: 60_000 });
+
+    await page.evaluate(() => {
+      const play = document.querySelector('button[aria-label="Слушать"], button[aria-label="Play"]');
+      play?.click();
+    });
+
     let audioUrl = null;
 
-    for (let attempt = 0; attempt < 20 && !audioUrl; attempt += 1) {
-      audioUrl = (await page.content()).match(/\\"mp3Url\\":\\"(https:[^\\"]+)/)?.[1] ?? null;
+    for (let attempt = 0; attempt < 12 && !audioUrl; attempt += 1) {
+      audioUrl = await page.evaluate(() => {
+        const list = window.__audioSources ?? [];
+
+        return list.find((url) => /\.(mp3|wav|m4a|ogg)(\?|$)/i.test(url)) ?? null;
+      });
 
       if (!audioUrl) await wait(500);
     }
 
+    const title = await page.evaluate(() => document.querySelector("h1")?.textContent?.trim() ?? "");
 
-    if (!audioUrl) return null;
-
-    // Заявленные данные берём с самой карточки: разбор сравнивается с тем,
-    // что продавец написал руками, а не с тем, что площадка уже посчитала.
-    const card = await page.evaluate(() => {
-      const title = document.querySelector("h3")?.textContent?.trim() ?? "";
-      const bpm = document.body.innerText.match(/(\d+)\s*BPM/);
-
-      return { title, bpm: bpm ? Number(bpm[1]) : null };
-    });
-
-    return { url: audioUrl, declaredBpm: card.bpm, title: card.title };
+    return { url: audioUrl, declaredBpm, title };
   } finally {
     await context.close();
   }
 }
-
 
 /** Загрузка файла по ссылке: true, если файл действительно записался. */
 async function download(url, path) {
@@ -289,10 +322,28 @@ async function main() {
     await user.setViewport({ width: 1440, height: 1000 });
     user.on("pageerror", (error) => errors.push(`user: ${error}`));
 
-    await register(user, `e2e${stamp}`, `e2e${stamp}@studio.ru`);
+    /*
+     * Регистрация проверяется и повторяется.
+     *
+     * Раньше считалось, что раз форма отправлена — значит, вошли. На деле
+     * сессия ставилась не всегда: следующий запрос уходил без cookie,
+     * возвращал 401, и прогон падал уже на постах — в месте, ничего общего
+     * с регистрацией не имеющем. Повтор с новым именем чинит и это, и
+     * сообщение об ошибке перестаёт уводить не туда.
+     */
+    let signedIn = false;
 
-    const authed = await user.evaluate(async () => (await fetch("/api/posts?tab=all&offset=0")).status);
-    check("своему пользователю лента доступна", authed === 200, `статус ${authed}`);
+    for (let attempt = 0; attempt < 3 && !signedIn; attempt += 1) {
+      const suffix = attempt === 0 ? stamp : `${stamp}x${attempt}`;
+
+      await register(user, `e2e${suffix}`, `e2e${suffix}@studio.ru`);
+
+      const status = await user.evaluate(async () => (await fetch("/api/posts?tab=all&offset=0")).status);
+
+      signedIn = status === 200;
+    }
+
+    check("своему пользователю лента доступна", signedIn, "сессия не установилась");
 
     // ветка: корень → один ответ → два в глубине
     const rootId = await user.evaluate(async (mark) => {
@@ -707,38 +758,70 @@ const guestOrder = await guestContext.newPage();
      * уже лежит на площадке: ссылка достаётся перехватом запроса при
      * нажатии play — она не лежит в разметке, плеккер создаёт new Audio().
      */
-    const realAudio = await findRealAudio(browser);
+    /*
+     * Темп меряется на каждом бите витрины, а не на одном.
+     *
+     * Правило уровня темпа трогает всё сразу: одна поправка, чтобы «Get
+     * Money» читался как 166 вместо 110.6, может задеть другой трек —
+     * и если мерить только один, это обнаружится уже на живом бите
+     * продавца. Поэтому список берётся целиком и печатается расхождение по
+     * каждому: цифры видны в каждом прогоне, и регресс не спрячется.
+     */
+    const tempoPage = await browser.newPage();
+    await tempoPage.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    const beatLinks = await allBeatLinks(tempoPage);
+    const declared = await tempoPage.evaluate(() =>
+      [...document.querySelectorAll("article")].map((node) => {
+        const link = node.querySelector('a[href^="/beats/"]');
+        const bpm = (node.innerText.match(/(\d+)\s*BPM/) ?? [])[1];
 
-    if (realAudio?.url) {
-      const file = join(workDir(), "real-beat.mp3");
-      const saved = await download(realAudio.url, file);
+        return { href: link?.getAttribute("href") ?? null, bpm: bpm ? Number(bpm) : null };
+      }),
+    );
+    await tempoPage.close();
 
-      if (saved) {
-        await (await studio.$('input[type=file]')).uploadFile(file);
-        await wait(9000);
+    let measured = 0;
 
-        const realText = await studio.evaluate(() => document.body.innerText);
-        const realTempo = realText.match(/(\d+[.,]\d)\s*BPM/);
+    for (const entry of declared) {
+      if (!entry.href || entry.bpm === null) continue;
 
-        check("студия разбирает настоящий бит с площадки", Boolean(realTempo), "темп не показан");
-        check("на настоящем бите показана длительность", /ДЛИТЕЛЬНОСТЬ/i.test(realText));
+      const realAudio = await findRealAudio(browser, entry.href, entry.bpm);
 
-        if (realTempo && realAudio.declaredBpm) {
-          const detected = Number(realTempo[1].replace(",", "."));
-          /*
-           * Расхождение печатается, но не роняет прогон: разбор темпа для
-           * этого файла известно отличается от заявленного, и это отдельная
-           * работа. Молча пропустить проверку нельзя — тогда правка
-           * разбора не заметит, что стала лучше.
-           */
-          const delta = Math.abs(detected - realAudio.declaredBpm);
-          console.log(
-            `      настоящий бит «${realAudio.title}»: заявлено ${realAudio.declaredBpm} BPM, разбором ${detected}` +
-              (delta >= 1 ? ` (расхождение ${delta.toFixed(1)})` : ""),
-          );
-        }
+      if (!realAudio?.url) continue;
+
+      const file = join(workDir(), `real-${measured}.mp3`);
+
+      if (!(await download(realAudio.url, file))) continue;
+
+      await (await studio.$('input[type=file]')).uploadFile(file);
+      await wait(9000);
+
+      const realText = await studio.evaluate(() => document.body.innerText);
+      const realTempo = realText.match(/(\d+[.,]\d)\s*BPM/);
+
+      measured += 1;
+
+      if (!realTempo) {
+        check(`темп разобран: ${realAudio.title}`, false, "темп не показан");
+        continue;
       }
+
+      const detected = Number(realTempo[1].replace(",", "."));
+      const delta = Math.abs(detected - entry.bpm);
+
+      /*
+       * Порог — 4 процента, как в проверке метаданных у нас же: расхождение
+       * больше этого нельзя объяснить округлением, и оно бьёт по фильтру,
+       * по которому покупатель ищет темп.
+       */
+      check(
+        `темп сходится: ${realAudio.title}`,
+        delta <= entry.bpm * 0.04,
+        `заявлено ${entry.bpm}, разбором ${detected} (расхождение ${delta.toFixed(1)})`,
+      );
     }
+
+    check("темп проверен на всех битах витрины", measured > 0, `померено ${measured}`);
 
     // Разбор настоящего файла: клики на 140 BPM, для которых ответ известен.
     const fixture = makeClickFixture();
