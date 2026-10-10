@@ -59,7 +59,7 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, username, avatar_url, bio, links, created_at, pinned_beat_id")
+    .select("id, username, avatar_url, cover_url, bio, links, created_at, pinned_beat_id")
     .eq("username", username)
     .maybeSingle();
 
@@ -137,7 +137,29 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
   const hasLinks = PLATFORM_KEYS.some((key) => Boolean(links[key]));
 
   return (
-    <section className="py-14 lg:py-20">
+    <section className={profile.cover_url ? "pb-14 lg:pb-20" : "py-14 lg:py-20"}>
+      {/*
+        Обложка — широкая полоса над шапкой, а не рамка вокруг неё.
+        В обрезке она читается как баннер площадки, а в рамке — как
+        декорация профиля, и витрина перестаёт быть узнаваемой с первого
+        взгляда. Тёмная подложка и лёгкое затемнение нужны, чтобы ник и
+        имя поверх картинки оставались читаемыми на любом снимке.
+      */}
+      {profile.cover_url ? (
+        <div className="relative mb-8 aspect-[3/1] w-full overflow-hidden border-b border-line bg-ink-2 lg:mb-10">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={profile.cover_url}
+            alt=""
+            className="size-full object-cover"
+          />
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-gradient-to-t from-ink via-ink/45 to-transparent"
+          />
+        </div>
+      ) : null}
+
       <Container>
         {/*
           Шапка профиля — панель, как везде на площадке. Раньше она лежала на

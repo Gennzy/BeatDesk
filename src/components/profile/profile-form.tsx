@@ -15,6 +15,7 @@ import { SupabaseNotConfiguredError } from "@/lib/supabase/config";
 export type ProfileData = {
   username: string;
   avatarUrl: string | null;
+  coverUrl: string | null;
   bio: string | null;
   collaborators: string[];
   links: Record<string, string>;
@@ -28,19 +29,25 @@ const PLATFORMS = [
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
+// Обложка шире аватара, поэтому и жмёт сильнее: она занимает всю шапку.
+const MAX_COVER_BYTES = 8 * 1024 * 1024;
+
 type UsernameStatus = "idle" | "checking" | "free" | "taken" | "invalid";
 
 export function ProfileForm({ userId, profile }: { userId: string; profile: ProfileData }) {
   const { t } = useI18n();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const coverRef = useRef<HTMLInputElement>(null);
 
   const [username, setUsername] = useState(profile.username);
   const [bio, setBio] = useState(profile.bio ?? "");
   const [collaborators, setCollaborators] = useState(profile.collaborators.join(", "));
   const [links, setLinks] = useState<Record<string, string>>(profile.links);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatarUrl);
+  const [coverUrl, setCoverUrl] = useState<string | null>(profile.coverUrl);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [coverError, setCoverError] = useState<string | null>(null);
   const [usernameState, setUsernameState] = useState<UsernameStatus>("idle");
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
@@ -100,6 +107,48 @@ export function ProfileForm({ userId, profile }: { userId: string; profile: Prof
     }
   }
 
+  /*
+   * Обложка грузится сразу, а не по кнопке «Сохранить»: она большая, и
+   * ждать отправки формы ради картинки незачем. Путь указывает на профиль,
+   * поэтому файлы разных людей не сталкиваются.
+   */
+  async function handleCover(event: ChangeEvent<HTMLInputElement>) {
+    const picked = event.target.files?.[0];
+    if (!picked) return;
+
+    const file = await compressImage(picked, 1600, [0.86]);
+
+    setCoverError(null);
+
+    if (file.size > MAX_COVER_BYTES) {
+      setCoverError(t("profile.coverHint"));
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      const extension = file.name.split(".").pop() ?? "jpg";
+      const path = `${userId}/cover-${Date.now()}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("covers")
+        .upload(path, file, { contentType: file.type, upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from("covers").getPublicUrl(path);
+
+      const { error: saveError } = await supabase.from("profiles").update({ cover_url: data.publicUrl }).eq("id", userId);
+
+      if (saveError) throw saveError;
+
+      setCoverUrl(data.publicUrl);
+      router.refresh();
+    } catch (error) {
+      setCoverError(error instanceof SupabaseNotConfiguredError ? t("auth.notConfigured") : String(error));
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -119,6 +168,7 @@ export function ProfileForm({ userId, profile }: { userId: string; profile: Prof
           bio: bio.trim() || null,
           links: Object.fromEntries(PLATFORMS.map((platform) => [platform.key, links[platform.key] ?? ""])),
           ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
+          ...(coverUrl ? { cover_url: coverUrl } : {}),
         })
         .eq("id", userId);
 
@@ -184,6 +234,41 @@ export function ProfileForm({ userId, profile }: { userId: string; profile: Prof
               {t("profile.avatarUpload")}
             </Button>
             {avatarError ? <span className="label text-amber">{avatarError}</span> : null}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <span className="label text-paper">{t("profile.cover")}</span>
+          <span className="text-xs text-mute">{t("profile.coverHint")}</span>
+
+          <div className="flex items-center gap-3">
+            <input
+              ref={coverRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={handleCover}
+            />
+            <Button type="button" variant="ink" size="sm" onClick={() => coverRef.current?.click()}>
+              {coverUrl ? t("profile.coverReplace") : t("profile.coverUpload")}
+            </Button>
+            {coverUrl ? (
+              <Button
+                type="button"
+                variant="ink"
+                size="sm"
+                onClick={async () => {
+                  const supabase = createClient();
+
+                  await supabase.from("profiles").update({ cover_url: null }).eq("id", userId);
+                  setCoverUrl(null);
+                  router.refresh();
+                }}
+              >
+                {t("profile.coverRemove")}
+              </Button>
+            ) : null}
+            {coverError ? <span className="label text-amber">{coverError}</span> : null}
           </div>
         </div>
       </div>
