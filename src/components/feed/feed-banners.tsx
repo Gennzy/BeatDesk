@@ -22,26 +22,30 @@ import { getT } from "@/lib/i18n/server";
 
 type Banner = {
   /** Ключи словаря: компонент серверный, перевод берёт через getT. */
-  kicker: "banner.listenKicker" | "banner.licensesKicker" | "banner.sellKicker";
-  title: "banner.listenTitle" | "banner.licensesTitle" | "banner.sellTitle";
-  note: "banner.listenNote" | "banner.licensesNote" | "banner.sellNote";
+  kicker: "banner.licensesKicker" | "banner.sellKicker";
+  title: "banner.licensesTitle" | "banner.sellTitle";
+  note: "banner.licensesNote" | "banner.sellNote";
   href: string;
-  motif: "wave" | "layers" | "upload";
+  motif: "layers" | "upload";
 };
 
+/*
+ * Плитка должна либо вести куда-то, либо говорить то, чего человек
+ * ещё не знает. Раньше здесь была третья — «Бит целиком» — и она не
+ * проходила ни по одной проверке: совет «послушай перед покупкой»
+ * человеку и так очевиден, а ссылка вела в #feed, то есть туда же,
+ * где он уже стоит. Пустая плитка над сгибом стоила дороже, чем
+ * говорила.
+ *
+ * Скидки из баннеров тоже ушли: под полосой сразу идёт плитка
+ * «Скидки», и вторая ссылка на то же место была просто повтором.
+ */
 const BANNERS: Banner[] = [
-  {
-    kicker: "banner.listenKicker",
-    title: "banner.listenTitle",
-    note: "banner.listenNote",
-    href: "/#feed",
-    motif: "wave",
-  },
   {
     kicker: "banner.licensesKicker",
     title: "banner.licensesTitle",
     note: "banner.licensesNote",
-    href: "/?scope=discounted#feed",
+    href: "/#feed",
     motif: "layers",
   },
   {
@@ -63,7 +67,7 @@ export async function FeedBanners() {
 
   return (
     <Container>
-      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="grid gap-3 sm:grid-cols-2">
         {BANNERS.map((banner) => (
           <li key={banner.href}>
             <Link
@@ -95,32 +99,12 @@ export async function FeedBanners() {
 /**
  * Фактура плитки.
  *
- * Три разных рисунка, а не один на все: одинаковая графика на трёх
- * соседних плитках превращает полосу в одну длинную картинку, и тогда
- * непонятно, где кончается одна мысль и начинается другая.
+ * Разные рисунки на соседних плитках: одинаковая графика превращает
+ * полосу в одну длинную картинку, и тогда непонятно, где кончается
+ * одна мысль и начинается другая.
  */
 function Motif({ kind }: { kind: Banner["motif"] }) {
   const common = "pointer-events-none absolute -right-6 -top-8 h-40 w-40 opacity-[0.16] transition-transform duration-500 group-hover:scale-105";
-
-  if (kind === "wave") {
-    return (
-      <svg viewBox="0 0 120 120" className={common} aria-hidden>
-        {[16, 34, 22, 48, 30, 62, 26, 52, 34, 44, 24, 38, 18].map((height, index) => (
-          <rect
-            key={index}
-            x={6 + index * 9}
-            y={60 - height / 2}
-            width="4"
-            height={height}
-            rx="2"
-            fill="currentColor"
-            opacity={0.45 + (index % 3) * 0.2}
-            className="text-accent"
-          />
-        ))}
-      </svg>
-    );
-  }
 
   if (kind === "layers") {
     return (

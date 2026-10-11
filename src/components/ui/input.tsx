@@ -80,7 +80,13 @@ export function Field({
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       <div className="flex items-baseline justify-between gap-4">
-        <label htmlFor={htmlFor} className="label text-paper">
+        {/*
+          Подпись поля — обычным предложением, а не капсом. .label в 11px
+          с разрядкой годится для надзаголовка раздела, но в названии поля
+          («Название», «Тональность») русские буквы в 11px капителью приходится
+          разглядывать, а на загрузке их сразу несколько подряд.
+        */}
+        <label htmlFor={htmlFor} className="text-sm font-semibold text-paper">
           {label}
           {required ? (
             <span className="ml-1 text-signal" aria-hidden>
@@ -94,7 +100,7 @@ export function Field({
       {error ? (
         <p className="label text-amber">{error}</p>
       ) : hint ? (
-        <p className="text-xs leading-relaxed text-mute">{hint}</p>
+        <p className="text-sm leading-relaxed text-mute">{hint}</p>
       ) : null}
     </div>
   );

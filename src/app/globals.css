@@ -307,14 +307,23 @@
    * поля высотой 36 и 48 пикселей, и форма выглядела собранной из разных
    * сайтов. Стиль живёт здесь, примитивы и сырые поля берут его отсюда.
    */
+  /*
+   * Поле ввода было того же цвета, что и панель вокруг него: ink-2 на ink-2.
+   * Разделяла их только рамка в один пиксель, а edge-sunken вдавливал поле
+   * внутрь, и вместо места для ввода получалась тёмная яма. Форма загрузки
+   * из-за этого читалась как одна чёрная стена — поля приходилось искать.
+   *
+   * Теперь поле светлее панели на один шаг и поднято светом сверху: видно,
+   * куда писать, не прибавляя контраста тексту.
+   */
   .control {
     width: 100%;
     border: 1px solid var(--color-line);
     border-radius: var(--radius-md);
-    background: var(--color-ink-2);
+    background: var(--color-ink-3);
     padding-inline: 0.75rem;
     color: var(--color-paper);
-    box-shadow: var(--edge-sunken);
+    box-shadow: var(--edge-light);
     transition:
       border-color var(--duration-fast) var(--ease-out),
       box-shadow var(--duration-fast) var(--ease-out);

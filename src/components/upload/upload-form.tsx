@@ -323,36 +323,49 @@ export function UploadForm({ userId }: { userId: string }) {
                 <Input name="tags" placeholder="trap, dark, 140" className="font-mono" />
               </Field>
             </div>
+
+            {/*
+              Жанр стоял в блоке цен, шестым элементом сетки из четырёх
+              колонок: он попадал во вторую строку рядом с «Эксклюзив» и
+              читался как ещё одна цена. Теперь он в метаданных, где его
+              и ищут, а не среди чисел.
+            */}
+            <GenreSelect name="genre" value={genre} />
           </div>
         </div>
 
         <div className="flex flex-col gap-8">
           <SectionHead label={t("upload.sectionPrices")} hint={t("upload.pricesNote")} />
 
-          <div className="panel grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
-            <Field label={t("upload.currency")}>
-              <CurrencyPicker name="currency" value={currency} onChange={setCurrency} />
-            </Field>
+          <div className="panel flex flex-col gap-5 p-5">
+            {/*
+              Валюта больше не стоит первой ячейкой общей сетки. Раньше на
+              четырёх колонках шесть полей переносились во вторую строку, и
+              «Эксклюзив» приземлялся ровно под «Валюта цен» — выглядело,
+              будто это её продолжение, а не четвёртая цена. Валюта теперь
+              стоит строкой над уровнями, а сами уровни всегда занимают
+              четыре одинаковых места.
+            */}
+            <div className="max-w-xs">
+              <Field label={t("upload.currency")} optional={currencyHint}>
+                <CurrencyPicker name="currency" value={currency} onChange={setCurrency} />
+              </Field>
+            </div>
 
-            <Field label={t("upload.priceMp3")} optional={currencyHint}>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label={t("upload.priceMp3")}>
               <Input name="priceMp3" type="number" inputMode="numeric" placeholder="500" className="font-mono" onChange={(event) => setPrices((current) => ({ ...current, mp3: toPrice(event.target.value) }))} />
             </Field>
-            <Field label={t("upload.priceBundle")} optional={currencyHint}>
+            <Field label={t("upload.priceBundle")}>
               <Input name="priceBundle" type="number" inputMode="numeric" placeholder="1500" className="font-mono" onChange={(event) => setPrices((current) => ({ ...current, bundle: toPrice(event.target.value) }))} />
             </Field>
-            <Field label={t("upload.priceTrackout")} hint={t("upload.priceTrackoutHint")} optional={currencyHint}>
+            <Field label={t("upload.priceTrackout")} hint={t("upload.priceTrackoutHint")}>
               <Input name="priceTrackout" type="number" inputMode="numeric" placeholder="2500" className="font-mono" onChange={(event) => setPrices((current) => ({ ...current, trackout: toPrice(event.target.value) }))} />
             </Field>
-            <Field label={t("upload.priceExclusive")} optional={currencyHint}>
+            <Field label={t("upload.priceExclusive")}>
               <Input name="priceExclusive" type="number" inputMode="numeric" placeholder="5000" className="font-mono" onChange={(event) => setPrices((current) => ({ ...current, exclusive: toPrice(event.target.value) }))} />
             </Field>
-
-            {/*
-              Скидка — рядом с ценами, а не отдельным шагом: она относится к
-              ним. Показываем результат сразу, иначе битмейкер задаёт процент
-              и гадает, во сколько обойдётся бит.
-            */}
-            <GenreSelect name="genre" value={genre} />
+            </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

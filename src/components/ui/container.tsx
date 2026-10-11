@@ -21,8 +21,14 @@ export function SectionHead({
   return (
     <div className="flex items-center gap-3 pb-5">
       <div className="flex items-center gap-3">
-        <span aria-hidden className="size-1.5 shrink-0 bg-mute/50" />
-        <span className="label text-paper">{label}</span>
+        {/*
+          Заголовок раздела — ориентир в длинной форме, поэтому он на ступень
+          крупнее обычной .label и отмечен акцентом: на чёрном фоне полоса из
+          одинаковых серых плашек читалась как одна стена, и прокручивая
+          форму, человек не понимал, где оказался.
+        */}
+        <span aria-hidden className="size-1.5 shrink-0 bg-accent" />
+        <span className="text-sm font-semibold uppercase tracking-wider text-paper">{label}</span>
         {hint ? <span className="label ml-auto hidden text-mute sm:block">{hint}</span> : null}
         {action}
       </div>
