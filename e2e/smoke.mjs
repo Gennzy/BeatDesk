@@ -543,6 +543,98 @@ async function main() {
         !/ОТЗЫВЫ/i.test(header),
         "полоса отзывов осталась при их отсутствии",
       );
+
+      /*
+       * Обложка держалась на aspect-[3/1] и на широком экране занимала
+       * 479 пикселей: шапка начиналась на 618-м, и на ноутбуке с экраном
+       * 900 имя приходилось выискивать прокруткой. Проверяем главное:
+       * кто это — видно без прокрутки. Считаем в CSS-пикселях от верха
+       * окна, а не в страничных координатах, иначе проверка всегда
+       * проходила бы на любой высоте.
+       */
+      const headerVisible = await user.evaluate(() => {
+        const name = document.querySelector("h1");
+        if (!name) return false;
+        return name.getBoundingClientRect().top < window.innerHeight;
+      });
+
+      check(
+        "имя битмейкера видно без прокрутки",
+        headerVisible,
+        "шапка профиля уехала за первый экран",
+      );
+    }
+
+    // --- счётчик непрочитанных -------------------------------------------
+    /*
+     * Значок у колокольчика молчал при непрочитанном уведомлении: запрос
+     * считал записи, но не просил у PostgREST точное число, поэтому `count`
+     * приходил null и превращался в ноль. Страница уведомлений при этом
+     * показывала правильное «ВСЕ 1» — считала другой запрос, — и человек
+     * был уверен, что уведомлений нет.
+     *
+     * Уведомление подставляем напрямую: чтобы естественным движением его
+     * создать, нужен второй пользователь, который ответит. Проверяем ровно
+     * то, что сломано было — что значок реагирует на непрочитанную запись.
+     */
+    {
+      const env = loadEnvFile();
+      const url = env.NEXT_PUBLIC_SUPABASE_URL;
+      const key = env.SUPABASE_SERVICE_ROLE_KEY;
+      const username = createdUsernames.at(-1);
+
+      if (url && key && username) {
+        const headers = {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        };
+
+        // Ответ — массив строк, а не объект с полем data. Деструкктура
+        // `const { data }` здесь давала undefined, весь блок молча пропускался,
+        // и проверка значка не появлялась в отчёте вовсе — то есть её
+        // отсутствие выглядело как «не сломалось».
+        const rows = await fetch(
+          `${url}/rest/v1/profiles?select=id&username=eq.${username}`,
+          { headers },
+        ).then((r) => r.json());
+
+        const userId = rows?.[0]?.id;
+
+        if (userId) {
+          await fetch(`${url}/rest/v1/notifications`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ user_id: userId, kind: "like", read_at: null }),
+          });
+
+          await user.goto(`${BASE}/`, { waitUntil: "networkidle2", timeout: 60_000 });
+          await wait(1500);
+
+          // Счётчик тянется с задержкой, поэтому ждём его появления.
+          let badge = 0;
+          for (let i = 0; i < 8 && badge === 0; i += 1) {
+            await wait(750);
+            badge = await user.evaluate(() => {
+              const link = [...document.querySelectorAll("a")].find((n) =>
+                (n.getAttribute("href") ?? "").startsWith("/notifications"),
+              );
+              const mark = link?.querySelector("span");
+              const raw = mark?.textContent?.trim() ?? "0";
+              return Number.parseInt(raw, 10) || 0;
+            });
+          }
+
+          check("колокольчик показывает непрочитанные", badge > 0, "значок остался пустым");
+
+          // Уведомление убираем, иначе следующие прогоны наследуют счётчик.
+          await fetch(`${url}/rest/v1/notifications?user_id=eq.${userId}`, {
+            method: "DELETE",
+            headers,
+          });
+        }
+      }
     }
 
     // --- кросс-продажа на странице бита ---------------------------------

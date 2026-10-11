@@ -137,7 +137,7 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
   const hasLinks = PLATFORM_KEYS.some((key) => Boolean(links[key]));
 
   return (
-    <section className={profile.cover_url ? "pb-14 lg:pb-20" : "py-14 lg:py-20"}>
+    <section className={profile.cover_url ? "pb-10 lg:pb-14" : "py-14 lg:py-20"}>
       {/*
         Обложка — широкая полоса над шапкой, а не рамка вокруг неё.
         В обрезке она читается как баннер площадки, а в рамке — как
@@ -145,8 +145,15 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
         взгляда. Тёмная подложка и лёгкое затемнение нужны, чтобы ник и
         имя поверх картинки оставались читаемыми на любом снимке.
       */}
+        {/*
+          Обложка держалась на aspect-[3/1] и на широком экране выматывала
+          479 пикселей: шапка профиля начиналась на 618-м, и на ноутбуке с
+          экраном 900 нужно было прокручивать, чтобы просто увидеть, кто
+          это. Обложка — баннер, а не стена: высота фиксированная и не
+          растёт вместе с шириной окна.
+        */}
       {profile.cover_url ? (
-        <div className="relative mb-8 aspect-[3/1] w-full overflow-hidden border-b border-line bg-ink-2 lg:mb-10">
+        <div className="relative mb-8 h-36 w-full overflow-hidden border-b border-line bg-ink-2 lg:mb-10 lg:h-56">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={profile.cover_url}
@@ -166,7 +173,13 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
           фоне с одной чертой снизу, и профиль читался как оглавление, а не как
           страница человека.
         */}
-        <div className="panel grid gap-8 p-6 lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-8 lg:p-8">
+        {/*
+          Третья колонка — под действие. Раньше сетка была из двух колонок,
+          весь текст прижимался влево, и правая половина панели оставалась
+          пустой: имя, био и числа жались к левому краю на полпути к
+          границе, а подписка болталась под ними отдельной полосой.
+        */}
+        <div className="panel grid gap-6 p-6 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-start lg:gap-8 lg:p-8">
           <div className="grid size-28 place-items-center overflow-hidden rounded-xl border border-line bg-ink-3 font-display text-3xl text-mute">
             {profile.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -238,16 +251,7 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
               </div>
             ) : null}
 
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-line pt-5">
-              <FollowButton
-                profileId={profile.id}
-                username={profile.username}
-                isFollowing={follow.isFollowing}
-                followerCount={follow.followerCount}
-                loggedIn={Boolean(user)}
-                isOwner={isOwner}
-              />
-            </div>
+
 
             {/*
               Площадки показываются только заполненные. Раньше при пустых
@@ -269,6 +273,20 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
                 ))}
               </div>
             ) : null}
+          </div>
+
+          {/* Действие стоит справа от имени, а не под числами: подписка —
+              главное, что человек делает на профиле, и искать её внизу
+              шапки незачем. */}
+          <div className="lg:justify-self-end">
+            <FollowButton
+              profileId={profile.id}
+              username={profile.username}
+              isFollowing={follow.isFollowing}
+              followerCount={follow.followerCount}
+              loggedIn={Boolean(user)}
+              isOwner={isOwner}
+            />
           </div>
         </div>
 

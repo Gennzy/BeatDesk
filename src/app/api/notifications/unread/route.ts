@@ -22,9 +22,16 @@ export async function GET(request: NextRequest) {
   const gate = rateLimit(clientKey(request, `notifications-unread:${user.id}`), 60, 60_000);
   if (!gate.ok) return NextResponse.json({ unread: 0, items: [] });
 
+  /*
+   * `count: "exact"` — не украшение. Без него supabase-js возвращает
+   * count: null, и `count ?? 0` превращал счётчик в вечный ноль: у
+   * человека лежало непрочитанное уведомление, а колокольчик молчал.
+   * Число приходит точным и не зависит от .limit(3) ниже — limit режет
+   * только сами записи для всплывашки, а не итог.
+   */
   const { data, count, error } = await supabase
     .from("notifications")
-    .select("id, kind, created_at, actor_id, beats(title)")
+    .select("id, kind, created_at, actor_id, beats(title)", { count: "exact" })
     .eq("user_id", user.id)
     .is("read_at", null)
     .order("created_at", { ascending: false })
