@@ -46,6 +46,14 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
 
   if (!supabase) notFound();
 
+  /*
+   * Куда писать о переводе. Берётся из окружения, потому что почта
+   * поддержки меняется при смене оператора, и искать её по коду — значит
+   * искать в куче вхождений. Запасной адрес — чтобы блок не остался
+   * пустым и не показывал человеку «undefined».
+   */
+  const supportEmail = process.env.SUPPORT_EMAIL ?? "support@beatdesk.ru";
+
   const { data: order } = await supabase.from("orders").select("*").eq("id", id).maybeSingle();
 
   if (!order) notFound();
@@ -55,6 +63,21 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const { data: items } = await supabase.from("order_items").select("*").eq("order_id", id);
 
   const rows = (items ?? []) as OrderItem[];
+
+  /*
+   * Ставку комиссии показываем покупателю, а не только продавцу. Если
+   * просить перевести полную сумму, не сказав, сколько уйдёт площадке,
+   * человек справедливо решит, что его обманули на %.
+   */
+  const { data: settings } = await supabase
+    .from("platform_settings")
+    .select("commission_bps")
+    .maybeSingle();
+
+  const commissionRate =
+    typeof settings?.commission_bps === "number" && settings.commission_bps > 0
+      ? `${(settings.commission_bps / 100).toFixed(0)}%`
+      : null;
 
   /*
    * У лицензии нет колонки order_id — она висит на позиции заказа.
@@ -170,7 +193,29 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         {typed.status !== "paid" && isSeller ? <SellerActions orderId={typed.id} /> : null}
 
         {typed.status !== "paid" && !isSeller ? (
-          <p className="pt-8 text-sm leading-relaxed text-mute">{t("order.manualNote")}</p>
+          <div className="flex flex-col gap-3 pt-8">
+            {/*
+              Деньги идут на счёт площадки, а не продавцу: площадка удерживает
+              комиссию, остаток кладёт продавцу на баланс, продавец выводит по
+              заявке. Инструкция «переведите продавцу» здесь была бы не просто
+              неточной — перевод напрямую дал бы продавцу деньги дважды: от
+              покупателя и потом ещё выплатой с баланса.
+            */}
+            <p className="rounded-panel border border-line bg-ink-3 px-4 py-3 text-sm leading-relaxed text-paper">
+              {t("order.payToPlatform", {
+                total: money(typed.total_minor, typed.currency),
+                email: supportEmail,
+              })}
+            </p>
+
+            {commissionRate ? (
+              <p className="text-xs leading-relaxed text-mute">
+                {t("order.commissionNote", { rate: commissionRate })}
+              </p>
+            ) : null}
+
+            <p className="text-sm leading-relaxed text-mute">{t("order.manualNote")}</p>
+          </div>
         ) : null}
       </Container>
     </section>
