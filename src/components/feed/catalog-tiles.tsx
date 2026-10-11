@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Container } from "@/components/ui/container";
 import { getT } from "@/lib/i18n/server";
+import { fetchTrendingBeats, TRENDING_DAYS } from "@/lib/trending";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -20,6 +21,9 @@ import { createClient } from "@/lib/supabase/server";
  * тянуть шесть картинок ради трёх плит — трата трафика, которую покупатель
  * заметит на мобильном.
  */
+
+/** Сколько битов должны набирать обороты, чтобы раздел имел смысл. */
+const MIN_TRENDING = 3;
 
 type Tile = {
   key: string;
@@ -56,6 +60,8 @@ export async function CatalogTiles() {
    * совпадение, поэтому каждая плитка берёт свой бит.
    */
   const used = new Set<string>();
+
+  const trending = await fetchTrendingBeats(supabase, MIN_TRENDING);
 
   const tiles: Tile[] = [];
   for (const spec of SPECS) {
@@ -102,6 +108,35 @@ export async function CatalogTiles() {
         beatTitle: beat?.title ?? null,
       });
     }
+  }
+
+  /*
+   * Плитка «Набирают обороты» добавляется четвёртой, когда за неделю
+   * прослушивания набрали хотя бы MIN_TRENDING битов.
+   *
+   * Порог не украшение, а защита от пустого обещания: при двух битах на
+   * площадке раздел с одним битом под заголовком «набирают обороты»
+   * выглядит не как витрина, а как ошибка. Плитка появится сама, когда
+   * битов станет достаточно, и код для этого уже написан.
+   *
+   * Отдельной сортировки в ленте у раздела нет: честный список оборотов
+   * требует переноса запроса ленты в SQL целиком, потому что PostgREST
+   * умеет считать вложенные ресурсы, но не умеет считать их за окно.
+   * Пока плитка ведёт на бит, который набирает больше всего.
+   */
+  if (trending.length >= MIN_TRENDING) {
+    const lead = trending[0];
+    tiles.push({
+      key: "trending",
+      title: t("catalog.trending"),
+      note: t("catalog.trendingNote", {
+        days: String(TRENDING_DAYS),
+        count: String(lead.playsLast),
+      }),
+      href: `/beats/${lead.id}`,
+      cover: lead.coverUrl,
+      beatTitle: lead.title,
+    });
   }
 
   return (
