@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LEGAL_DOCS } from "@/lib/legal";
 
 import { Logo } from "@/components/layout/logo";
 import { Container } from "@/components/ui/container";
@@ -41,7 +42,25 @@ export async function SiteFooter({ user }: { user: SessionUser | null }) {
           <div className="flex flex-col gap-4 md:items-end md:text-right">
             <span className="label text-mute">{t("lang.label")}</span>
             <span className="label text-paper">RU · EN</span>
-            <span className="label text-mute">{t("footer.placeholder")}</span>
+            {/*
+              Раньше здесь стояла надпись «Здесь ничего лишнего» — то есть
+              место под документы, занятое словами о том, что документов нет.
+              У BeatChain в этом углу шесть ссылок, и до подключения платежей
+              они нужны нам не меньше: оферта и возврат обязательны.
+            */}
+            <span className="label text-mute">{t("legal.title")}</span>
+            <ul className="flex flex-col gap-2 md:items-end md:text-right">
+              {LEGAL_DOCS.map((doc) => (
+                <li key={doc.slug}>
+                  <Link
+                    href={`/legal/${doc.slug}`}
+                    className="text-sm text-paper transition-colors hover:text-paper"
+                  >
+                    {doc.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 
