@@ -11,7 +11,7 @@
  *   pnpm test:e2e
  * Либо одной строкой: BASE_URL=https://beat-desk.vercel.app pnpm test:e2e
  */
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,6 +27,21 @@ const CHROME =
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const stamp = Date.now().toString().slice(-6);
+
+/**
+ * Учётки, созданные прогоном. Собираются и удаляются в финале.
+ *
+ * Прогоны идут по боевой базе, а каждая регистрация оставляла профиль
+ * навсегда: к моменту, когда это замечено, в profiles было 272 профиля,
+ * из которых 240 — e2e. Индекс битмейкеров из-за этого показывал
+ * «никто не выставил биты», хотя биты лежали: база отдавала первые
+ * двести строк по алфавиту, и ими были тестовые учётки.
+ */
+const createdUsernames = [];
+
+/* Перевод строки без регулярки: регулярка с экранами требовала константы,
+   объявленной ниже места вызова, и падала в TDZ. */
+const LINE_BREAK = String.fromCharCode(10);
 
 const checks = [];
 function check(name, ok, detail = "") {
@@ -336,6 +351,7 @@ async function main() {
     for (let attempt = 0; attempt < 3 && !signedIn; attempt += 1) {
       const suffix = attempt === 0 ? stamp : `${stamp}x${attempt}`;
 
+      createdUsernames.push(`e2e${suffix}`);
       await register(user, `e2e${suffix}`, `e2e${suffix}@studio.ru`);
 
       const status = await user.evaluate(async () => (await fetch("/api/posts?tab=all&offset=0")).status);
@@ -965,6 +981,8 @@ const guestOrder = await guestContext.newPage();
       rmSync(workDirPath, { recursive: true, force: true });
       workDirPath = null;
     }
+
+    await cleanupCreatedUsers();
   }
 
   const failed = checks.filter((item) => !item.ok);
@@ -980,3 +998,139 @@ const guestOrder = await guestContext.newPage();
 }
 
 await main();
+
+/**
+ * Удаляет за собой учётки, созданные прогоном.
+ *
+ * Порядок задан внешними ключами, а не удобством: `licenses.beat_owner_id`
+ * и `order_items.beat_id` объявлены с `on delete restrict`, поэтому
+ * сначала уходят покупки и выданные лицензии, и только потом биты и
+ * профиль. Иначе удаление падало бы на середине, оставляя половину
+ * мусора, — то есть ровно то, ради чего эта функция написана.
+ *
+ * Без ключа уборка не выполняется, но прогон считается зелёным: чинить
+ * тесты из-за отсутствующего секрета не повод, зато молча испорченная
+ * база — повод. О неубранном печатаем предупреждение.
+ */
+async function cleanupCreatedUsers() {
+  if (createdUsernames.length === 0) return;
+
+  const env = loadEnvFile();
+  const url = env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    const left = createdUsernames.join(", ");
+    console.warn(`ОСТОРОЖНО: в базе осталось тестовых учёток: ${left}`);
+    console.warn("  Задайте SUPABASE_SERVICE_ROLE_KEY в .env.local, чтобы прогон убирал их за собой.");
+    return;
+  }
+
+  const headers = { apikey: key, Authorization: `Bearer ${key}` };
+  const names = createdUsernames.join(",");
+
+  // Ответ — массив, а не объект с полем data. Деструкрация `const { data }`
+  // здесь тихо давала undefined, поиск не находил ни одной учётки, и уборка
+  // завершалась без единого сообщения: выглядело как «всё убрано».
+  const profiles = await fetch(`${url}/rest/v1/profiles?select=id&username=in.(${names})`, {
+    headers,
+  }).then((r) => r.json());
+
+  const ids = (Array.isArray(profiles) ? profiles : []).map((row) => row.id);
+  if (ids.length === 0) return;
+
+  const idList = ids.join(",");
+
+  /*
+   * Удаляем по частям, а не каскадом: ограничения `restrict` всё равно
+   * не пропустят профиль, пока на него ссылаются покупки, а порядок
+   * таблиц всё равно известен только здесь.
+   */
+  const steps = [
+    ["reviews", "author_id"],
+    ["licenses", "beat_owner_id"],
+    ["order_items", "buyer_id"],
+    ["orders", "buyer_id"],
+    ["notifications", "user_id"],
+    ["notifications", "actor_id"],
+    ["post_likes", "user_id"],
+    ["follows", "follower_id"],
+    ["follows", "following_id"],
+    ["cart_items", "user_id"],
+    ["beat_comments", "author_id"],
+    ["beats", "owner_id"],
+    ["posts", "author_id"],
+    ["platform_posts", "author_id"],
+    ["profile_collaborators", "profile_id"],
+  ];
+
+  for (const [table, column] of steps) {
+    await fetch(`${url}/rest/v1/${table}?${column}=in.(${idList})`, {
+      method: "DELETE",
+      headers,
+    }).catch(() => {});
+  }
+
+  /*
+   * Удаляем поштучно, а не пачкой через `DELETE /auth/v1/admin/users` с
+   * телом {ids}. Массовый запрос отвечает 200 и не удаляет ничего, а
+   * проверки ответа у него нет: прогон рапортовал «убрано», пока учётки
+   * оставались в базе. По одному — медленнее на единицы, зато правдиво.
+   */
+  let removed = 0;
+
+  for (const id of ids) {
+    const res = await fetch(`${url}/auth/v1/admin/users/${id}`, {
+      method: "DELETE",
+      headers,
+    }).catch(() => null);
+
+    if (res?.ok) {
+      removed += 1;
+      continue;
+    }
+
+    // auth-учётки уже нет — значит, каскад не отработал бы. Убираем профиль.
+    const profile = await fetch(`${url}/rest/v1/profiles?id=eq.${id}`, {
+      method: "DELETE",
+      headers,
+    }).catch(() => null);
+
+    if (profile?.ok) removed += 1;
+  }
+
+  console.log(`
+Убрано за собой учёток: ${removed} из ${ids.length}.`);
+}
+/**
+ * Читает .env.local вручную: скрипту не нужен весь dotenv.
+ *
+ * Путь ищется в двух местах. Одного WORK_ROOT не хватило: он выводится
+ * из import.meta.url, и на этой машине файл по нему не находился —
+ * уборка молча не срабатывала и печатала предупреждение о недостающем
+ * ключе при ключе, который рядом лежит. Тихая неудача здесь хуже падения:
+ * она выглядит как «секрета нет», и человек начинает искать не там.
+ */
+function loadEnvFile() {
+  const out = {};
+
+  for (const dir of [WORK_ROOT, process.cwd()]) {
+    for (const file of [".env.local", ".env"]) {
+      let raw;
+      try {
+        raw = readFileSync(resolve(dir, file), "utf8");
+      } catch {
+        continue;
+      }
+
+      for (const line of raw.split(LINE_BREAK)) {
+        const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
+        if (match) out[match[1]] = match[2].trim();
+      }
+      break;
+    }
+    if (Object.keys(out).length > 0) break;
+  }
+
+  return { ...process.env, ...out };
+}
