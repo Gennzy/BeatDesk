@@ -52,16 +52,25 @@ export function SellReadiness({ prices, title, tags, roles }: Props) {
   const artwork = roles.includes("artwork");
 
   return (
-    <section className="flex flex-col gap-4 border-t border-line pt-6">
+    <section className="flex flex-col gap-4">
+      {/* Заголовок тем же стилем, что и остальные разделы формы: блок был
+          единственным, кто остался на старой мелкой подписи. */}
       <div className="flex items-center gap-3">
-        <span aria-hidden className="size-1.5 bg-mute/50" />
-        <span className="label text-mute">{t("readiness.title")}</span>
+        <span aria-hidden className="size-1.5 shrink-0 bg-accent" />
+        <span className="text-sm font-semibold uppercase tracking-wider text-paper">
+          {t("readiness.title")}
+        </span>
       </div>
 
       {tiers.length === 0 ? (
-        <p className="max-w-[62ch] text-sub text-mute">{t("readiness.noTiers")}</p>
+        <p className="max-w-[62ch] rounded-panel border border-line bg-ink-3 px-4 py-3 text-sm leading-relaxed text-mute">
+          {t("readiness.noTiers")}
+        </p>
       ) : (
-        <ul className="flex flex-col gap-px">
+        /* Строки уровней лежат на ink-3 — как поля ввода. Раньше они были
+           ink-2, то есть темнее формы вокруг, и проверка читалась отдельным
+           вложенным абзацем, а не частью той же работы. */
+        <ul className="flex flex-col gap-2">
           {TIERS.filter((tier) => sold(prices[tier.id])).map((tier) => {
             // Недостающие файлы считаем сами: правило уровня и состав бита —
             // единственные два источника, и спорить им не о чем.
@@ -72,35 +81,44 @@ export function SellReadiness({ prices, title, tags, roles }: Props) {
             return (
               <li
                 key={tier.id}
-                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 bg-ink-2 px-4 py-3"
+                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-md bg-ink-3 px-4 py-3"
               >
-                <span className="flex flex-col gap-1">
-                  <span className="label text-paper">{tier.label}</span>
-                  <span className="text-xs text-mute">{tier.delivers}</span>
+                <span className="flex flex-col gap-0.5">
+                  <span className="text-sm font-semibold text-paper">{tier.label}</span>
+                  <span className="text-sm text-mute">{tier.delivers}</span>
                 </span>
-                {lacking.length === 0 ? (
-                  <span className="label text-signal">{t("readiness.ready")}</span>
-                ) : (
-                  <span className="label text-amber">
-                    {t("readiness.missing")} {lacking.map((role) => MISSING[role]).join(", ")}
-                  </span>
-                )}
+                <span
+                  className={
+                    lacking.length === 0
+                      ? "flex items-center gap-2 text-sm font-semibold text-signal"
+                      : "flex items-center gap-2 text-sm font-semibold text-amber"
+                  }
+                >
+                  {lacking.length === 0 ? <Tick /> : <Cross />}
+                  {lacking.length === 0
+                    ? t("readiness.ready")
+                    : `${t("readiness.missing")} ${lacking.map((role) => MISSING[role]).join(", ")}`}
+                </span>
               </li>
             );
           })}
         </ul>
       )}
 
-      {!artwork && tiers.length > 0 ? (
-        <p className="max-w-[62ch] text-xs text-amber">
-          {t("readiness.noCover")}
-        </p>
-      ) : null}
-
-      {warnings.length > 0 ? (
-        <ul className="flex flex-col gap-1">
+      {/* Дальше то, что в уровень не помещается: обложка и замечания
+          выходного контроля. Каждому пункту маркер — иначе три строки
+          подряд читались как один абзац. */}
+      {(!artwork && tiers.length > 0) || warnings.length > 0 ? (
+        <ul className="flex flex-col gap-2">
+          {!artwork && tiers.length > 0 ? (
+            <li className="flex items-start gap-2 text-sm leading-relaxed text-amber">
+              <span aria-hidden className="mt-1.5 size-1.5 shrink-0 rounded-full bg-amber" />
+              {t("readiness.noCover")}
+            </li>
+          ) : null}
           {warnings.map((item) => (
-            <li key={item.id} className="max-w-[70ch] text-xs text-mute">
+            <li key={item.id} className="flex items-start gap-2 text-sm leading-relaxed text-mute">
+              <span aria-hidden className="mt-1.5 size-1.5 shrink-0 rounded-full bg-mute/60" />
               {item.message}
             </li>
           ))}
@@ -108,8 +126,41 @@ export function SellReadiness({ prices, title, tags, roles }: Props) {
       ) : null}
 
       {blockers.length > 0 ? (
-        <p className="max-w-[70ch] text-xs text-amber">{t("readiness.blockedHint")}</p>
+        <p className="max-w-[70ch] rounded-md bg-amber/10 px-4 py-3 text-sm leading-relaxed text-amber">
+          {t("readiness.blockedHint")}
+        </p>
       ) : null}
     </section>
+  );
+}
+
+/** Галочка: уровень продаётся, все файлы на месте. */
+function Tick() {
+  return (
+    <svg viewBox="0 0 12 12" className="h-3 w-3 shrink-0" aria-hidden>
+      <path
+        d="M1.5 6.5 4.5 9.5 10.5 2.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Крест: цена выставлена, а файлов для этого уровня нет. */
+function Cross() {
+  return (
+    <svg viewBox="0 0 12 12" className="h-3 w-3 shrink-0" aria-hidden>
+      <path
+        d="M2 2l8 8M10 2l-8 8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
