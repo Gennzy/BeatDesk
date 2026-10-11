@@ -154,6 +154,39 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
     new Date(beat.created_at),
   );
 
+  /*
+   * Другие биты того же продавца — кросс-продажа. Без неё страница бита
+   * заканчивается комментариями: услышал трек, решил, полез в профиль
+   * продавца, и если он там не заглянул — человек уходит, хотя у
+   * продавца обычно есть ещё что послушать.
+   *
+   * Берём только то, что действительно можно купить: бит без цены или
+   * снятый с продажи в витрине смотреть нельзя, и строка «другие биты
+   * автора» с некупаемым битом — обещание, которое не выполнится.
+   */
+  const { data: siblingRaw } = await supabase
+    .from("beats")
+    .select("id, title, bpm, key, cover_url, mp3_url, prices, currency, plays")
+    .eq("owner_id", beat.owner_id)
+    .eq("is_public", true)
+    .neq("id", beat.id)
+    .limit(4);
+
+  const siblings = ((siblingRaw ?? []) as Array<{
+    id: string;
+    title: string;
+    bpm: number;
+    key: string | null;
+    cover_url: string | null;
+    mp3_url: string | null;
+    prices: Record<string, number> | null;
+    currency: string | null;
+    plays: number | null;
+  }>).filter((row) => {
+    const p = normalizePrices(row.prices);
+    return p.mp3 !== null || p.wav !== null || p.trackout !== null || p.exclusive !== null;
+  });
+
   return (
     <section className="py-8 lg:py-12">
       <BeatViewCounter beatId={beat.id} isOwner={isOwner} />
@@ -245,6 +278,55 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
               и уже потом спорит с автором. Наоборот разговор уводил бы от кнопки.
             */}
             <BeatComments beatId={beat.id} initial={comments} loggedInUserId={user?.id ?? null} />
+
+            {siblings.length > 0 ? (
+              <section className="flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <span aria-hidden className="size-1.5 shrink-0 bg-accent" />
+                  <span className="text-sm font-semibold uppercase tracking-wider text-paper">
+                    {t("beat.moreFromSeller")}
+                  </span>
+                  {owner?.username ? (
+                    <Link
+                      href={`/beatmakers/${owner.username}`}
+                      className="ml-auto text-sm text-mute transition-colors hover:text-paper"
+                    >
+                      {t("beat.allBySeller")}
+                    </Link>
+                  ) : null}
+                </div>
+
+                <ul className="grid gap-3 sm:grid-cols-2">
+                  {siblings.map((row) => (
+                    <li key={row.id}>
+                      <Link
+                        href={`/beats/${row.id}`}
+                        className="panel focusable flex h-full items-center gap-4 p-3 transition-colors hover:border-line-2"
+                      >
+                        <BeatCover
+                          beatId={row.id}
+                          title={row.title}
+                          coverUrl={row.cover_url}
+                          audioUrl={row.mp3_url}
+                          username={owner?.username ?? ""}
+                          bpm={row.bpm}
+                          musicalKey={row.key ?? ""}
+                          plays={row.plays ?? 0}
+                          className="aspect-square w-16 shrink-0 rounded-md"
+                        />
+                        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                          <span className="truncate text-sm font-semibold text-paper">{row.title}</span>
+                          <span className="text-sm text-mute">
+                            {row.bpm} BPM
+                            {row.key ? ` · ${row.key}` : ""}
+                          </span>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
           </div>
 
           {/* Правая колонка липнет при прокрутке: цена и продавец остаются
