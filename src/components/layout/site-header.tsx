@@ -69,6 +69,7 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
      * кабинет, где собрано всё остальное.
      */
     { href: "/", label: t("nav.feed") },
+    { href: "/beatmakers", label: t("nav.beatmakers") },
     /*
      * Кабинет стоит в шапке у продавца и не мозолит глаза покупателю: у
      * покупателя там нет ничего, ради чего он заходил. Переключить роль

@@ -22,6 +22,9 @@ export async function SiteFooter({ user }: { user: SessionUser | null }) {
             <Link href="/" className="text-sm text-paper transition-colors hover:text-paper">
               {t("nav.feed")}
             </Link>
+            <Link href="/beatmakers" className="text-sm text-paper transition-colors hover:text-paper">
+              {t("nav.beatmakers")}
+            </Link>
             {/* Кабинет гостю не показываем: он отправляет на вход, и ссылка
                 в подвале была бы обещанием, которого не выполнится. */}
             {user ? (

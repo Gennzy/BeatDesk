@@ -2,6 +2,7 @@ import type { Locale } from "./locale";
 
 const ru = {
   "nav.feed": "Лента",
+  "nav.beatmakers": "Битмейкеры",
   "nav.share": "Каналы",
   "nav.cabinet": "Кабинет",
   "nav.upload": "Загрузить бит",
@@ -63,6 +64,9 @@ const ru = {
   "catalog.deals": "Скидки",
   "catalog.dealsNote": "Цена снижена, старая зачёркнута",
   "catalog.emptyNote": "Пока пусто — битов в разделе ещё нет",
+  "beatmakers.title": "Битмейкеры",
+  "beatmakers.note": "Здесь те, у кого есть что купить. Сначала тех, кого чаще слушают.",
+  "beatmakers.empty": "Пока никто не выставил биты на продажу.",
   "banner.licensesKicker": "Лицензии",
   "banner.licensesTitle": "От MP3 до эксклюзива",
   "banner.licensesNote": "Четыре уровня с разным составом файлов. Наведи на цену в карточке — там видно, что входит.",
@@ -650,6 +654,7 @@ const ru = {
 
 const en: Record<keyof typeof ru, string> = {
   "nav.feed": "Feed",
+  "nav.beatmakers": "Beatmakers",
   "nav.share": "Channels",
   "nav.cabinet": "Dashboard",
   "nav.upload": "Upload a beat",
@@ -711,6 +716,9 @@ const en: Record<keyof typeof ru, string> = {
   "catalog.deals": "Deals",
   "catalog.dealsNote": "Price cut, old one struck through",
   "catalog.emptyNote": "Nothing here yet — no beats in this section",
+  "beatmakers.title": "Beatmakers",
+  "beatmakers.note": "Only people with something to sell. Those you listen to most come first.",
+  "beatmakers.empty": "Nobody has put a beat on sale yet.",
   "banner.licensesKicker": "Licenses",
   "banner.licensesTitle": "From MP3 to exclusive",
   "banner.licensesNote": "Four tiers with different file sets. Hover a price to see what each one includes.",
