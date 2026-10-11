@@ -73,6 +73,20 @@ export async function Reviews({
 
   const rated = summary.count > 0 && summary.average !== null;
 
+  /*
+   * Пустой отзыв не занимает полосу.
+   *
+   * Раньше блок с заголовком и одной строкой «отзывов пока нет» занимал
+   * столько же места, сколько несколько отзывов подряд, и пустой профиль
+   * выглядел так, будто на нём что-то сломано. Теперь при нуле это тихая
+   * строка, а полоса появляется, когда есть что читать.
+   */
+  if (!rated && list.length === 0) {
+    return (
+      <p className="text-sm text-mute">{t("review.emptyHint")}</p>
+    );
+  }
+
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4 border-b border-line pb-3">

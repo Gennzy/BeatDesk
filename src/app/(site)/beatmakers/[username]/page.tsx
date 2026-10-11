@@ -177,7 +177,6 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
           </div>
 
           <div className="flex flex-col gap-5">
-            <span className="label text-mute">{t("profile.title")}</span>
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="flex items-baseline gap-1 font-display text-section font-semibold text-paper uppercase">
                 <span className="font-mono text-title text-mute">@</span>
@@ -198,6 +197,30 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
               ) : null}
             </div>
             <p className="max-w-[58ch] text-sub text-mute">{profile.bio ?? t("profile.bioPlaceholder")}</p>
+
+            {/*
+              Числа в шапке — то, ради чего на профиль и приходят. Раньше их
+              не было вовсе: ни битов, ни прослушиваний, ни подписчиков, и
+              витрина продавца начиналась с подписи и кнопки подписки.
+
+              Продажи сюда намеренно не попали: выбор бита превращается в
+              голосование за самого популярного. Уровень и проверка — рядом,
+              потому что это про качество, а не про количество.
+            */}
+            <p className="mt-5 flex flex-wrap items-baseline gap-x-6 gap-y-1 text-sub text-mute">
+              <Stat
+                value={achievementStats.beatsOnSale}
+                text={locale === "ru" ? pluralRu(achievementStats.beatsOnSale, "бит", "бита", "битов") : "beats"}
+              />
+              <Stat
+                value={achievementStats.plays}
+                text={locale === "ru" ? pluralRu(achievementStats.plays, "прослушивание", "прослушивания", "прослушиваний") : "plays"}
+              />
+              <Stat
+                value={follow.followerCount}
+                text={locale === "ru" ? pluralRu(follow.followerCount, "подписчик", "подписчика", "подписчиков") : "followers"}
+              />
+            </p>
 
             {collaborators.length > 0 ? (
               <div className="flex flex-col gap-3 pt-4">
@@ -303,5 +326,22 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
         </div>
       </Container>
     </section>
+  );
+}
+
+/**
+ * Одно число в шапке профиля: значение и слово рядом.
+ *
+ * Рядом, а не столбиком. Столбиком подпись читалась как придаточное к
+ * числу — «1 подписчиков», — и это та же ошибка склейки, что была в шапке
+ * бита. Плюс форму и число не нужно угадывать глазами: слово уже стоит на
+ * своём месте.
+ */
+function Stat({ value, text }: { value: number; text: string }) {
+  return (
+    <span className="flex items-baseline gap-1.5">
+      <span className="font-mono text-paper tabular-nums">{value}</span>
+      <span>{text}</span>
+    </span>
   );
 }
