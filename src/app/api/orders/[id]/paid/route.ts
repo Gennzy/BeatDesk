@@ -31,11 +31,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   /*
-   * Право на подтверждение проверяет сама mark_order_paid (0024), здесь же —
-   * только видимость заказа: RLS показывает продавцу заказ с его битом, а
-   * чужой заказ вернулся бы пустым. Так на чужую кнопку не тратится вызов
-   * функции.
+   * Право на подтверждение проверяет сама mark_order_paid — это оператор,
+   * а не продавец: деньги приходят на счёт площадки, и только оператор их
+   * видит.
+   *
+   * Здесь та же проверка продублирована намеренно: без неё продавец
+   * отправлял бы вызов функции, тратил квоту и получал отказ от базы.
+   * Проверка на клиенте не заменяет проверку в функции — она её дублирует,
+   * чтобы лишний вызов не уходил вообще.
    */
+  const { data: viewer } = await supabase.from("profiles").select("is_operator").eq("id", user.id).maybeSingle();
+
+  if (!viewer?.is_operator) {
+    return NextResponse.json({ error: "Подтверждать оплату может только оператор площадки" }, { status: 403 });
+  }
+
   const { data: order } = await supabase.from("orders").select("id, status").eq("id", id).maybeSingle();
 
   if (!order) return NextResponse.json({ error: "Заказ не найден" }, { status: 404 });

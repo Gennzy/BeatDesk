@@ -110,6 +110,18 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const isSeller = Boolean(viewer?.user && (myItems ?? []).some((row) => row.beat_owner_id === viewer.user!.id));
 
   /*
+   * Подтверждать поступление денег может оператор, не продавец: деньги
+   * приходят на счёт площадки, и видит их оператор. Продавец по этой
+   * кнопке нажимал бы вслепую и мог бы подтвердить заказ, который не
+   * оплачен, — а кнопка выдаёт лицензию и начисляет баланс.
+   */
+  const { data: operatorRow } = viewer?.user
+    ? await supabase.from("profiles").select("is_operator").eq("id", viewer.user.id).maybeSingle()
+    : { data: null };
+
+  const isOperator = operatorRow?.is_operator === true;
+
+  /*
    * Отзыв оставляет покупатель по оплаченному заказу, и только один на
    * позицию. Продавцу форма не показывается, даже если он же покупал что-то
    * у себя: отзыв идёт о битмейкере, а он свой собственный.
@@ -190,7 +202,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           </div>
         ) : null}
 
-        {typed.status !== "paid" && isSeller ? <SellerActions orderId={typed.id} /> : null}
+        {typed.status !== "paid" && isOperator ? <SellerActions orderId={typed.id} /> : null}
 
         {typed.status !== "paid" && !isSeller ? (
           <div className="flex flex-col gap-3 pt-8">
@@ -215,6 +227,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             ) : null}
 
             <p className="text-sm leading-relaxed text-mute">{t("order.manualNote")}</p>
+            {typed.status === "pending" && isSeller ? (
+              <p className="text-sm leading-relaxed text-mute">{t("order.sellerWaits")}</p>
+            ) : null}
           </div>
         ) : null}
       </Container>

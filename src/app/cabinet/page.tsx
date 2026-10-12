@@ -86,6 +86,14 @@ export default async function CabinetPage() {
   const earned = sold.reduce((sum, row) => sum + Number(row.seller_net_minor), 0);
   const currency = sold[0]?.currency ?? "RUB";
 
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("is_operator")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const isOperator = me?.is_operator === true;
+
   const achievements = computeAchievements(stats);
 
   return (
@@ -147,6 +155,13 @@ export default async function CabinetPage() {
           <Link href="/cabinet/payouts" className="chip chip-hover">
             {t("payouts.title")}
           </Link>
+          {/* Оператору кабинет продавца — не его дом: заказы на подтверждение
+              и заявки на вывод лежат в другом месте. */}
+          {isOperator ? (
+            <Link href="/cabinet/operator" className="chip chip-hover">
+              {t("ops.title")}
+            </Link>
+          ) : null}
         </div>
 
         {/*
