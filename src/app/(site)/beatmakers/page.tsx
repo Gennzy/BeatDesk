@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BeatmakerCarousel } from "@/components/beats/beatmaker-carousel";
 import { Avatar } from "@/components/ui/avatar";
 import { Container } from "@/components/ui/container";
 import { createClient } from "@/lib/supabase/server";
@@ -26,9 +27,32 @@ export default async function BeatmakersPage() {
         <p className="max-w-[60ch] text-sub text-mute">{t("beatmakers.note")}</p>
       </div>
 
+      {/*
+        Карусель идёт первой: она и есть витрина продавцов, а список под ней
+        — тот же набор словами. При пустой базе обе части прячутся, иначе
+        страница объясняла бы пустоту дважды.
+      */}
       {beatmakers.length === 0 ? (
         <p className="panel p-8 text-center text-sm text-mute">{t("beatmakers.empty")}</p>
       ) : (
+        <>
+          <BeatmakerCarousel
+            makers={beatmakers.map((maker) => ({
+              username: maker.username,
+              avatarUrl: maker.avatarUrl,
+              beatsOnSale: maker.beatsOnSale,
+              plays: maker.plays,
+              followerCount: maker.followerCount,
+            }))}
+          />
+
+          <div className="flex items-center gap-3 pt-4">
+            <span aria-hidden className="size-1.5 shrink-0 bg-accent" />
+            <span className="text-sm font-semibold uppercase tracking-wider text-paper">
+              {t("beatmakers.list")}
+            </span>
+          </div>
+
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {beatmakers.map((maker) => (
             <li key={maker.id}>
@@ -72,6 +96,7 @@ export default async function BeatmakersPage() {
             </li>
           ))}
         </ul>
+        </>
       )}
     </Container>
   );

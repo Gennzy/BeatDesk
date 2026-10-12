@@ -61,9 +61,18 @@ export async function fetchPublicBeatmakers(supabase: SupabaseClient | null): Pr
   const { data, error } = await supabase
     .from("beats")
     .select(
-      "id, plays, prices, owner_id, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, level)",
+      "id, plays, prices, owner_id, sale_state, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, level)",
     )
     .eq("is_public", true)
+    /*
+     * sale_state обязателен рядом с is_public. У черновика is_public бывает
+     * включён — он уже загружен, но ещё не выставлен, — и без этой проверки
+     * индекс показывал «3 бита» там, где профиль того же продавца писал
+     * «2 бита». Два числа об одном на двух страницах площадки — это не
+     * косметика: человек видит, что одно из них врёт, и перестаёт верить
+     * обоим.
+     */
+    .eq("sale_state", "on_sale")
     .limit(BEATS_FOR_INDEX);
 
   if (error || !data) return [];

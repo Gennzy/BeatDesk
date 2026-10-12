@@ -673,6 +673,44 @@ async function main() {
       }
     }
 
+    // --- витрина продавцов -------------------------------------------------
+    /*
+     * Конвейер проверяем на двух вещах: он есть и в нём только те, у кого
+     * есть что купить. Пустой круг на витрине выглядит как «здесь кто-то
+     * есть, но сломалось», поэтому продавец без битов в продаже в карусель
+     * не попадает вовсе.
+     */
+    {
+      await user.goto(`${BASE}/beatmakers`, { waitUntil: "networkidle2", timeout: 60_000 });
+      await wait(1200);
+
+      const carousel = await user.evaluate(() => {
+        const group = document.querySelector('[aria-roledescription="карусель"]');
+        if (!group) return { present: false };
+
+        const links = [...group.querySelectorAll("a")];
+
+        return {
+          present: true,
+          items: links.length,
+          profiles: links.every((n) => (n.getAttribute("href") ?? "").startsWith("/beatmakers/")),
+          outside: [...group.querySelectorAll("a[href]")].filter(
+            (n) => !(n.getAttribute("href") ?? "").startsWith("/beatmakers/"),
+          ).length,
+        };
+      });
+
+      check("витрина продавцов на месте", carousel.present, "карусель не отрисовалась");
+
+      if (carousel.present) {
+        check(
+          "в карусели только профили продавцов",
+          carousel.profiles && carousel.outside === 0,
+          "в карусель попало что-то кроме профилей",
+        );
+      }
+    }
+
     // --- документы в подвале ---------------------------------------------
     /*
      * В подвале вместо документов стояла надпись «Здесь ничего лишнего» —
