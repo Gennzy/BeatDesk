@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { isCurrency } from "@/lib/currency";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { parseOrderItems, type OrderItemInput } from "@/lib/sales/order-items";
 import { createClient } from "@/lib/supabase/server";
@@ -69,12 +70,32 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data, error } = await supabase.rpc("create_order", {
-      p_items: parsed,
-      p_currency: "RUB",
-      p_buyer_email: email,
-      p_contact: contact,
-    });
+    const { data, error } = await (async () => {
+      /*
+       * Валюта заказа — валюта битов, а не константа. Курсов у площадки нет,
+       * поэтому смешанная корзина не оформляется вовсе: USD-бит в рублёвом
+       * заказе превращал 25 долларов в 25 рублей. create_order цены не
+       * трогает, только штампует валюту в позиции, так что проверка здесь —
+       * единственное место, где подмена ловится.
+       */
+      const { data: beats } = await supabase
+        .from("beats")
+        .select("id, currency")
+        .in("id", parsed.map((item) => item.beat_id));
+
+      const currencies = [...new Set(((beats ?? []) as { currency: string }[]).map((row) => row.currency))];
+
+      if (currencies.length !== 1 || !isCurrency(currencies[0])) {
+        return { data: null, error: { message: "Заказ — в одной валюте: убери лишнее из корзины" } };
+      }
+
+      return supabase.rpc("create_order", {
+        p_items: parsed,
+        p_currency: currencies[0],
+        p_buyer_email: email,
+        p_contact: contact,
+      });
+    })();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     if (!data || typeof data !== "object" || !("id" in data)) {

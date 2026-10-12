@@ -56,7 +56,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     redirect("/profile");
   }
 
-  const nextPath = next?.startsWith("/") ? next : "/";
+  const nextPath = next?.startsWith("/") && !next.startsWith("//") ? next : "/";
 
   return (
     <section className="relative min-h-[calc(100vh-4.5rem)] overflow-x-clip overflow-y-hidden">

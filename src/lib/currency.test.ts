@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CURRENCIES, DEFAULT_CURRENCY, currencySymbol, formatAmount, formatMoney, isCurrency } from "@/lib/currency";
+import { CURRENCIES, DEFAULT_CURRENCY, currencySymbol, formatAmount, formatMoney, formatMoneyByCurrency, isCurrency } from "@/lib/currency";
 
 describe("isCurrency", () => {
   it("принимает только поддерживаемые коды", () => {
@@ -71,5 +71,29 @@ describe("formatAmount", () => {
 describe("DEFAULT_CURRENCY", () => {
   it("совпадает с первой валютой в списке", () => {
     expect(DEFAULT_CURRENCY).toBe(CURRENCIES[0].code);
+  });
+});
+
+describe("formatMoneyByCurrency", () => {
+  // Неразрывный пробел — кодом символа: литералом его не отличить
+  // от обычного, а тест на обычном молча пройдёт и соврёт.
+  const nbsp = String.fromCharCode(160);
+
+  it("одну валюту показывает одной суммой", () => {
+    expect(
+      formatMoneyByCurrency([
+        { amount: 500, currency: "RUB" },
+        { amount: 1000, currency: "RUB" },
+      ]),
+    ).toBe(`1${nbsp}500${nbsp}₽`);
+  });
+
+  it("разные валюты не складывает, а ставит рядом", () => {
+    expect(
+      formatMoneyByCurrency([
+        { amount: 1500, currency: "RUB" },
+        { amount: 25, currency: "USD" },
+      ]),
+    ).toBe(`1${nbsp}500${nbsp}₽ · 25${nbsp}$`);
   });
 });

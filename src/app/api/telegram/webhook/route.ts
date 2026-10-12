@@ -266,11 +266,16 @@ async function sendSharedBeat(token: string, share: string, chat: Chat, siteUrl:
 
   const { data: beat } = await admin
     .from("beats")
-    .select("id, title, bpm, key, tags, type_beat_artists, cover_url, prices, currency, owner_id")
+    .select("id, title, bpm, key, tags, type_beat_artists, cover_url, prices, currency, owner_id, is_public, sale_state")
     .eq("id", payload.b)
     .maybeSingle();
 
-  if (!beat || beat.owner_id !== payload.o) {
+  /*
+   * Ссылка подписана, но бит с тех пор могли снять с продажи: раздача
+   * карточки снятого бита — это витрина того, чего уже нельзя купить.
+   * Проверка та же, что у страницы бита: публичный и в продаже.
+   */
+  if (!beat || beat.owner_id !== payload.o || !beat.is_public || beat.sale_state !== "on_sale") {
     await sendTelegramMessage(token, {
       chat_id: chat.id,
       text: "<b>Бит не найден</b>\n\nВозможно, его сняли с продажи или удалили.",

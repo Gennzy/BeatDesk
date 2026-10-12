@@ -29,7 +29,7 @@ import { GenreSelect } from "@/components/beat/genre-select";
 import { SellReadiness } from "@/components/beats/sell-readiness";
 import { beatRoles } from "@/lib/beats";
 import type { TierId } from "@/lib/audio/delivery-rules";
-import { normalizeGenre, type GenreSlug } from "@/lib/beat-validation";
+import { normalizeGenre } from "@/lib/beat-validation";
 import { applyDiscount, emptyPrices, parsePrice as toPrice, normalizeDiscount } from "@/lib/prices";
 import { parseTags } from "@/lib/tags";
 import { useI18n } from "@/lib/i18n/provider";
@@ -98,7 +98,6 @@ export function UploadForm({ userId }: { userId: string }) {
     trackout: null,
     exclusive: null,
   });
-  const [genre, setGenre] = useState<GenreSlug | null>(null);
   const [discount, setDiscount] = useState(0);
 
   /*
@@ -121,6 +120,7 @@ export function UploadForm({ userId }: { userId: string }) {
   }, [discount, prices]);
 
   const [title, setTitle] = useState("");
+  const [tagsText, setTagsText] = useState("");
 
   /** Роли выбранных файлов: проверка знает, что загружено, по ним. */
   const roles = beatRoles({ keys: Object.keys(files), hasCover: cover !== null });
@@ -320,7 +320,7 @@ export function UploadForm({ userId }: { userId: string }) {
                 <KeyPicker defaultValue="F# minor" />
               </Field>
               <Field label={t("upload.tags")} hint={t("upload.tagsHint")}>
-                <Input name="tags" placeholder="trap, dark, 140" className="font-mono" />
+                <Input name="tags" placeholder="trap, dark, 140" className="font-mono" onChange={(event) => setTagsText(event.target.value)} />
               </Field>
             </div>
 
@@ -330,7 +330,7 @@ export function UploadForm({ userId }: { userId: string }) {
               читался как ещё одна цена. Теперь он в метаданных, где его
               и ищут, а не среди чисел.
             */}
-            <GenreSelect name="genre" value={genre} />
+            <GenreSelect name="genre" value={null} />
           </div>
         </div>
 
@@ -399,7 +399,7 @@ export function UploadForm({ userId }: { userId: string }) {
             </div>
           ) : null}
 
-          <SellReadiness prices={prices} title={title} tags={[]} roles={roles} />
+          <SellReadiness prices={prices} title={title} tags={parseTags(tagsText)} roles={roles} />
 
           <Switch label={t("upload.publish")} hint={t("upload.publishHint")} name="isPublic" defaultChecked={false} />
           <p className="text-xs leading-relaxed text-mute">{t("upload.feedNote")}</p>

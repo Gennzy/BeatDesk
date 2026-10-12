@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { SellerOrderRow } from "@/components/sales/seller-order-row";
 import { Container } from "@/components/ui/container";
 import { Icon } from "@/components/ui/icon";
-import { formatMoney } from "@/lib/currency";
+import { formatMoneyByCurrency } from "@/lib/currency";
 import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -78,14 +78,17 @@ export default async function CabinetOrdersPage({
   const paidRows = rows.filter((row) => ["paid", "delivered"].includes(statusById.get(row.order_id) ?? ""));
 
   const cutoff = period.days ? Date.now() - period.days * 86_400_000 : null;
+  const paidAtById = new Map(allOrders.map((order) => [order.id, order.paid_at ?? order.created_at]));
   const inPeriod = paidRows.filter((row) => {
     if (cutoff === null) return true;
-    const order = allOrders.find((item) => item.id === row.order_id);
-    return order ? new Date(order.paid_at ?? order.created_at).getTime() >= cutoff : false;
+    const at = paidAtById.get(row.order_id);
+    return at ? new Date(at).getTime() >= cutoff : false;
   });
 
-  const earned = inPeriod.reduce((sum, row) => sum + Number(row.seller_net_minor), 0);
-  const currency = paidRows[0]?.currency ?? "RUB";
+  const earnedByCurrency = inPeriod.map((row) => ({
+    amount: Number(row.seller_net_minor) / 100,
+    currency: row.currency,
+  }));
   const pendingCount = allOrders.filter((order) => order.status === "pending").length;
 
   // Заказы, к которым относится хоть одна позиция продавца.
@@ -128,7 +131,7 @@ export default async function CabinetOrdersPage({
           <div className="panel flex flex-col gap-2 p-5 sm:col-span-2">
             <span className="label text-mute">{t("cabinet.earnedFor", { period: t(period.label as "cabinet.periodAll") })}</span>
             <span className="font-mono text-4xl leading-none text-paper tabular-nums">
-              {formatMoney(earned / 100, currency)}
+              {formatMoneyByCurrency(earnedByCurrency)}
             </span>
             <span className="text-xs text-mute">
               {t("cabinet.ordersPaid", { count: String(inPeriod.length) })}

@@ -59,6 +59,9 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase
     .from("notifications")
     .select("id, kind, post_id, beat_id, order_id, read_at, created_at, posts(body, parent_id), beats(title), profiles!notifications_actor_id_fkey(username, avatar_url)")
+    // Пояс readable: RLS и так режет чужие, но приватный список дублируем
+    // условием — одна ослабленная политика не должна отдать чужие письма.
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .range(offset, offset + PAGE_SIZE - 1);
 

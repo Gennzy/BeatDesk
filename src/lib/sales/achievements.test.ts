@@ -131,7 +131,14 @@ describe("прогресс до следующего", () => {
     const list = computeAchievements(stats({ beatsTotal: 5 }), at(1));
     const ten = list.find((a) => a.id === "beats-10")!;
 
-    expect(progress(ten)).toBeCloseTo(0.5, 5);
+    expect(progress(ten)).toBeCloseTo(4 / 9, 5);
+  });
+
+  it("третий порог считается от второго, а не от первого", () => {
+    const list = computeAchievements(stats({ beatsTotal: 30 }), at(1));
+    const fifty = list.find((a) => a.id === "beats-50")!;
+
+    expect(progress(fifty)).toBeCloseTo(0.5, 5);
   });
 
   it("прогресс не выходит за единицу и не уходит в минус", () => {

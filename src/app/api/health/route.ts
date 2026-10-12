@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSiteUrl } from "@/lib/site";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * Какие переменные окружения настроены. Значения не отдаём, только факт наличия.
@@ -13,6 +14,18 @@ import { getSiteUrl } from "@/lib/site";
  */
 export async function GET() {
   const siteUrl = await getSiteUrl();
+
+  /*
+   * Карта секретов — только вошедшим: гостю она рассказывает, какие именно
+   * интеграции стоят, а ему достаточно знать, жив ли сайт. Значений здесь
+   * как не было, так и нет — только факт наличия.
+   */
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return NextResponse.json({ ok: true, siteUrl });
 
   const env = {
     supabaseUrl: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),

@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   if (!gate.ok) {
     return NextResponse.json(
       { error: "Слишком много заявок, подожди минуту" },
-      { status: 429, headers: { "Retry-Control": `after=${gate.retryAfter}` } },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
     );
   }
 

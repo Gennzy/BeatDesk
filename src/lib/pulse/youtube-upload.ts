@@ -46,7 +46,6 @@ const UPLOAD_API = "https://www.googleapis.com/upload/youtube/v3/videos";
 export const CHUNK_SIZE = 8 * 1024 * 1024;
 
 /** Раунд для лимита: видео целиком в память не влезает никогда. */
-const PART = 256 * 1024;
 
 /** MIME-типы по убыванию предпочтения — те же, что и при сборке видео. */
 const MIME_CANDIDATES = [
@@ -147,13 +146,15 @@ async function fail(response: Response): Promise<never> {
 export async function startUploadSession(userId: string, meta: UploadMeta): Promise<UploadSession> {
   if (!meta.title.trim()) throw new YouTubeUploadError("Пустое название: YouTube его не примет.");
 
-  if (!meta.size || meta.size % PART !== 0) {
+  if (!meta.size || !Number.isFinite(meta.size) || meta.size <= 0) {
     /*
-     * YouTube отвергает размер, не кратный 256 КБ, и делает это после
-     * того, как сессия уже открыта. Проверка здесь экономит человеку одно
-     * лишнее обращение к квоте.
+     * Проверяется только «файл есть», а не кратность 256 КБ: кратной должна
+     * быть только нарезка кусков (кроме последнего), а не общий размер.
+     * Раньше здесь требовали кратности от всего файла, и отрендеренный
+     * ролик, чей размер почти никогда не делится нацело, отклонялся до
+     * YouTube — загрузка не работала вообще никогда.
      */
-    throw new YouTubeUploadError(`Размер ролика должен быть кратен 256 КБ, а получилось ${meta.size}.`);
+    throw new YouTubeUploadError("Ролик пустой.");
   }
 
   const token = await getAccessToken(userId);
@@ -182,90 +183,6 @@ export async function startUploadSession(userId: string, meta: UploadMeta): Prom
   if (!sessionUrl) throw new YouTubeUploadError("YouTube не вернул адрес загрузки.");
 
   return { sessionUrl, chunkSize: CHUNK_SIZE, mimeType: type };
-}
-
-/**
- * Отправляет куски в открытую сессию.
- *
- * Идёт из браузера, поэтому заголовка авторизации здесь нет и быть не
- * должно: адрес сессии уже подписан самим YouTube.
- *
- * Порядок строго последовательный. YouTube не поддерживает параллельную
- * запись в одну сессию: второй запрос сдвигает смещение, на которое
- * рассчитывал первый, и ролик не собирается никогда.
- */
-export async function sendChunks(
-  sessionUrl: string,
-  file: Blob,
-  chunkSize: number,
-  onProgress?: (ratio: number) => void,
-  signal?: AbortSignal,
-): Promise<void> {
-  const total = file.size;
-
-  for (let offset = 0; offset < total; offset += chunkSize) {
-    if (signal?.aborted) throw new YouTubeUploadError("Загрузка отменена.");
-
-    const end = Math.min(offset + chunkSize, total) - 1;
-
-    const response = await fetch(sessionUrl, {
-      method: "PUT",
-      headers: {
-        "Content-Type": videoMimeType(),
-        "Content-Range": `bytes ${offset}-${end}/${total}`,
-      },
-      body: await file.slice(offset, end + 1).arrayBuffer(),
-      ...(signal ? { signal } : {}),
-    });
-
-    /*
-     * Промежуточные ответы YouTube пустые, со статусом 308: «принято кусок,
-     * жди следующий». Формально это не ошибка, и обычная проверка ok его
-     * проглатывает молча.
-     */
-    if (response.status === 308) {
-      onProgress?.(end + 1);
-      continue;
-    }
-
-    if (!response.ok) await fail(response);
-
-    onProgress?.(total);
-  }
-}
-
-/**
- * Проверяет, что ролик создан.
- *
- * Номер ролика лежит в теле финального ответа, который ушёл в браузер,
- * поэтому здесь сессия опрашивается заново. Заодно это подтверждение:
- * ролик действительно создан, а не принят и забыт.
- */
-export async function finishUpload(
-  userId: string,
-  sessionUrl: string,
-): Promise<{ videoId: string; url: string }> {
-  const token = await getAccessToken(userId);
-
-  if (!token) throw new YouTubeUploadError("Сессия YouTube недоступна.");
-
-  const response = await fetch(sessionUrl, { headers: { Authorization: `Bearer ${token}` } });
-
-  const body = (await response.json().catch(() => ({}))) as {
-    status?: string;
-    reason?: string;
-    message?: string;
-  };
-
-  if (!response.ok || body.reason) {
-    throw new YouTubeUploadError(`YouTube: ${body.message ?? body.reason ?? `ответил ${response.status}`}`);
-  }
-
-  const videoId = new URL(sessionUrl).searchParams.get("upload_id") ?? "";
-
-  if (!videoId) throw new YouTubeUploadError("YouTube принял видео, но не вернул его номер.");
-
-  return { videoId, url: `https://www.youtube.com/watch?v=${videoId}` };
 }
 
 /** Ставит обложку ролика. */

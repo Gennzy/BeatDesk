@@ -110,26 +110,26 @@ export function weekStartMonday(now = Date.now()): string {
  * Пороги степеней двойки: человеку не нужны тридцать промежуточных медалей,
  * ему нужен следующий шаг и понимание, сколько до него осталось.
  */
-const RULES: Array<{ id: AchievementId; titleKey: string; threshold: number; pick: (stats: BeatmakerStats, now: number) => number }> = [
-  { id: "first-beat", titleKey: "ach.firstBeat.title", threshold: 1, pick: (s) => s.beatsTotal },
-  { id: "beats-10", titleKey: "ach.beats10.title", threshold: 10, pick: (s) => s.beatsTotal },
-  { id: "beats-50", titleKey: "ach.beats50.title", threshold: 50, pick: (s) => s.beatsTotal },
-  { id: "plays-1k", titleKey: "ach.plays1k.title", threshold: 1_000, pick: (s) => s.plays },
-  { id: "plays-10k", titleKey: "ach.plays10k.title", threshold: 10_000, pick: (s) => s.plays },
-  { id: "first-sale", titleKey: "ach.firstSale.title", threshold: 1, pick: (s) => s.ordersPaid },
-  { id: "sales-25", titleKey: "ach.sales25.title", threshold: 25, pick: (s) => s.ordersPaid },
-  { id: "stems-10", titleKey: "ach.stems10.title", threshold: 10, pick: (s) => s.beatsWithStems },
-  { id: "days-30", titleKey: "ach.days30.title", threshold: 30, pick: (s, now) => fullDays(s.registeredAt, now) },
-  { id: "days-365", titleKey: "ach.days365.title", threshold: 365, pick: (s, now) => fullDays(s.registeredAt, now) },
-  { id: "first-post", titleKey: "ach.firstPost.title", threshold: 1, pick: (s) => s.postsPublished },
+const RULES: Array<{ id: AchievementId; titleKey: string; threshold: number; counter: string; pick: (stats: BeatmakerStats, now: number) => number }> = [
+  { id: "first-beat", titleKey: "ach.firstBeat.title", threshold: 1, counter: "beats", pick: (s) => s.beatsTotal },
+  { id: "beats-10", titleKey: "ach.beats10.title", threshold: 10, counter: "beats", pick: (s) => s.beatsTotal },
+  { id: "beats-50", titleKey: "ach.beats50.title", threshold: 50, counter: "beats", pick: (s) => s.beatsTotal },
+  { id: "plays-1k", titleKey: "ach.plays1k.title", threshold: 1_000, counter: "plays", pick: (s) => s.plays },
+  { id: "plays-10k", titleKey: "ach.plays10k.title", threshold: 10_000, counter: "plays", pick: (s) => s.plays },
+  { id: "first-sale", titleKey: "ach.firstSale.title", threshold: 1, counter: "sales", pick: (s) => s.ordersPaid },
+  { id: "sales-25", titleKey: "ach.sales25.title", threshold: 25, counter: "sales", pick: (s) => s.ordersPaid },
+  { id: "stems-10", titleKey: "ach.stems10.title", threshold: 10, counter: "stems", pick: (s) => s.beatsWithStems },
+  { id: "days-30", titleKey: "ach.days30.title", threshold: 30, counter: "days", pick: (s, now) => fullDays(s.registeredAt, now) },
+  { id: "days-365", titleKey: "ach.days365.title", threshold: 365, counter: "days", pick: (s, now) => fullDays(s.registeredAt, now) },
+  { id: "first-post", titleKey: "ach.firstPost.title", threshold: 1, counter: "posts", pick: (s) => s.postsPublished },
   /*
    * Отзывы и подписчики: они про отношение, а не про объём. Битмейкер,
    * который выложил один бит и получил десять подписчиков, сделал больше,
    * чем тот, кто залил полсотни и не завёл ни одного.
    */
-  { id: "first-review", titleKey: "ach.firstReview.title", threshold: 1, pick: (s) => s.reviews },
-  { id: "reviews-10", titleKey: "ach.reviews10.title", threshold: 10, pick: (s) => s.reviews },
-  { id: "followers-10", titleKey: "ach.followers10.title", threshold: 10, pick: (s) => s.followers },
+  { id: "first-review", titleKey: "ach.firstReview.title", threshold: 1, counter: "reviews", pick: (s) => s.reviews },
+  { id: "reviews-10", titleKey: "ach.reviews10.title", threshold: 10, counter: "reviews", pick: (s) => s.reviews },
+  { id: "followers-10", titleKey: "ach.followers10.title", threshold: 10, counter: "followers", pick: (s) => s.followers },
   /*
    * Полный набор: у бита есть все уровни, включая дорожки и эксклюзив. Это
    * признак законченного товара, а не заготовки.
@@ -139,7 +139,7 @@ const RULES: Array<{ id: AchievementId; titleKey: string; threshold: number; pic
    * совсем другое условие: значок обещал четыре уровня, а выдавался за один
    * бит со стемами. Теперь проверяется ровно то, что написано на значке.
    */
-  { id: "full-tiers", titleKey: "ach.fullTiers.title", threshold: 1, pick: (s) => s.beatsWithAllTiers },
+  { id: "full-tiers", titleKey: "ach.fullTiers.title", threshold: 1, counter: "tiers", pick: (s) => s.beatsWithAllTiers },
   /*
    * Пять отзывов. Раньше значок назывался avg-rating, то есть обещал
    * оценку, а считал отзывы, — и комментарий про «пять звёзд» тем более
@@ -148,7 +148,7 @@ const RULES: Array<{ id: AchievementId; titleKey: string; threshold: number; pic
    * достижение, и оно появится, когда отзывов будет достаточно, чтобы
    * среднее вообще что-то значило.
    */
-  { id: "reviews-5", titleKey: "ach.reviews5.title", threshold: 5, pick: (s) => s.reviews },
+  { id: "reviews-5", titleKey: "ach.reviews5.title", threshold: 5, counter: "reviews", pick: (s) => s.reviews },
 ];
 
 /** Все достижения с текущим состоянием: и взятые, и ближайшие. */
@@ -180,15 +180,21 @@ export function progress(achievement: Achievement): number {
 
 function previousThreshold(id: AchievementId): number | null {
   const index = RULES.findIndex((rule) => rule.id === id);
-  const pick = RULES[index]?.pick;
+  /*
+   * Счётчики сравниваем по имени, а не по ссылке на функцию: каждая стрелка
+   * в таблице — свой объект, и сравнение ссылок всегда давало «чужие»,
+   * из-за чего прогресс считался от нуля, а не от предыдущего порога.
+   * Берём ближайший нижний порог того же счётчика.
+   */
+  const counter = RULES[index]?.counter;
   const chain: number[] = [];
 
   for (let i = index - 1; i >= 0; i -= 1) {
-    if (pick && RULES[i].pick !== pick) break;
+    if (RULES[i].counter !== counter) break;
     chain.push(RULES[i].threshold);
   }
 
-  return chain.length > 0 ? chain[chain.length - 1] : null;
+  return chain.length > 0 ? chain[0] : null;
 }
 
 /** Ближайшее невзятое достижение — ради «до следующего осталось N». */

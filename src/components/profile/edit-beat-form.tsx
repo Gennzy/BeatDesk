@@ -332,10 +332,10 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
                 <li key={key} className="flex items-baseline gap-2">
                   <span className="label text-mute">{label}</span>
                   <span className="font-mono text-sm text-paper tabular-nums">
-                    {formatMoney(applyDiscount(oneTier(before), discount).mp3 ?? 0, "RUB")}
+                    {formatMoney(applyDiscount(oneTier(before), discount).mp3 ?? 0, currency)}
                   </span>
                   <span className="font-mono text-xs text-mute line-through tabular-nums">
-                    {formatMoney(before, "RUB")}
+                    {formatMoney(before, currency)}
                   </span>
                 </li>
               );

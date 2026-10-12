@@ -44,8 +44,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Неизвестный тип файла" }, { status: 400 });
   }
 
-  // Позицию ищем через заказ: RLS показывает покупателю его заказ, продавцу —
-  // заказ с его битом. Чужой заказ вернулся бы пустым ещё здесь.
+  // Позицию ищем через заказ: чужой заказ вернулся бы пустым ещё здесь
+  // из-за RLS, а заказ продавца отсекается проверкой покупателя ниже.
   const { data: order } = await supabase
     .from("orders")
     .select("id, status, buyer_id")
@@ -53,6 +53,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     .maybeSingle();
 
   if (!order) return NextResponse.json({ error: "Заказ не найден" }, { status: 404 });
+  /*
+   * Файлы — только покупателю этого заказа. Продавцу заказ виден через RLS,
+   * но мастера ему ни к чему: без этой проверки любой продавец качал бы
+   * чужие оплаченные файлы прямым адресом.
+   */
+  if (order.buyer_id !== user.id) {
+    return NextResponse.json({ error: "Нет доступа к файлам этого заказа" }, { status: 403 });
+  }
   if (order.status !== "paid") {
     return NextResponse.json({ error: "Заказ ещё не оплачен" }, { status: 403 });
   }

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { Container } from "@/components/ui/container";
 import { PayoutRequestForm } from "@/components/sales/payout-request-form";
-import { formatMoney } from "@/lib/currency";
+import { formatMoney, formatMoneyByCurrency } from "@/lib/currency";
 import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -29,6 +29,7 @@ type LedgerRow = {
   gross_minor: number;
   commission_minor: number;
   commission_bps: number | null;
+  currency: string;
   created_at: string;
   order_id: string | null;
 };
@@ -37,6 +38,7 @@ type PayoutRow = {
   id: string;
   amount_minor: number;
   status: "pending" | "paid" | "failed";
+  currency: string;
   created_at: string;
   paid_at: string | null;
 };
@@ -62,13 +64,13 @@ export default async function PayoutsPage() {
   const [{ data: rows }, { data: payouts }, { data: settings }] = await Promise.all([
     supabase
       .from("seller_transactions")
-      .select("id, kind, amount_minor, gross_minor, commission_minor, commission_bps, created_at, order_id")
+      .select("id, kind, amount_minor, gross_minor, commission_minor, commission_bps, currency, created_at, order_id")
       .eq("seller_id", user.id)
       .order("created_at", { ascending: false })
       .limit(100),
     supabase
       .from("payouts")
-      .select("id, amount_minor, status, created_at, paid_at")
+      .select("id, amount_minor, status, currency, created_at, paid_at")
       .eq("seller_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20),
@@ -78,17 +80,16 @@ export default async function PayoutsPage() {
   const ledger = (rows ?? []) as LedgerRow[];
   const requests = (payouts ?? []) as PayoutRow[];
 
-  const earned = ledger
-    .filter((row) => row.kind === "sale")
-    .reduce((sum, row) => sum + row.amount_minor, 0);
+  const minorByCurrency = (list: Array<{ amount_minor: number; currency: string }>) =>
+    list.map((row) => ({ amount: row.amount_minor / 100, currency: row.currency }));
 
-  const withdrawn = ledger
-    .filter((row) => row.kind === "payout")
-    .reduce((sum, row) => sum + Math.abs(row.amount_minor), 0);
+  const earned = minorByCurrency(ledger.filter((row) => row.kind === "sale"));
 
-  const pending = requests
-    .filter((row) => row.status === "pending")
-    .reduce((sum, row) => sum + row.amount_minor, 0);
+  const withdrawn = minorByCurrency(
+    ledger.filter((row) => row.kind === "payout").map((row) => ({ ...row, amount_minor: Math.abs(row.amount_minor) })),
+  );
+
+  const pending = minorByCurrency(requests.filter((row) => row.status === "pending"));
 
   /*
    * Баланс — это сумма журнала, а не «заработано минус выведено»:
@@ -96,7 +97,7 @@ export default async function PayoutsPage() {
    * двух чисел их потеряла бы. Поэтому итог считаем по всем строкам,
    * а заработано и выведено показываем отдельно как понятные подписи.
    */
-  const balance = ledger.reduce((sum, row) => sum + row.amount_minor, 0);
+  const balance = minorByCurrency(ledger);
 
   const rate =
     typeof settings?.commission_bps === "number" && settings.commission_bps > 0
@@ -121,10 +122,10 @@ export default async function PayoutsPage() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Tile label={t("payouts.balance")} value={formatMoney(balance / 100, "RUB")} accent />
-        <Tile label={t("payouts.earned")} value={formatMoney(earned / 100, "RUB")} />
-        <Tile label={t("payouts.withdrawn")} value={formatMoney(withdrawn / 100, "RUB")} />
-        <Tile label={t("payouts.pending")} value={formatMoney(pending / 100, "RUB")} />
+        <Tile label={t("payouts.balance")} value={formatMoneyByCurrency(balance)} accent />
+        <Tile label={t("payouts.earned")} value={formatMoneyByCurrency(earned)} />
+        <Tile label={t("payouts.withdrawn")} value={formatMoneyByCurrency(withdrawn)} />
+        <Tile label={t("payouts.pending")} value={formatMoneyByCurrency(pending)} />
       </div>
 
       <p className="max-w-[70ch] text-sm leading-relaxed text-mute">
@@ -165,7 +166,7 @@ export default async function PayoutsPage() {
                   {row.commission_minor > 0 ? (
                     <span className="text-xs text-mute">
                       {t("payouts.commissionLine", {
-                        amount: formatMoney(row.commission_minor / 100, "RUB"),
+                        amount: formatMoney(row.commission_minor / 100, row.currency),
                       })}
                     </span>
                   ) : null}
@@ -175,7 +176,7 @@ export default async function PayoutsPage() {
                     }`}
                   >
                     {row.amount_minor > 0 ? "+" : "−"}
-                    {formatMoney(Math.abs(row.amount_minor) / 100, "RUB")}
+                    {formatMoney(Math.abs(row.amount_minor) / 100, row.currency)}
                   </span>
                 </span>
               </li>
@@ -202,7 +203,7 @@ export default async function PayoutsPage() {
                       : t("payouts.statusPending")}
                 </span>
                 <span className="font-mono text-sm tabular-nums text-paper">
-                  {formatMoney(row.amount_minor / 100, "RUB")}
+                  {formatMoney(row.amount_minor / 100, row.currency)}
                 </span>
               </li>
             ))}
@@ -212,7 +213,15 @@ export default async function PayoutsPage() {
 
       <section className="flex flex-col gap-4">
         <span className="label text-mute">{t("payouts.requestTitle")}</span>
-        <PayoutRequestForm balanceMinor={balance} />
+        {/*
+          Заявка — пока только в рублях (выплаты идут вручную через оператора
+          в RUB): валидируем по рублёвой части баланса, а не по всему.
+        */}
+        <PayoutRequestForm
+          balanceMinor={ledger
+            .filter((row) => row.currency === "RUB")
+            .reduce((sum, row) => sum + row.amount_minor, 0)}
+        />
       </section>
     </Container>
   );

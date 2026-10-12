@@ -26,7 +26,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ be
 
   if (!tier) return NextResponse.json({ error: "Нужен уровень лицензии" }, { status: 400 });
 
-  const { data: beat } = await supabase.from("beats").select("prices").eq("id", beatId).maybeSingle();
+  const { data: beat } = await supabase
+    .from("beats")
+    .select("owner_id, sale_state, is_public, prices")
+    .eq("id", beatId)
+    .maybeSingle();
+
+  if (!beat) return NextResponse.json({ error: "Бит не найден" }, { status: 404 });
+
+  if (beat.owner_id === user.id) {
+    return NextResponse.json({ error: "Свой бит не нужно покупать" }, { status: 400 });
+  }
+
+  if (beat.sale_state !== "on_sale" || !beat.is_public) {
+    return NextResponse.json({ error: "Бит сейчас не продаётся" }, { status: 400 });
+  }
 
   if (tierPrice(beat?.prices, tier) === null) {
     return NextResponse.json({ error: "Этот уровень не продаётся" }, { status: 400 });

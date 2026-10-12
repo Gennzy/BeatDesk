@@ -170,6 +170,7 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
     .select("id, title, bpm, key, cover_url, mp3_url, prices, currency, plays")
     .eq("owner_id", beat.owner_id)
     .eq("is_public", true)
+    .eq("sale_state", "on_sale")
     .neq("id", beat.id)
     .limit(4);
 

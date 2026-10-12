@@ -145,8 +145,16 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           </span>
           <h1 className="font-display text-section font-semibold text-paper uppercase">{t("order.heading")}</h1>
           <p className="label text-mute">{typed.id}</p>
-          <p className={typed.status === "paid" ? "label text-signal" : "label text-amber"}>
-            {typed.status === "paid" ? t("order.paid") : t("order.pending")}
+          <p
+            className={
+              typed.status === "paid"
+                ? "label text-signal"
+                : typed.status === "pending"
+                  ? "label text-amber"
+                  : "label text-mute"
+            }
+          >
+            {t(`order.status.${typed.status}` as "order.status.paid")}
           </p>
         </div>
 
@@ -203,9 +211,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           </div>
         ) : null}
 
-        {typed.status !== "paid" && isOperator ? <SellerActions orderId={typed.id} /> : null}
+        {typed.status === "pending" && isOperator ? <SellerActions orderId={typed.id} /> : null}
 
-        {typed.status !== "paid" && !isSeller ? (
+        {typed.status === "pending" && !isSeller ? (
           <div className="flex flex-col gap-3 pt-8">
             {/*
               Деньги идут на счёт площадки, а не продавцу: площадка удерживает

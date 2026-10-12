@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { Container } from "@/components/ui/container";
 import { Icon, type IconName } from "@/components/ui/icon";
-import { formatMoney } from "@/lib/currency";
+import { formatMoney, formatMoneyByCurrency } from "@/lib/currency";
 import { getT } from "@/lib/i18n/server";
 import { collectBeatmakerStats, computeAchievements } from "@/lib/sales/achievements";
 import { computeWeekly } from "@/lib/sales/weekly";
@@ -53,7 +53,7 @@ export default async function CabinetPage() {
      * начисления, и баланс поплыл бы вниз по мере роста продаж. Строк
      * тянется только одно число, а не вся история, поэтому запрос лёгкий.
      */
-    supabase.from("seller_transactions").select("amount_minor").eq("seller_id", user.id),
+    supabase.from("seller_transactions").select("amount_minor, currency").eq("seller_id", user.id),
   ]);
 
   const stats = await collectBeatmakerStats(supabase, user.id, profile?.created_at ?? new Date().toISOString());
@@ -82,14 +82,19 @@ export default async function CabinetPage() {
 
   const sold = rows.filter((row) => ["paid", "delivered"].includes(statusById.get(row.order_id) ?? ""));
   const pending = rows.filter((row) => statusById.get(row.order_id) === "pending");
+  // Ждут — в заказах, а не в позициях: рядом в заказах счёт идёт заказами,
+  // и два числа на разных экранах обязаны совпадать.
+  const pendingOrders = [...new Set(pending.map((row) => row.order_id))];
   const recent = rows.filter((row) => ["paid", "delivered"].includes(statusById.get(row.order_id) ?? "")).slice(0, 5);
 
-  const earned = sold.reduce((sum, row) => sum + Number(row.seller_net_minor), 0);
-  const currency = sold[0]?.currency ?? "RUB";
-  const balanceMinor = ((ledgerRows ?? []) as { amount_minor: number }[]).reduce(
-    (sum, row) => sum + Number(row.amount_minor),
-    0,
-  );
+  const earnedByCurrency = sold.map((row) => ({
+    amount: Number(row.seller_net_minor) / 100,
+    currency: row.currency,
+  }));
+  const balanceMinor = ((ledgerRows ?? []) as { amount_minor: number; currency: string }[]).map((row) => ({
+    amount: Number(row.amount_minor) / 100,
+    currency: row.currency,
+  }));
 
   const { data: me } = await supabase
     .from("profiles")
@@ -134,7 +139,7 @@ export default async function CabinetPage() {
         <dl className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="panel flex flex-col gap-2 p-5 sm:col-span-2 lg:col-span-1">
             <dd className="font-mono text-4xl leading-none text-paper tabular-nums">
-              {formatMoney(balanceMinor / 100, "RUB")}
+              {formatMoneyByCurrency(balanceMinor)}
             </dd>
             <dt className="label text-mute">{t("cabinet.statBalance")}</dt>
             <Link href="/cabinet/payouts" className="label w-fit text-signal transition-opacity hover:opacity-80">
@@ -144,7 +149,7 @@ export default async function CabinetPage() {
 
           <div className="panel flex flex-col gap-2 p-5">
             <dd className="font-display text-2xl leading-none text-paper/85 tabular-nums">
-              {formatMoney(earned / 100, currency)}
+              {formatMoneyByCurrency(earnedByCurrency)}
             </dd>
             <dt className="label text-mute">{t("cabinet.statEarned")}</dt>
           </div>
@@ -156,10 +161,10 @@ export default async function CabinetPage() {
           >
             <dd
               className={`font-display text-2xl leading-none tabular-nums ${
-                pending.length > 0 ? "text-amber" : "text-paper/85"
+                pendingOrders.length > 0 ? "text-amber" : "text-paper/85"
               }`}
             >
-              {pending.length}
+              {pendingOrders.length}
             </dd>
             <dt className="label text-mute">{t("cabinet.statPending")}</dt>
           </a>
@@ -180,7 +185,7 @@ export default async function CabinetPage() {
             <div id="pending" className="panel scroll-mt-24 p-5">
               <div className="mb-4 flex items-baseline justify-between gap-4">
                 <h2 className="label text-paper">{t("cabinet.pendingTitle")}</h2>
-                {pending.length > 0 ? <span className="font-mono text-sm text-signal">{pending.length}</span> : null}
+                {pendingOrders.length > 0 ? <span className="font-mono text-sm text-signal">{pendingOrders.length}</span> : null}
               </div>
 
               {pending.length === 0 ? (

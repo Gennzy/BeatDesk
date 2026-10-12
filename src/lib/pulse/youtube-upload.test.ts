@@ -22,8 +22,9 @@ const meta = {
   description: "описание",
   tags: ["type beat", "trap"],
   privacy: "unlisted" as const,
-  // Кратно 256 КБ: YouTube отвергает размеры, которые не кратны.
-  size: 8 * 1024 * 1024,
+  // Общий размер может быть любым: кратной должна быть только нарезка
+  // кусков (кроме последнего), а не весь файл.
+  size: 8 * 1024 * 1024 + 12345,
 };
 
 function setup(response: Response) {
@@ -91,12 +92,13 @@ describe("сессия загрузки на YouTube", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("ловит размер, не кратный 256 КБ, до траты квоты", async () => {
+  it("принимает размер, не кратный 256 КБ", async () => {
     setup(new Response("", { status: 200, headers: { location: SESSION } }));
 
-    await expect(startUploadSession("user-1", { ...meta, size: 12345 })).rejects.toThrow(/кратен/);
+    const session = await startUploadSession("user-1", meta);
 
-    expect(fetch).not.toHaveBeenCalled();
+    expect(session.sessionUrl).toBe(SESSION);
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it("режет длинное название до лимита YouTube", async () => {

@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   if (!gate.ok) {
     return NextResponse.json(
       { error: "Слишком много запросов к AI. Подожди минуту." },
-      { status: 429, headers: { "Retry-After": String(Math.ceil(gate.retryAfter / 1000)) } },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
     );
   }
 

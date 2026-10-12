@@ -44,3 +44,20 @@ export function formatAmount(value: number | null | undefined): string {
   if (value === null || value === undefined || Number.isNaN(value)) return "";
   return new Intl.NumberFormat("ru-RU").format(value);
 }
+
+/**
+ * Итог по позициям в разных валютах.
+ *
+ * Курсов у площадки нет, поэтому валюты не складываются, а идут рядом:
+ * «1 500 ₽ · 25 $». Суммировать чужое с рублями в одну цифру — значит
+ * врать на ровном месте, как раньше делал итог «в валюте первой позиции».
+ */
+export function formatMoneyByCurrency(entries: Array<{ amount: number; currency: string }>): string {
+  const totals = new Map<string, number>();
+
+  for (const entry of entries) {
+    totals.set(entry.currency, (totals.get(entry.currency) ?? 0) + entry.amount);
+  }
+
+  return [...totals.entries()].map(([code, value]) => formatMoney(value, code)).join(" · ");
+}
