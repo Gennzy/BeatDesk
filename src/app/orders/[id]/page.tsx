@@ -6,6 +6,7 @@ import { ReviewForm } from "@/components/sales/review-form";
 import { SellerActions } from "@/components/sales/seller-actions";
 import { Container } from "@/components/ui/container";
 import { getT } from "@/lib/i18n/server";
+import { platformPayment } from "@/lib/payments";
 import { tierLabel } from "@/lib/sales/delivery";
 import { getSupabase } from "@/lib/supabase/user";
 
@@ -47,12 +48,12 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   if (!supabase) notFound();
 
   /*
-   * Куда писать о переводе. Берётся из окружения, потому что почта
-   * поддержки меняется при смене оператора, и искать её по коду — значит
-   * искать в куче вхождений. Запасной адрес — чтобы блок не остался
-   * пустым и не показывал человеку «undefined».
+   * Куда писать о переводе и куда переводить. Реквизиты счёта — в одном
+   * месте (src/lib/payments.ts): когда появятся настоящие, их впишут туда,
+   * а страница сама начнёт их показывать. Пока реквизитов нет, блок честно
+   * ведёт через поддержку, а не показывает пустую строку.
    */
-  const supportEmail = process.env.SUPPORT_EMAIL ?? "support@beatdesk.ru";
+  const payment = platformPayment();
 
   const { data: order } = await supabase.from("orders").select("*").eq("id", id).maybeSingle();
 
@@ -214,10 +215,17 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               покупателя и потом ещё выплатой с баланса.
             */}
             <p className="rounded-panel border border-line bg-ink-3 px-4 py-3 text-sm leading-relaxed text-paper">
-              {t("order.payToPlatform", {
-                total: money(typed.total_minor, typed.currency),
-                email: supportEmail,
-              })}
+              {payment.account
+                ? t("order.payToAccount", {
+                    total: money(typed.total_minor, typed.currency),
+                    account: payment.account,
+                    orderId: typed.id,
+                    email: payment.supportEmail,
+                  })
+                : t("order.payToPlatform", {
+                    total: money(typed.total_minor, typed.currency),
+                    email: payment.supportEmail,
+                  })}
             </p>
 
             {commissionRate ? (
