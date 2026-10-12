@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import {
   buildPulseMetadata,
@@ -11,6 +11,8 @@ import {
   TITLE_LIMIT,
   type PulseTemplate,
 } from "@/lib/pulse/metadata";
+import { renderBeatVideo } from "@/lib/pulse/render-video";
+import { sendChunks, watchUrlOf } from "@/lib/pulse/client-upload";
 import { useI18n } from "@/lib/i18n/provider";
 
 /**
@@ -58,6 +60,15 @@ export function PulseWizard({
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState<string[]>([]);
 
+  const [busy, setBusy] = useState(false);
+  const [stage, setStage] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<string | null>(null);
+  const [privacy, setPrivacy] = useState<"private" | "unlisted" | "public">("unlisted");
+
+  const controller = useRef<AbortController | null>(null);
+
   const beat = beats.find((item) => item.id === beatId) ?? null;
 
   /**
@@ -91,6 +102,86 @@ export function PulseWizard({
   }, [generated, title, description, tags]);
 
   const problem = metadata ? pulseMetadataProblem(metadata) : null;
+
+  /**
+   * Сборка видео и отправка в YouTube.
+   *
+   * Файл не идёт через наш сервер: приём тела запроса ограничен четырьмя с
+   * половиной мегабайтами, а ролик больше ста. Сервер открывает сессию и
+   * отдаёт одноразовый адрес, дальше куски летят из браузера прямо в
+   * YouTube — токен при этом ни разу не покидает сервер.
+   */
+  async function run() {
+    if (!beat || !metadata) return;
+
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    setProgress(0);
+
+    const cancel = new AbortController();
+    controller.current = cancel;
+
+    try {
+      setStage(t("pulse.stageRender"));
+
+      const video = await renderBeatVideo({
+        coverUrl: beat.coverUrl,
+        audioUrl: beat.audioUrl ?? "",
+        title: metadata.title,
+        techLine: metadata.techLine,
+        producer,
+        credit: beat.artists.length > 0 ? beat.artists.join(", ") : null,
+        // Ролик идёт в реальном времени: три минуты трека — три минуты
+        // сборки, ускорить нельзя, звук из потока не разгоняется.
+        signal: cancel.signal,
+        onProgress: (ratio) => setProgress(ratio),
+      });
+
+      setStage(t("pulse.stageUpload"));
+
+      const session = await fetch("/api/pulse/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: metadata.title,
+          description: metadata.description,
+          tags: metadata.tags,
+          privacy,
+          size: video.blob.size,
+        }),
+      }).then(async (response) => {
+        const data = (await response.json().catch(() => null)) as
+          | ({ sessionUrl: string; chunkSize: number; mimeType: string } & { error?: string })
+          | null;
+
+        if (!response.ok || !data?.sessionUrl) {
+          throw new Error(data?.error ?? t("pulse.failed"));
+        }
+
+        return data;
+      });
+
+      await sendChunks(
+        session.sessionUrl,
+        video.blob,
+        session.chunkSize,
+        session.mimeType,
+        (sent) => setProgress(sent / video.blob.size),
+        cancel.signal,
+      );
+
+      setProgress(1);
+      setStage(null);
+      setResult(watchUrlOf(session.sessionUrl));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t("pulse.failed"));
+    } finally {
+      setBusy(false);
+      setStage(null);
+      controller.current = null;
+    }
+  }
 
   if (beats.length === 0) {
     return (
@@ -238,22 +329,68 @@ export function PulseWizard({
           </p>
         ) : null}
 
-        {/*
-          Рендер и загрузка — следующий шаг. Кнопка показана, но не
-          активна: то, что она обещает, ещё не собрано, и активная кнопка
-          без действия хуже честного объяснения.
-        */}
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-semibold text-paper">{t("pulse.privacy")}</span>
+          <div className="flex flex-wrap gap-2">
+            {(["private", "unlisted", "public"] as const).map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setPrivacy(id)}
+                className={`chip ${privacy === id ? "border-signal text-signal" : "chip-hover"}`}
+              >
+                {t(`pulse.privacy${id[0].toUpperCase()}${id.slice(1)}` as "pulse.privacyPrivate")}
+              </button>
+            ))}
+          </div>
+          <p className="max-w-[70ch] text-sm leading-relaxed text-mute">{t(`pulse.privacyNote${privacy[0].toUpperCase()}${privacy.slice(1)}` as "pulse.privacyNotePrivate")}</p>
+        </div>
+
         <p className="max-w-[70ch] text-sm leading-relaxed text-mute">{t("pulse.nextStep")}</p>
 
-        <div>
+        {result ? (
+          <div className="flex flex-col gap-2">
+            <p className="flex items-center gap-2 text-sm text-signal">
+              <span aria-hidden className="size-1.5 rounded-full bg-signal" />
+              {t("pulse.done")}
+            </p>
+            <a href={result} className="text-sm text-paper underline" target="_blank" rel="noreferrer">
+              {result}
+            </a>
+          </div>
+        ) : null}
+
+        <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            disabled
-            className="h-10 bg-signal px-5 text-sm font-semibold text-ink opacity-50"
+            onClick={() => void run()}
+            disabled={busy || !metadata || problem !== null || !connected}
+            className="h-10 bg-signal px-5 text-sm font-semibold text-ink transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {t("pulse.create")}
+            {busy ? stage : t("pulse.create")}
           </button>
+
+          {busy ? (
+            <button
+              type="button"
+              onClick={() => controller.current?.abort()}
+              className="chip chip-hover"
+            >
+              {t("pulse.cancel")}
+            </button>
+          ) : null}
         </div>
+
+        {stage ? (
+          <div className="flex flex-col gap-2">
+            <div className="h-1 w-full max-w-md overflow-hidden rounded-full bg-ink-3">
+              <div className="h-full bg-signal" style={{ width: `${Math.round(progress * 100)}%` }} />
+            </div>
+            <p className="text-xs text-mute">{stage}</p>
+          </div>
+        ) : null}
+
+        {error ? <Note>{error}</Note> : null}
       </section>
     </div>
   );

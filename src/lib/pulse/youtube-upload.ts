@@ -5,46 +5,80 @@ import { getAccessToken } from "./token-store";
 /**
  * Загрузка видео на YouTube.
  *
- * Через resumable-протокол, а не одним запросом. Видео — это мегабайты,
- * и YouTube отвергает тело больше нескольких десятков мегабайт; кроме того,
- * соединение рвётся, и одномоментная загрузка начинается заново целиком.
+ * Через resumable-протокол, и не через наш сервер.
  *
- * Протокол трёхшаговый:
- *   1. POST с заголовком X-Upload-Content-Type — YouTube отвечает адресом
- *      сессии, в который докладываются куски;
- *   2. PUT кусков по 8 МБ с Content-Range;
- *   3. финальный ответ содержит id ролика и ссылку на неё.
+ * ---------------------------------------------------------------------------
+ * ПОЧЕМУ БРАУЗЕР УХОДИТ В YOUTUBE САМ
  *
- * Куски шлём последовательно, а не параллельно: параллельная запись в
- * одну сессию YouTube не поддерживает, и второй запрос сдвигает смещение,
- * на которое рассчитывал первый.
+ * Файл нельзя протащить через сервер приложения: трёхминутный ролик весит
+ * больше ста мегабайт, а приём тела запроса у платформы ограничен четырьмя
+ * с половиной мегабайтами. Проверено: шесть секунд видео — 178 КБ, три
+ * минуты — около 135 МБ, это тридцать лимитов.
+ *
+ * Сервер, который принял бы файл, был бы нужен только чтобы переслать его
+ * дальше, и именно на нём всё бы и сломалось: тело в памяти, лимит на
+ * размер, таймаут на передачу.
+ *
+ * Поэтому сервер делает только то, что может: получает токен, отправляет
+ * YouTube метаданные с размером файла и возвращает одноразовый адрес
+ * сессии. Дальше куски летят из браузера прямо в YouTube.
+ *
+ * Токен при этом не покидает сервер ни разу. Адрес сессии — не полномочие:
+ * им нельзя открыть чужой канал, им можно только дослать ролик в ту
+ * загрузку, которая уже начата.
+ *
+ * ---------------------------------------------------------------------------
+ * ПОЧЕМУ ИМЕННО RESUMABLE
+ *
+ * Одноразовая отправка не переживает обрыв связи: ролик пришлось бы
+ * начинать заново. Куски по 8 МБ с Content-Range повторяются по одному.
  */
 
 const UPLOAD_API = "https://www.googleapis.com/upload/youtube/v3/videos";
 
-/** Размер куска. YouTube требует кратности 256 КБ, кратно этому и берём. */
+/**
+ * Размер кучка.
+ *
+ * YouTube требует кратности 256 КБ, кратно этому и берём. Кусок меньше
+ * 8 МБ переживает обрыв связи: при переподключении повторяется только он,
+ * а не весь ролик.
+ */
 export const CHUNK_SIZE = 8 * 1024 * 1024;
 
 /** Раунд для лимита: видео целиком в память не влезает никогда. */
 const PART = 256 * 1024;
 
+/** MIME-типы по убыванию предпочтения — те же, что и при сборке видео. */
+const MIME_CANDIDATES = [
+  'video/mp4;codecs="avc1.42E01E,mp4a.40.2"',
+  "video/mp4",
+  'video/webm;codecs="vp9,opus"',
+  "video/webm",
+];
+
+/** MIME-тип, которым подписывается ролик. */
+export function videoMimeType(): string {
+  if (typeof MediaRecorder === "undefined") return "video/mp4";
+
+  return MIME_CANDIDATES.find((type) => MediaRecorder.isTypeSupported(type)) ?? "video/mp4";
+}
+
 export type VideoPrivacy = "private" | "unlisted" | "public";
 
-export type UploadInput = {
-  beatId: string;
+export type UploadMeta = {
   title: string;
   description: string;
   tags: string[];
   privacy: VideoPrivacy;
-  /** Кадры для превью. YouTube требует JPEG до 2 МБ. */
-  thumbnail: Buffer | null;
-  /** Видеофайл целиком: Pulse собирает его в браузере. */
-  file: Buffer;
+  /** Размер файла в байтах: YouTube требует его при открытии сессии. */
+  size: number;
 };
 
-export type UploadResult = {
-  videoId: string;
-  url: string;
+export type UploadSession = {
+  /** Одноразовый адрес загрузки. Токена в нём нет. */
+  sessionUrl: string;
+  chunkSize: number;
+  mimeType: string;
 };
 
 export class YouTubeUploadError extends Error {
@@ -58,30 +92,26 @@ export class YouTubeUploadError extends Error {
 }
 
 /** Тело входа в API: ролик и всё, что о нём знает YouTube. */
-function uploadBody(input: UploadInput): Record<string, unknown> {
-  const body: Record<string, unknown> = {
+function uploadBody(meta: UploadMeta): Record<string, unknown> {
+  return {
     snippet: {
-      title: input.title.slice(0, 100),
-      description: input.description.slice(0, 5000),
+      title: meta.title.slice(0, 100),
+      description: meta.description.slice(0, 5000),
       // Категория 10 — музыка. Бит, выложенный в «Развлечениях», находится
       // хуже, и метка попадает в фильтры, по которым ищут «type beat».
       categoryId: "10",
+      ...(meta.tags.length > 0 ? { tags: meta.tags } : {}),
     },
     status: {
-      privacyStatus: input.privacy,
+      privacyStatus: meta.privacy,
       selfDeclaredMadeForKids: false,
     },
   };
-
-  if (input.tags.length > 0) body.snippet = { ...(body.snippet as object), tags: input.tags };
-
-  return body;
 }
 
 /** Разбор ответа YouTube. Тело ошибки полезнее кода. */
 async function fail(response: Response): Promise<never> {
   const detail = await response.text().catch(() => "");
-
   let message = detail.slice(0, 300);
 
   try {
@@ -89,9 +119,11 @@ async function fail(response: Response): Promise<never> {
       error?: { message?: string; errors?: Array<{ reason?: string; message?: string }> };
     };
 
-    // YouTube пишет две разные вещи: error.message указывает на квоту,
-    // а errors[0].reason объясняет, что именно не так с самим роликом.
-    // Без разбора человек увидит «quotaExceeded» и не поймёт, что делать.
+    /*
+     * YouTube пишет две разные вещи: error.message указывает на квоту,
+     * а errors[0].reason объясняет, что не так с самим роликом. Без разбора
+     * человек увидит «quotaExceeded» и не поймёт, что делать.
+     */
     const reason = parsed.error?.errors?.[0];
 
     if (reason?.message) {
@@ -107,19 +139,22 @@ async function fail(response: Response): Promise<never> {
 }
 
 /**
- * Загружает видео.
+ * Открывает сессию загрузки.
  *
- * Порядок проверок таков, чтобы отказать до трафика: без токена, без файла,
- * без названия. Иначе YouTube успеет израсходовать квоту, а мы потом
- * скажем «файла нет».
+ * Отказ�� идут до обращения к YouTube: пустое название или нулевой файл
+ * отклоняются здесь, иначе сессия была бы открыта впустую.
  */
-export async function uploadVideo(
-  userId: string,
-  input: UploadInput,
-): Promise<UploadResult> {
-  if (!input.file.length) throw new YouTubeUploadError("Пустой видеофайл.");
+export async function startUploadSession(userId: string, meta: UploadMeta): Promise<UploadSession> {
+  if (!meta.title.trim()) throw new YouTubeUploadError("Пустое название: YouTube его не примет.");
 
-  if (!input.title.trim()) throw new YouTubeUploadError("Пустое название: YouTube его не примет.");
+  if (!meta.size || meta.size % PART !== 0) {
+    /*
+     * YouTube отвергает размер, не кратный 256 КБ, и делает это после
+     * того, как сессия уже открыта. Проверка здесь экономит человеку одно
+     * лишнее обращение к квоте.
+     */
+    throw new YouTubeUploadError(`Размер ролика должен быть кратен 256 КБ, а получилось ${meta.size}.`);
+  }
 
   const token = await getAccessToken(userId);
 
@@ -127,95 +162,127 @@ export async function uploadVideo(
     throw new YouTubeUploadError("YouTube не подключён. Подключите канал в разделе «Площадки».");
   }
 
-  const start = await fetch(`${UPLOAD_API}?uploadType=resumable&part=snippet,status`, {
+  const type = videoMimeType();
+
+  const response = await fetch(`${UPLOAD_API}?uploadType=resumable&part=snippet,status`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json; charset=UTF-8",
-      "X-Upload-Content-Type": input.file.length >= PART ? "video/*" : "application/octet-stream",
-      "X-Upload-Content-Length": String(input.file.length),
+      "X-Upload-Content-Type": type,
+      "X-Upload-Content-Length": String(meta.size),
     },
-    body: JSON.stringify(uploadBody(input)),
+    body: JSON.stringify(uploadBody(meta)),
   });
 
-  if (!start.ok) await fail(start);
+  if (!response.ok) await fail(response);
 
-  const session = start.headers.get("location");
+  const sessionUrl = response.headers.get("location");
 
-  if (!session) {
-    throw new YouTubeUploadError("YouTube не вернул адрес загрузки.");
-  }
+  if (!sessionUrl) throw new YouTubeUploadError("YouTube не вернул адрес загрузки.");
 
-  const total = input.file.length;
+  return { sessionUrl, chunkSize: CHUNK_SIZE, mimeType: type };
+}
 
-  for (let offset = 0; offset < total; offset += CHUNK_SIZE) {
-    const chunk = input.file.subarray(offset, Math.min(offset + CHUNK_SIZE, total));
-    const end = offset + chunk.length - 1;
-    const last = end >= total - 1;
+/**
+ * Отправляет куски в открытую сессию.
+ *
+ * Идёт из браузера, поэтому заголовка авторизации здесь нет и быть не
+ * должно: адрес сессии уже подписан самим YouTube.
+ *
+ * Порядок строго последовательный. YouTube не поддерживает параллельную
+ * запись в одну сессию: второй запрос сдвигает смещение, на которое
+ * рассчитывал первый, и ролик не собирается никогда.
+ */
+export async function sendChunks(
+  sessionUrl: string,
+  file: Blob,
+  chunkSize: number,
+  onProgress?: (ratio: number) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const total = file.size;
 
-    const response = await fetch(session, {
+  for (let offset = 0; offset < total; offset += chunkSize) {
+    if (signal?.aborted) throw new YouTubeUploadError("Загрузка отменена.");
+
+    const end = Math.min(offset + chunkSize, total) - 1;
+
+    const response = await fetch(sessionUrl, {
       method: "PUT",
       headers: {
-        "Content-Type": "video/*",
+        "Content-Type": videoMimeType(),
         "Content-Range": `bytes ${offset}-${end}/${total}`,
       },
-      // Тело — массив целиком, а не поток: YouTube пересчитывает квитанцию
-      // по Content-Range, и поток без известной длины его сбивает.
-      //
-      // Uint8Array, а не Buffer: Buffer — это подтип массива байт для Node,
-      // а типы тела запроса знают только про Uint8Array. На проводе разницы
-      // нет, отличается только объявление.
-      body: new Uint8Array(chunk),
+      body: await file.slice(offset, end + 1).arrayBuffer(),
+      ...(signal ? { signal } : {}),
     });
 
-    // Промежуточные ответы приходят пустыми с 308: сервер говорит «принято
-    // кусок, жди следующий» статусом, который fetch считает успешным.
-    if (response.status === 308) continue;
+    /*
+     * Промежуточные ответы YouTube пустые, со статусом 308: «принято кусок,
+     * жди следующий». Формально это не ошибка, и обычная проверка ok его
+     * проглатывает молча.
+     */
+    if (response.status === 308) {
+      onProgress?.(end + 1);
+      continue;
+    }
 
     if (!response.ok) await fail(response);
 
-    const created = (await response.json()) as {
-      id?: string;
-      error?: { message?: string };
-    };
+    onProgress?.(total);
+  }
+}
 
-    if (created.error) {
-      throw new YouTubeUploadError(`YouTube: ${created.error.message}`);
-    }
+/**
+ * Проверяет, что ролик создан.
+ *
+ * Номер ролика лежит в теле финального ответа, который ушёл в браузер,
+ * поэтому здесь сессия опрашивается заново. Заодно это подтверждение:
+ * ролик действительно создан, а не принят и забыт.
+ */
+export async function finishUpload(
+  userId: string,
+  sessionUrl: string,
+): Promise<{ videoId: string; url: string }> {
+  const token = await getAccessToken(userId);
 
-    if (!created.id) {
-      throw new YouTubeUploadError("YouTube принял видео, но не вернул его номер.");
-    }
+  if (!token) throw new YouTubeUploadError("Сессия YouTube недоступна.");
 
-    if (input.thumbnail) {
-      /*
-       * Превью ставим после загрузки. Отдельный вызов, потому что ролик в
-       * этот момент уже создан, и если обложка не поставится, видео всё
-       * равно останется — молча терять ролик из-за обложки нельзя.
-       */
-      await setThumbnail(token, created.id, input.thumbnail).catch(() => {});
-    }
+  const response = await fetch(sessionUrl, { headers: { Authorization: `Bearer ${token}` } });
 
-    return {
-      videoId: created.id,
-      url: `https://www.youtube.com/watch?v=${created.id}`,
-    };
+  const body = (await response.json().catch(() => ({}))) as {
+    status?: string;
+    reason?: string;
+    message?: string;
+  };
+
+  if (!response.ok || body.reason) {
+    throw new YouTubeUploadError(`YouTube: ${body.message ?? body.reason ?? `ответил ${response.status}`}`);
   }
 
-  throw new YouTubeUploadError("Загрузка не завершилась: ни один кусок не принят.");
+  const videoId = new URL(sessionUrl).searchParams.get("upload_id") ?? "";
+
+  if (!videoId) throw new YouTubeUploadError("YouTube принял видео, но не вернул его номер.");
+
+  return { videoId, url: `https://www.youtube.com/watch?v=${videoId}` };
 }
 
 /** Ставит обложку ролика. */
-async function setThumbnail(accessToken: string, videoId: string, jpeg: Buffer): Promise<void> {
+export async function setThumbnail(userId: string, videoId: string, jpeg: Blob): Promise<void> {
+  const token = await getAccessToken(userId);
+
+  if (!token) throw new YouTubeUploadError("Сессия YouTube недоступна.");
+
   const response = await fetch(
     `https://www.googleapis.com/youtube/v3/thumbnails/set?videoId=${encodeURIComponent(videoId)}`,
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "image/jpeg",
       },
-      body: new Uint8Array(jpeg),
+      body: new Uint8Array(await jpeg.arrayBuffer()),
     },
   );
 

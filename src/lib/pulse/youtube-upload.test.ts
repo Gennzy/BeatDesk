@@ -1,155 +1,118 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CHUNK_SIZE, uploadVideo, YouTubeUploadError } from "./youtube-upload";
+import { startUploadSession, YouTubeUploadError } from "./youtube-upload";
 
 /**
- * Загрузка видео на YouTube.
+ * Открытие сессии загрузки на YouTube.
  *
- * Проверяется протокол, а не вёрстка. Кусок, отправленный не с того
- * смещения, YouTube принимает по формату и отвергает по существу: ролик не
- * создаётся, а человек видит «загрузка не удалась» без указания, что
- * именно сломалось.
+ * Проверяется то, что можно испортить тихо: отказ до обращения к YouTube
+ * и разбор тела ошибки. Кусок, отправленный не с того смещения, YouTube
+ * принимает по формату и отклоняет по существу — ролик не создаётся, и
+ * человек видит «загрузка не удалась» без указания, что именно сломано.
  */
 
-// Мок поднимается до импорта модуля. Динамический импорт с resetModules
-// здесь не годится: он создаёт второй экземпляр YouTubeUploadError, и
-// проверка «это тот же класс» падает на ровном месте.
 vi.mock("./token-store", () => ({
   getAccessToken: vi.fn(async () => "token-123"),
 }));
 
-const SESSION = "https://upload.example/session";
+const SESSION = "https://upload.example/session?upload_id=vid123";
 
-type Call = { url: string; init: RequestInit };
+const meta = {
+  title: "type beat — ZIP | prod. Gennzy",
+  description: "описание",
+  tags: ["type beat", "trap"],
+  privacy: "unlisted" as const,
+  // Кратно 256 КБ: YouTube отвергает размеры, которые не кратны.
+  size: 8 * 1024 * 1024,
+};
 
-function jsonResponse(body: unknown, init: ResponseInit = {}) {
-  return new Response(JSON.stringify(body), {
-    status: 200,
-    headers: { "content-type": "application/json" },
-    ...init,
-  });
-}
-
-/** Раскладывает входящий запрос на то, что интересует проверку. */
-function headersOf(init: RequestInit): Record<string, string> {
-  return (init.headers ?? {}) as Record<string, string>;
-}
-
-function setup(startInit: ResponseInit = {}) {
-  const calls: Call[] = [];
+function setup(response: Response) {
+  const calls: Array<{ url: string; init: RequestInit }> = [];
 
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string | URL | Request, init: RequestInit = {}) => {
       calls.push({ url: String(url), init });
-
-      if (String(url).includes("uploadType=resumable")) {
-        return new Response("", { status: 200, headers: { location: SESSION }, ...startInit });
-      }
-
-      /*
-       * Куски, кроме последнего, YouTube подтверждает статусом 308.
-       *
-       * Последний определяется по концу диапазона, а не по тому, кончается
-       * ли строка на /total: этим заканчивается КАЖДЫЙ Content-Range, и
-       * такая проверка считала первый кусок последним — тест проходил, не
-       * проверив ни одной разбивки.
-       */
-      const range = headersOf(init)["Content-Range"] ?? "";
-      const [, from = "0", to = "0", total = "0"] = range.match(/bytes (\d+)-(\d+)\/(\d+)/) ?? [];
-
-      const last = Number(to) === Number(total) - 1;
-
-      if (!last) {
-        return new Response("", { status: 308 });
-      }
-
-      void from;
-
-      return jsonResponse({ id: "vid123" });
+      return response;
     }),
   );
 
   return calls;
 }
 
-const video = (overrides: Partial<Parameters<typeof uploadVideo>[1]> = {}) => ({
-  beatId: "b1",
-  title: "type beat — ZIP | prod. Gennzy",
-  description: "описание",
-  tags: ["type beat", "trap"],
-  privacy: "unlisted" as const,
-  thumbnail: null,
-  file: Buffer.alloc(1024),
-  ...overrides,
-});
+function headersOf(init: RequestInit): Record<string, string> {
+  return (init.headers ?? {}) as Record<string, string>;
+}
 
-describe("загрузка видео на YouTube", () => {
+describe("сессия загрузки на YouTube", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("разбивает файл на куски и ведёт смещение без разрывов", async () => {
-    const calls = setup();
+  it("возвращает адрес сессии, размер куска и тип файла", async () => {
+    setup(new Response("", { status: 200, headers: { location: SESSION } }));
 
-    const file = Buffer.alloc(CHUNK_SIZE + 1024);
+    const session = await startUploadSession("user-1", meta);
 
-    await uploadVideo("user-1", video({ file }));
-
-    const ranges = calls
-      .map((call) => headersOf(call.init)["Content-Range"])
-      .filter((range): range is string => Boolean(range));
-
-    expect(ranges[0]).toBe(`bytes 0-${CHUNK_SIZE - 1}/${file.length}`);
-    expect(ranges[1]).toBe(`bytes ${CHUNK_SIZE}-${file.length - 1}/${file.length}`);
-    expect(ranges).toHaveLength(2);
+    expect(session.sessionUrl).toBe(SESSION);
+    // Кусок должен быть кратен 256 КБ, иначе YouTube отвергнет всё.
+    expect(session.chunkSize % (256 * 1024)).toBe(0);
+    expect(session.mimeType).toContain("video/");
   });
 
-  it("возвращает номер ролика и ссылку на него", async () => {
-    setup();
+  it("открывает сессию с типом файла и его размером", async () => {
+    const calls = setup(new Response("", { status: 200, headers: { location: SESSION } }));
 
-    const result = await uploadVideo("user-1", video());
+    await startUploadSession("user-1", meta);
 
-    expect(result.videoId).toBe("vid123");
-    expect(result.url).toBe("https://www.youtube.com/watch?v=vid123");
+    const start = calls[0];
+
+    expect(headersOf(start.init)["X-Upload-Content-Type"]).toContain("video/");
+    expect(headersOf(start.init)["X-Upload-Content-Length"]).toBe(String(meta.size));
   });
 
-  it("отказывается от пустого файла до обращения к YouTube", async () => {
-    setup();
+  it("отказывается от пустого названия до обращения к YouTube", async () => {
+    setup(new Response("", { status: 200, headers: { location: SESSION } }));
 
-    await expect(uploadVideo("user-1", video({ file: Buffer.alloc(0) }))).rejects.toBeInstanceOf(
+    await expect(startUploadSession("user-1", { ...meta, title: "   " })).rejects.toBeInstanceOf(
       YouTubeUploadError,
     );
 
-    // Квота не должна тратиться на заведомо обречённую загрузку.
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("отказывается от пустого названия", async () => {
-    setup();
+  it("отказывается от нулевого файла", async () => {
+    setup(new Response("", { status: 200, headers: { location: SESSION } }));
 
-    await expect(uploadVideo("user-1", video({ title: "   " }))).rejects.toBeInstanceOf(
+    await expect(startUploadSession("user-1", { ...meta, size: 0 })).rejects.toBeInstanceOf(
       YouTubeUploadError,
     );
+
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("ловит размер, не кратный 256 КБ, до траты квоты", async () => {
+    setup(new Response("", { status: 200, headers: { location: SESSION } }));
+
+    await expect(startUploadSession("user-1", { ...meta, size: 12345 })).rejects.toThrow(/кратен/);
 
     expect(fetch).not.toHaveBeenCalled();
   });
 
   it("режет длинное название до лимита YouTube", async () => {
-    const calls = setup();
+    const calls = setup(new Response("", { status: 200, headers: { location: SESSION } }));
 
-    await uploadVideo("user-1", video({ title: "Ж".repeat(300) }));
+    await startUploadSession("user-1", { ...meta, title: "Ж".repeat(300) });
 
-    const start = calls[0];
-    const body = JSON.parse(String(start.init.body)) as { snippet: { title: string } };
+    const body = JSON.parse(String(calls[0].init.body)) as { snippet: { title: string } };
 
     expect(body.snippet.title.length).toBeLessThanOrEqual(100);
   });
 
   it("ставит музыкальную категорию: бит находится по фильтру жанра", async () => {
-    const calls = setup();
+    const calls = setup(new Response("", { status: 200, headers: { location: SESSION } }));
 
-    await uploadVideo("user-1", video());
+    await startUploadSession("user-1", meta);
 
     const body = JSON.parse(String(calls[0].init.body)) as { snippet: { categoryId: string } };
 
@@ -157,32 +120,25 @@ describe("загрузка видео на YouTube", () => {
   });
 
   it("поясняет ошибку квоты, а не молчит", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        jsonResponse(
-          {
-            error: {
-              message: "The request cannot be completed because you have exceeded your quota.",
-              errors: [{ reason: "uploadLimitExceeded", message: "Daily upload limit reached" }],
-            },
+    setup(
+      new Response(
+        JSON.stringify({
+          error: {
+            message: "The request cannot be completed because you have exceeded your quota.",
+            errors: [{ reason: "uploadLimitExceeded", message: "Daily upload limit reached" }],
           },
-          { status: 403 },
-        ),
+        }),
+        { status: 403 },
       ),
     );
 
-    // Без разбора тела ошибки человек увидит «quotaExceeded» и не поймёт,
-    // что делать: истекла квота или ролик плохой.
-    await expect(uploadVideo("user-1", video())).rejects.toThrow(/Daily upload limit reached/);
+    // Без разбора тела человек увидит «quotaExceeded» и не поймёт, что делать.
+    await expect(startUploadSession("user-1", meta)).rejects.toThrow(/Daily upload limit reached/);
   });
 
-  it("ошибка без сессии загрузки не проходит молча", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response("{}", { status: 200 })),
-    );
+  it("без адреса сессии не идёт дальше", async () => {
+    setup(new Response("{}", { status: 200 }));
 
-    await expect(uploadVideo("user-1", video())).rejects.toThrow(/не вернул адрес загрузки/);
+    await expect(startUploadSession("user-1", meta)).rejects.toThrow(/не вернул адрес загрузки/);
   });
 });
