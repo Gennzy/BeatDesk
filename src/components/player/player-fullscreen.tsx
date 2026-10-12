@@ -6,6 +6,7 @@ import { usePlayer } from "@/components/player/player-provider";
 import { useI18n } from "@/lib/i18n/provider";
 import { Progress } from "./player-progress";
 import { PlayPause } from "./player-controls";
+import { VolumeControl } from "./volume-control";
 
 /**
  * Развёрнутый плеер.
@@ -82,6 +83,9 @@ export function PlayerFullscreen({ onClose }: { onClose: () => void }) {
 
         {/* Время уже показано на полосе выше: второй раз выводить не нужно. */}
         <PlayPause isPlaying={isPlaying} onToggle={toggle} size="lg" />
+
+        {/* На большом экране ползунок виден всегда: здесь есть место. */}
+        <VolumeControl size="lg" />
       </div>
     </div>
   );

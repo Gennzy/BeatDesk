@@ -7,6 +7,7 @@ import { usePlayer } from "@/components/player/player-provider";
 import { PlayPause } from "./player-controls";
 import { PlayerFullscreen } from "./player-fullscreen";
 import { Progress } from "./player-progress";
+import { VolumeControl } from "./volume-control";
 import { useI18n } from "@/lib/i18n/provider";
 
 export function PlayerBar() {
@@ -47,6 +48,12 @@ export function PlayerBar() {
           <div className="flex flex-1 items-center justify-center">
             <Progress value={currentTime} max={duration} onSeek={seek} className="w-full max-w-2xl" />
           </div>
+
+          {/*
+            Громкость стоит перед разворачиванием и закрытием: обе кнопки
+            про сетку, и человек тянет руку к привычным местам.
+          */}
+          <VolumeControl />
 
           {/* Развернуть: на телефоне панель узкая, а обложка нужна крупной. */}
           <button
