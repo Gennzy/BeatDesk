@@ -32,10 +32,32 @@ create or replace function public.mark_order_paid(
 language plpgsql security definer set search_path = public as $$
 declare
   v_order public.orders;
-  v_bps integer;
-  v_gross bigint;
-  v_commission bigint;
+  v_caller uuid := auth.uid();
 begin
+  /*
+   * Проверка прав возвращена после того, как её потеряли.
+   *
+   * Миграция 0024 объявляла эту функцию с проверкой «подтвердить может
+   * только продавец бита из заказа». Переопределение функции в 0044
+   * обошло её: остались только service_role, а продавец подтверждает
+   * оплату своей сессией и получил бы отказ. А стоило вернуть выдачу
+   * authenticated как была — и подтвердить оплату любого заказа мог бы
+   * кто угодно, а вместе с начислением это значило бы начислить себе
+   * деньги.
+   *
+   * Функция объявлена security definer, поэтому auth.uid() здесь —
+   * вызывающий, а не владелец таблицы.
+   */
+  if v_caller is null or not exists (
+    select 1
+      from public.order_items i
+      join public.beats b on b.id = i.beat_id
+     where i.order_id = p_order_id
+       and b.owner_id = v_caller
+  ) then
+    raise exception 'Подтвердить оплату может только продавец бита из заказа';
+  end if;
+
   select * into v_order from public.orders where id = p_order_id for update;
 
   if v_order.id is null then
@@ -70,19 +92,19 @@ begin
          reserved_by_order = null
    where b.id in (select beat_id from public.order_items where order_id = p_order_id);
 
-  -- Комиссия площадки. Настройка может быть не выставлена при первом
-  -- запуске: тогда берём нулевую, но не падаем — заказ уже оплачен, и
-  -- ронять оплаченный заказ из-за настройки нельзя.
-  select coalesce(commission_bps, 0) into v_bps from public.platform_settings limit 1;
-  v_bps := coalesce(v_bps, 0);
-
   /*
    * Начисление продавцу за каждую позицию своего бита.
    *
-   * seller_net_minor в позиции — это сумма, которую получает продавец
-   * по условиям заказа. Комиссию берём от этой суммы, а не от цены в
-   * рублях: позиция уже приведена к минорным единицам и не зависит от
-   * того, списана скидка или нет.
+   * Комиссию здесь НЕ считаем. Она уже посчитана при создании заказа и
+   * лежит в позиции: price_minor = commission_minor + seller_net_minor,
+   * и это закреплено ограничением таблицы. Повторный расчёт взял бы её
+   * второй раз уже с net-суммы, и продавец получил бы на 10% меньше, чем
+   * показывал интерфейс при оформлении.
+   *
+   * Начисление равно ровно seller_net_minor — столько, сколько по условиям
+   * заказа причитается продавцу. Ставку записываем фактическую, а не
+   * текущую из настроек: она считается обратным счётом от суммы позиции,
+   * и потому переживает изменение настройки задним числом.
    */
   insert into public.seller_transactions (
     seller_id, kind, amount_minor, gross_minor, commission_minor,
@@ -91,12 +113,12 @@ begin
   select
     i.beat_owner_id,
     'sale',
-    -- округление вниз, как и у скидки: копейка не должна уходить назад
-    -- продавцу из-за округления комиссии платформой
-    (i.seller_net_minor - ((i.seller_net_minor * v_bps) / 10000))::bigint,
-    i.seller_net_minor::bigint,
-    ((i.seller_net_minor * v_bps) / 10000)::bigint,
-    v_bps,
+    i.seller_net_minor,
+    i.price_minor,
+    i.commission_minor,
+    case when i.price_minor > 0
+         then (i.commission_minor * 10000 / i.price_minor)
+         else null end,
     i.currency,
     p_order_id,
     'Заказ ' || p_order_id::text
@@ -124,7 +146,8 @@ begin
 end;
 $$;
 
-grant execute on function public.mark_order_paid(uuid, text, text) to service_role;
+grant execute on function public.mark_order_paid(uuid, text, text) to authenticated;
+revoke execute on function public.mark_order_paid(uuid, text, text) from anon;
 
 -- Баланс продавца. Считается из журнала, а не хранится полем.
 create or replace function public.seller_balance_minor(p_seller_id uuid)

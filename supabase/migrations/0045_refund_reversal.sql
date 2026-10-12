@@ -20,9 +20,26 @@ create or replace function public.close_order(
 language plpgsql security definer set search_path = public as $$
 declare
   v_order public.orders;
+  v_caller uuid := auth.uid();
 begin
   if p_status not in ('cancelled', 'failed', 'refunded') then
     raise exception 'Закрыть заказ можно только как cancelled, failed или refunded';
+  end if;
+
+  /*
+   * Проверка прав возвращена по той же причине, что и в mark_order_paid:
+   * переопределение функции обошло её, и закрыть чужой заказ мог бы
+   * кто угодно. Возврат из этой функции снимает деньги продавцу, то
+   * есть это не административное действие, а движение средств.
+   */
+  if v_caller is null or not exists (
+    select 1
+      from public.order_items i
+      join public.beats b on b.id = i.beat_id
+     where i.order_id = p_order_id
+       and b.owner_id = v_caller
+  ) then
+    raise exception 'Закрыть заказ может только продавец бита из заказа';
   end if;
 
   select * into v_order from public.orders where id = p_order_id for update;
@@ -89,7 +106,8 @@ begin
 end;
 $$;
 
-grant execute on function public.close_order(uuid, text, text) to service_role;
+grant execute on function public.close_order(uuid, text, text) to authenticated;
+revoke execute on function public.close_order(uuid, text, text) from anon;
 
 -- ---------------------------------------------------------------------------
 -- Комиссия площадки: 10% вместо 20%.

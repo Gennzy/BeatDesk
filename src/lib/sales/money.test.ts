@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { COMMISSION_BPS, fromMinor, splitPrice, totalOf } from "./money";
 
 describe("разделение суммы заказа", () => {
-  it("20% от 500 ₽ — это 100 ₽ комиссии и 400 ₽ продавцу", () => {
-    expect(splitPrice(500)).toEqual({ priceMinor: 50_000, commissionMinor: 10_000, sellerNetMinor: 40_000 });
+  it("10% от 500 ₽ — это 50 ₽ комиссии и 450 ₽ продавцу", () => {
+    expect(splitPrice(500)).toEqual({ priceMinor: 50_000, commissionMinor: 5_000, sellerNetMinor: 45_000 });
   });
 
   it("сумма всегда сходится копейка в копейку", () => {
@@ -48,21 +48,21 @@ describe("разделение суммы заказа", () => {
   });
 
   it("комиссию округляем один раз", () => {
-    // 333 ₽ → 33300 копеек, 20% = 6660 ровно. А вот 333.33 ₽ даёт дробь,
-    // и её надо закрыть, а не оставить базе решать.
-    expect(splitPrice(333.33)).toEqual({ priceMinor: 33_333, commissionMinor: 6_667, sellerNetMinor: 26_666 });
+    // 333.33 ₽ — это 33333 копейки, 10% от них 3333.3. Дробь закрывается
+    // вверх, до 3334: округление вниз отдало бы копейку площадке.
+    expect(splitPrice(333.33)).toEqual({ priceMinor: 33_333, commissionMinor: 3_334, sellerNetMinor: 29_999 });
   });
 });
 
 describe("fromMinor: готовая сумма в копейках", () => {
   it("считает так же, как при умножении на курс", () => {
-    expect(fromMinor(50_000)).toEqual({ priceMinor: 50_000, commissionMinor: 10_000, sellerNetMinor: 40_000 });
+    expect(fromMinor(50_000)).toEqual({ priceMinor: 50_000, commissionMinor: 5_000, sellerNetMinor: 45_000 });
   });
 
   it("с копейки берётся комиссия, а не отдаётся вся сумма", () => {
     const split = fromMinor(1);
 
-    // Одна копейка при 20% — это 0,2 копейки. Округление вниз отдало бы
+    // Одна копейка при 10% — это 0,1 копейки. Округление вниз отдало бы
     // продавцу всю копейку и не взяло бы с неё ничего.
     expect(split).toEqual({ priceMinor: 1, commissionMinor: 1, sellerNetMinor: 0 });
   });
@@ -87,7 +87,7 @@ describe("итог по заказу", () => {
   it("складывает позиции", () => {
     const total = totalOf([splitPrice(500), splitPrice(1500), splitPrice(2500)]);
 
-    expect(total).toEqual({ priceMinor: 450_000, commissionMinor: 90_000, sellerNetMinor: 360_000 });
+    expect(total).toEqual({ priceMinor: 450_000, commissionMinor: 45_000, sellerNetMinor: 405_000 });
   });
 
   it("пустой заказ даёт нули", () => {

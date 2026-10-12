@@ -2,11 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Container } from "@/components/ui/container";
+import { PayoutRequestForm } from "@/components/sales/payout-request-form";
 import { formatMoney } from "@/lib/currency";
 import { getT } from "@/lib/i18n/server";
-import { pluralRu } from "@/lib/plural";
 import { createClient } from "@/lib/supabase/server";
-import { pluralEn } from "@/lib/plural";
 
 /**
  * Баланс продавца: начисления, комиссия и заявки на вывод.
@@ -208,13 +207,13 @@ export default async function PayoutsPage() {
               </li>
             ))}
           </ul>
-          <p className="max-w-[70ch] text-sm leading-relaxed text-mute">{t("payouts.howTo")}</p>
         </section>
-      ) : (
-        <p className="max-w-[70ch] border-l-2 border-line pl-3 text-sm leading-relaxed text-mute">
-          {t("payouts.howTo")}
-        </p>
-      )}
+      ) : null}
+
+      <section className="flex flex-col gap-4">
+        <span className="label text-mute">{t("payouts.requestTitle")}</span>
+        <PayoutRequestForm balanceMinor={balance} />
+      </section>
     </Container>
   );
 }
