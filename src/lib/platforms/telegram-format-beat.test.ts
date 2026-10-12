@@ -61,7 +61,7 @@ describe("карточка бита в Telegram", () => {
     // Раньше под названием вставало «type beat PittKid» — то же самое
     // словами, и читалось как недоделка.
     expect(caption.toLowerCase().includes("type beat pittkid")).toBe(false);
-    expect(caption).toContain("TYPE BEAT | ZIP");
+    expect(caption).toContain("PittKid type beat | ZIP");
   });
 
   it("подпись остаётся, если в названии артиста нет", () => {
@@ -85,14 +85,25 @@ describe("карточка бита в Telegram", () => {
     expect(caption).not.toContain("Эксклюзив");
   });
 
-  it("название приводится в верхний регистр и экранируется", () => {
+  it("название остаётся как у автора и экранируется", () => {
     const caption = formatBeatCaption({
       ...base,
       title: "Ночь <b>&</b> город",
       prices: { mp3: 500, wav: null, trackout: null, exclusive: null },
     });
 
-    expect(caption).toContain("НОЧЬ");
+    expect(caption).toContain("Ночь");
+    expect(caption).not.toContain("НОЧЬ");
     expect(caption).not.toContain("<b>&</b>");
+  });
+
+  it("никнейм пишется без @", () => {
+    const caption = formatBeatCaption({
+      ...base,
+      prices: { mp3: 500, wav: null, trackout: null, exclusive: null },
+    });
+
+    expect(caption).toContain("by gennzy");
+    expect(caption).not.toContain("by @gennzy");
   });
 });

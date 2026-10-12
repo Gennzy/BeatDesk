@@ -61,7 +61,7 @@ export function CartLink() {
     <Link
       href="/cart"
       aria-label={count > 0 ? t("cart.countWith", { count: String(count) }) : t("cart.title")}
-      className="relative flex size-9 items-center justify-center rounded-pill border border-line text-mute transition-colors hover:border-line-2 hover:text-paper focusable"
+      className="relative flex size-9 items-center justify-center text-mute transition-colors hover:text-paper focusable"
     >
       <svg viewBox="0 0 20 20" width="17" height="17" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
         <path d="M2.5 3h1.8l1.7 8.4h8.3l1.7-6H5.4" />

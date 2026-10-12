@@ -6,6 +6,8 @@ import { Icon, type IconName } from "@/components/ui/icon";
 import { formatMoney } from "@/lib/currency";
 import { getT } from "@/lib/i18n/server";
 import { collectBeatmakerStats, computeAchievements } from "@/lib/sales/achievements";
+import { computeWeekly } from "@/lib/sales/weekly";
+import { WeeklyMissions } from "@/components/sales/weekly-missions";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -95,6 +97,7 @@ export default async function CabinetPage() {
   const isOperator = me?.is_operator === true;
 
   const achievements = computeAchievements(stats);
+  const weekly = computeWeekly(stats);
 
   return (
     <section className="py-10 lg:py-14">
@@ -202,6 +205,14 @@ export default async function CabinetPage() {
               ))}
             </ul>
           )}
+        </div>
+
+        {/*
+          Задания недели стоят выше инструментов: сначала то, ради чего
+          заходят (деньги и ритм), потом ссылки на инструменты.
+        */}
+        <div className="panel mt-6 p-5">
+          <WeeklyMissions missions={weekly} />
         </div>
 
         {/* Инструменты — ссылки в одну строку, а не плитки. */}

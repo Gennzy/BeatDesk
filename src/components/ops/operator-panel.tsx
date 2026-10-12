@@ -139,7 +139,7 @@ export function OperatorPanel({ orders, payouts }: { orders: Order[]; payouts: P
                 <span className="flex min-w-0 flex-col gap-0.5">
                   <span className="font-mono text-sm text-paper">{payout.formattedAmount}</span>
                   <span className="truncate text-xs text-mute">
-                    @{payout.seller} · {date(payout.createdAt)}
+                    {payout.seller} · {date(payout.createdAt)}
                   </span>
                 </span>
 

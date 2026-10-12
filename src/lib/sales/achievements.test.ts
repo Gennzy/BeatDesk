@@ -23,6 +23,11 @@ const stats = (over: Partial<BeatmakerStats> = {}): BeatmakerStats => ({
   postsPublished: 0,
   reviews: 0,
   followers: 0,
+  weekStart: new Date(0).toISOString(),
+  weekBeats: 0,
+  weekPosts: 0,
+  weekSales: 0,
+  weekPlays: 0,
   ...over,
 });
 

@@ -20,8 +20,10 @@ type ProfileLinks = {
  * это разные предложения. Поэтому здесь аватар, подписчики и подписка, а не
  * только ник.
  *
- * Значок проверки выдаётся по правилу в базе: минимум три состоявшиеся
- * продажи и четвёртый уровень. Без продаж он не достаётся никому.
+ * Значок проверки выдаётся по заданиям недели: с понедельника закрыты три
+ * из четырёх (биты, посты, продажа, прослушивания). Считает база одним
+ * вызовом weekly_verified (миграция 0048), чтобы значок видели и гости:
+ * у гостей нет права читать чужие заказы и черновики напрямую.
  */
 export async function SellerCard({
   username,
@@ -69,7 +71,7 @@ export async function SellerCard({
           .eq("follower_id", currentUserId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
-    profileId ? supabase.rpc("is_verified_seller", { p_user: profileId }) : Promise.resolve({ data: false }),
+    profileId ? supabase.rpc("weekly_verified", { p_user: profileId }) : Promise.resolve({ data: false }),
   ]);
 
   const followerCount = ((followers ?? []) as { follower_id: string }[]).length;
@@ -84,13 +86,13 @@ export async function SellerCard({
           <LinkRow username={username}>
             {isVerified ? (
               <span className="inline-flex items-center gap-1.5">
-                <span className="truncate text-base font-semibold text-paper">@{username}</span>
+                <span className="truncate text-base font-semibold text-paper">{username}</span>
                 <span title={t("seller.verifiedTitle")} className="text-signal">
                   <Icon name="verified" className="size-4" filled />
                 </span>
               </span>
             ) : (
-              <span className="truncate text-base font-semibold text-paper">@{username}</span>
+              <span className="truncate text-base font-semibold text-paper">{username}</span>
             )}
           </LinkRow>
           <span className="label text-mute">

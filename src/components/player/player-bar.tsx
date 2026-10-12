@@ -38,7 +38,7 @@ export function PlayerBar() {
                 {track.title}
               </Link>
               <span className="label block truncate text-mute">
-                @{track.username} · {track.bpm} BPM · {track.musicalKey}
+                {track.username} · {track.bpm} BPM · {track.musicalKey}
               </span>
             </div>
           </div>

@@ -52,7 +52,7 @@ export function formatBeatCaption(input: {
   );
 
   return [
-    `<b>${escapeHtml(input.title.toUpperCase())}</b>`,
+    `<b>${escapeHtml(input.title)}</b>`,
     titleSaysIt ? null : `<i>${escapeHtml(typeBeat)}</i>`,
     "",
     `<code>${input.bpm} BPM · ${escapeHtml(input.musicalKey)}</code>`,
@@ -60,7 +60,7 @@ export function formatBeatCaption(input: {
     input.tags.length > 0 ? "" : null,
     telegramTags(input.tags, input.artists),
     "",
-    `by @${escapeHtml(input.username)}`,
+    `by ${escapeHtml(input.username)}`,
   ]
     .filter((line) => line !== null && line !== undefined)
     .join("\n");

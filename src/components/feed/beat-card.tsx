@@ -12,7 +12,6 @@ import { DiscountPrice, beforePrice } from "@/components/beat/discount-price";
 import { SALE_STATE_LABELS } from "@/lib/sales/state";
 import type { FeedBeat } from "@/lib/feed";
 import { PRICE_KEYS, priceLabel } from "@/lib/prices";
-import { trackFromBeat } from "@/lib/player";
 import { useI18n } from "@/lib/i18n/provider";
 
 /**
@@ -44,11 +43,10 @@ export function BeatCard({
   isOwn?: boolean;
 }) {
   const { t } = useI18n();
-  const { track, isPlaying, play, toggle, currentTime, duration } = usePlayer();
+  const { track, isPlaying, currentTime, duration } = usePlayer();
   const ref = useRef<HTMLElement | null>(null);
 
   const active = track?.id === beat.id && isPlaying;
-  const playable = Boolean(beat.mp3Url);
 
   const tiers = useMemo(
     () =>
@@ -89,13 +87,6 @@ export function BeatCard({
   );
 
   const cheapest = cheapestTier ? (cheapestTier.value as number) : null;
-
-  function listen() {
-    const next = trackFromBeat(beat);
-    if (!next) return;
-    if (active) toggle();
-    else play(next);
-  }
 
   /*
    * Показ засчитывается, когда карточка реально попала в поле зрения, а не
@@ -166,35 +157,16 @@ export function BeatCard({
           className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/70 via-transparent to-transparent transition-opacity duration-500 group-hover:from-ink/80"
         />
 
-        {playable ? (
-          <button
-            type="button"
-            onClick={listen}
-            aria-label={active ? t("player.pause") : t("player.play")}
-            aria-pressed={active}
-            className={cn(
-              "absolute bottom-3 left-3 z-20 grid size-12 place-items-center rounded-full border backdrop-blur-sm transition-colors duration-200",
-              active
-                ? "border-signal bg-signal text-ink"
-                : "border-line-2 bg-ink/80 text-paper hover:border-signal hover:bg-signal hover:text-ink",
-            )}
-          >
-            {active ? (
-              <svg viewBox="0 0 10 12" aria-hidden className="h-4 w-3.5 fill-current">
-                <path d="M0 0h3.5v12H0zM6.5 0H10v12H6.5z" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 10 12" aria-hidden className="h-4 w-3.5 fill-current">
-                <path d="M0 0l10 6-10 6z" />
-              </svg>
-            )}
-          </button>
-        ) : (
+        {/*
+          Полоска прогресса идёт по нижнему краю обложки: если бит играет
+          прямо из ленты, видно, где играет. Кнопки play поверх обложки нет —
+          клик по обложке открывает страницу бита, а слушают там же в плеере.
+        */}
+        {!beat.mp3Url ? (
           <span className="label absolute bottom-3 left-3 z-20 rounded-full border border-line bg-ink/85 px-3 py-1.5 text-mute">
             {t("feed.noAudio")}
           </span>
-        )}
-
+        ) : null}
         {active ? (
           <span className="absolute inset-x-0 bottom-0 z-20 block">
             <ProgressLine value={duration > 0 ? currentTime / duration : 0} label={t("player.progress")} />
@@ -214,7 +186,7 @@ export function BeatCard({
           className="flex w-fit items-center gap-2 transition-opacity hover:opacity-75 focusable"
         >
           <Avatar username={beat.username} src={beat.avatarUrl} size="xs" />
-          <span className="label text-mute">@{beat.username}</span>
+          <span className="label text-mute">{beat.username}</span>
 
           {beat.sellerLevel >= 3 ? (
             <span

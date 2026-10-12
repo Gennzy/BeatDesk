@@ -44,7 +44,7 @@ export function ProfileStats({ username, avatarUrl, bio, beats, followers, posts
         <Avatar username={username} src={avatarUrl} size="lg" />
 
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <h1 className="font-display text-title text-paper uppercase">@{username}</h1>
+          <h1 className="font-display text-title text-paper uppercase">{username}</h1>
           {bio ? <p className="max-w-[60ch] text-sm text-mute">{bio}</p> : null}
         </div>
       </div>

@@ -129,7 +129,11 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
                 <>
                   <NotificationBell />
                   <CartLink />
-                  <Link href="/profile" className="flex items-center gap-2 transition-opacity hover:opacity-80">
+                  <Link
+                    href={`/beatmakers/${user.username}`}
+                    title={t("profile.openPublic")}
+                    className="flex items-center gap-2 transition-opacity hover:opacity-80"
+                  >
                     <Avatar user={user} />
                     <span className="label max-w-24 truncate text-paper">{user.username}</span>
                   </Link>
@@ -176,7 +180,7 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
                 <>
                   <NotificationBell />
                   <CartLink />
-                  <Link href="/profile" aria-label={t("auth.myProfile")}>
+                  <Link href={`/beatmakers/${user.username}`} aria-label={t("profile.openPublic")}>
                     <Avatar user={user} size="md" />
                   </Link>
                 </>

@@ -176,7 +176,7 @@ export function BeatmakerCarousel({ makers }: { makers: Maker[] }) {
                 marginTop: "-130px",
                 transform: `translate3d(${offset * STEP * 100}%, 0, 0) scale(${scale})`,
                 opacity,
-                transition: "opacity 220ms linear",
+                transition: "opacity var(--duration-base) var(--ease-out)",
                 zIndex: 10 - Math.round(distance * 10),
                 pointerEvents: distance > 1.5 ? "none" : undefined,
               }}
@@ -187,7 +187,7 @@ export function BeatmakerCarousel({ makers }: { makers: Maker[] }) {
                     ? "size-full overflow-hidden rounded-2xl border border-line bg-ink-3"
                     : "size-full overflow-hidden rounded-full border border-line bg-ink-3"
                 }
-                style={{ transition: "border-radius 320ms ease, transform 320ms ease" }}
+                style={{ transition: "border-radius var(--duration-slow) var(--ease-out), transform var(--duration-slow) var(--ease-out)" }}
               >
                 {maker.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -207,7 +207,7 @@ export function BeatmakerCarousel({ makers }: { makers: Maker[] }) {
 
               {centred ? (
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink via-ink/95 to-transparent p-4 pt-14">
-                  <p className="truncate text-sm font-semibold text-paper">@{maker.username}</p>
+                  <p className="truncate text-sm font-semibold text-paper">{maker.username}</p>
                   <p className="mt-1 text-xs leading-snug text-mute">
                     {maker.beatsOnSale}{" "}
                     {pluralRu(maker.beatsOnSale, "бит", "бита", "битов")}

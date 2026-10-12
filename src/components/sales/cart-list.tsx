@@ -113,7 +113,7 @@ export function CartList({ items, total, label, priceNames }: Props) {
               <Link href={`/beats/${item.beatId}`} className="font-display text-lg uppercase leading-tight text-paper hover:underline focusable">
                 {item.title}
               </Link>
-              {item.username ? <span className="label text-mute">@{item.username}</span> : null}
+              {item.username ? <span className="label text-mute">{item.username}</span> : null}
 
               {/*
                 Уровни берутся из цен самого бита: набор у каждого свой, и

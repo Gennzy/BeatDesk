@@ -26,7 +26,7 @@ export function FollowButton({ profileId, username, isFollowing, followerCount, 
   const [busy, setBusy] = useState(false);
 
   if (isOwner) {
-    return <span className="label text-mute">{t("profile.thisIsYou")}</span>;
+    return null;
   }
 
   if (!loggedIn) {

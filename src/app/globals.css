@@ -213,6 +213,29 @@
     cursor: default;
   }
 
+  /*
+   * Плавность всего нажимаемого — одним правилом.
+   *
+   * Раньше transition-colors стоял только там, где его не забыли написать:
+   * половина ссылок и кнопок переключалась рывком, и интерфейс читался
+   * собранным из кусков с разной скоростью. Теперь цвет, фон, рамка и
+   * прозрачность у всего интерактива едут одинаково — быстро и с выходом.
+   *
+   * Правило живёт в base, а не в компонентах: классы компонентов и утилиты
+   * лежат слоями выше и перекрывают его там, где движению нужен свой ритм
+   * (табы, карточки, появление списков).
+   */
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  [role="button"] {
+    transition-property: color, background-color, border-color, outline-color, opacity, box-shadow;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+  }
+
   input::placeholder,
   textarea::placeholder {
     color: color-mix(in oklab, var(--color-mute) 55%, transparent);

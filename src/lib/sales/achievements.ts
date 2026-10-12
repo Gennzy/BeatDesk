@@ -35,6 +35,16 @@ export type BeatmakerStats = {
   reviews: number;
   /** Сколько человек подписалось. */
   followers: number;
+  /** Понедельник текущей недели, ISO: от него считаются задания недели. */
+  weekStart: string;
+  /** Битов загружено с начала недели. */
+  weekBeats: number;
+  /** Постов в ленту с начала недели. */
+  weekPosts: number;
+  /** Оплаченных продаж с начала недели. */
+  weekSales: number;
+  /** Прослушиваний с начала недели. */
+  weekPlays: number;
 };
 
 export type AchievementId =
@@ -73,6 +83,25 @@ export function fullDays(from: string, to: number): number {
   if (!Number.isFinite(start)) return 0;
 
   return Math.max(0, Math.floor((to - start) / 86_400_000));
+}
+
+/**
+ * Начало недели — понедельник 00:00 UTC.
+ *
+ * Неделя нужна заданиям: у каждого задания своё окно, иначе «загрузи три
+ * бита» превратилось бы в разовое достижение, а не в еженедельную привычку.
+ * Понедельник и UTC, а не местная полночь: у продавца и покупателя недели
+ * должны совпадать, иначе значок проверки у одного уже сгорел, а у другого
+ * ещё горит.
+ */
+export function weekStartMonday(now = Date.now()): string {
+  const date = new Date(now);
+  const day = (date.getUTCDay() + 6) % 7;
+
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCDate(date.getUTCDate() - day);
+
+  return date.toISOString();
 }
 
 /**
@@ -187,26 +216,47 @@ export async function collectBeatmakerStats(
   ownerId: string,
   registeredAt: string,
 ): Promise<BeatmakerStats> {
+  const weekStart = weekStartMonday();
+
   const [{ data: beats }, { data: items }, { data: posts }, { data: reviews }, { data: followers }] = await Promise.all([
-    supabase.from("beats").select("plays, sale_state, files, prices").eq("owner_id", ownerId),
+    supabase.from("beats").select("id, plays, sale_state, files, prices, created_at").eq("owner_id", ownerId),
     supabase.from("order_items").select("order_id").eq("beat_owner_id", ownerId),
-    supabase.from("posts").select("beat_id").eq("author_id", ownerId),
+    supabase.from("posts").select("beat_id, created_at").eq("author_id", ownerId),
     // Отзывы и подписчики считаем здесь же: они такие же факты о работе,
     // как загрузки и продажи, и отдельного захода ради них не нужно.
     supabase.from("reviews").select("id").eq("subject_id", ownerId),
     supabase.from("follows").select("follower_id").eq("following_id", ownerId),
   ]);
 
-  const rows = (beats ?? []) as { plays: number | null; sale_state: string | null; files: Record<string, unknown> | null; prices: Record<string, unknown> | null }[];
+  const rows = (beats ?? []) as { id: string; plays: number | null; sale_state: string | null; files: Record<string, unknown> | null; prices: Record<string, unknown> | null; created_at: string | null }[];
   const itemRows = (items ?? []) as { order_id: string }[];
-  const postRows = (posts ?? []) as { beat_id: string | null }[];
+  const postRows = (posts ?? []) as { beat_id: string | null; created_at: string | null }[];
 
   const orderIds = [...new Set(itemRows.map((row) => row.order_id))];
   let ordersPaid = 0;
+  let weekSales = 0;
 
   if (orderIds.length > 0) {
-    const { data: orders } = await supabase.from("orders").select("id, status").in("id", orderIds);
-    ordersPaid = ((orders ?? []) as { status: string }[]).filter((order) => order.status === "paid").length;
+    const { data: orders } = await supabase.from("orders").select("id, status, paid_at").in("id", orderIds);
+    const paid = ((orders ?? []) as { status: string; paid_at: string | null }[]).filter((order) => order.status === "paid");
+    ordersPaid = paid.length;
+    weekSales = paid.filter((order) => (order.paid_at ?? "") >= weekStart).length;
+  }
+
+  /*
+   * Прослушивания недели — по журналу событий, а не по счётчику: счётчик
+   * знает только итог за всё время и не помнит, когда слушали.
+   */
+  let weekPlays = 0;
+  const beatIds = rows.map((row) => row.id);
+
+  if (beatIds.length > 0) {
+    const { count } = await supabase
+      .from("beat_plays")
+      .select("id", { count: "exact", head: true })
+      .in("beat_id", beatIds)
+      .gte("played_at", weekStart);
+    weekPlays = count ?? 0;
   }
 
   return {
@@ -228,5 +278,10 @@ export async function collectBeatmakerStats(
     postsPublished: postRows.filter((row) => row.beat_id !== null).length,
     reviews: (reviews ?? []).length,
     followers: (followers ?? []).length,
+    weekStart,
+    weekBeats: rows.filter((row) => (row.created_at ?? "") >= weekStart).length,
+    weekPosts: postRows.filter((row) => (row.created_at ?? "") >= weekStart).length,
+    weekSales,
+    weekPlays,
   };
 }

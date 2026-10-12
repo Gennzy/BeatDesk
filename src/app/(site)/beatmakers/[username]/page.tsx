@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { FollowButton } from "@/components/posts/follow-button";
@@ -12,8 +13,10 @@ import { pluralEn, pluralRu } from "@/lib/plural";
 import { fetchProfilePosts, loadFollowState } from "@/lib/posts";
 import { getSupabase } from "@/lib/supabase/user";
 import { Achievements } from "@/components/sales/achievements";
+import { WeeklyMissions } from "@/components/sales/weekly-missions";
+import { computeWeekly } from "@/lib/sales/weekly";
 import { Reviews } from "@/components/sales/reviews";
-import { collectBeatmakerStats, computeAchievements } from "@/lib/sales/achievements";
+import { collectBeatmakerStats, computeAchievements, weekStartMonday } from "@/lib/sales/achievements";
 
 const PLATFORM_KEYS = ["telegram", "youtube", "vk"] as const;
 
@@ -31,12 +34,12 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
     ? await supabase.from("profiles").select("username, avatar_url, bio").eq("username", username).maybeSingle()
     : { data: null };
 
-  if (!data) return { title: `@${username}` };
+  if (!data) return { title: `${username}` };
 
-  const description = data.bio ?? `Биты битмейкера @${data.username}: BPM, тональность, теги и цены.`;
+  const description = data.bio ?? `Биты битмейкера ${data.username}: BPM, тональность, теги и цены.`;
 
   return {
-    title: `@${data.username}`,
+    title: `${data.username}`,
     description,
     alternates: { canonical: `/beatmakers/${data.username}` },
     openGraph: {
@@ -81,7 +84,7 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
   } = await supabase.auth.getUser();
   const achievementStats = supabase
     ? await collectBeatmakerStats(supabase, profile.id, profile.created_at)
-    : { registeredAt: new Date().toISOString(), beatsOnSale: 0, beatsTotal: 0, plays: 0, ordersPaid: 0, beatsWithStems: 0, beatsWithAllTiers: 0, postsPublished: 0, reviews: 0, followers: 0 };
+    : { registeredAt: new Date().toISOString(), beatsOnSale: 0, beatsTotal: 0, plays: 0, ordersPaid: 0, beatsWithStems: 0, beatsWithAllTiers: 0, postsPublished: 0, reviews: 0, followers: 0, weekStart: weekStartMonday(), weekBeats: 0, weekPosts: 0, weekSales: 0, weekPlays: 0 };
 
   const isOwner = user?.id === profile.id;
 
@@ -91,17 +94,22 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
    * превращается в голосование за самого популярного.
    */
   const achievements = isOwner && supabase ? computeAchievements(achievementStats) : [];
+  const weekly = isOwner && supabase ? computeWeekly(achievementStats) : [];
 
 
   /*
    * Проверка и уровень читаются одним запросом: и то и другое отвечает на
    * вопрос покупателя «этому продавцу можно верить», и раньше на витрине
    * профиля этого не было вовсе.
+   *
+   * Проверка — по заданиям недели (миграция 0048): пока функция не применена
+   * в базе, вызов вернёт ошибку и значок тихо спрячется, а не уронит
+   * страницу.
    */
   const [{ data: sellerFlags }, { data: verifiedData }] = supabase
     ? await Promise.all([
         supabase.from("profiles").select("level").eq("id", profile.id).maybeSingle(),
-        supabase.rpc("is_verified_seller", { p_user: profile.id }),
+        supabase.rpc("weekly_verified", { p_user: profile.id }),
       ])
     : [{ data: null }, { data: false }];
 
@@ -279,19 +287,26 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
               главное, что человек делает на профиле, и искать её внизу
               шапки незачем. */}
           <div className="lg:justify-self-end">
-            <FollowButton
-              profileId={profile.id}
-              username={profile.username}
-              isFollowing={follow.isFollowing}
-              followerCount={follow.followerCount}
-              loggedIn={Boolean(user)}
-              isOwner={isOwner}
-            />
+            {isOwner ? (
+              <Link href="/profile" className="label text-mute transition-colors hover:text-paper focusable">
+                {t("profile.editProfile")}
+              </Link>
+            ) : (
+              <FollowButton
+                profileId={profile.id}
+                username={profile.username}
+                isFollowing={follow.isFollowing}
+                followerCount={follow.followerCount}
+                loggedIn={Boolean(user)}
+                isOwner={isOwner}
+              />
+            )}
           </div>
         </div>
 
         <div className="flex flex-col gap-8 pt-12">
           {isOwner && achievements.length > 0 ? <Achievements list={achievements} /> : null}
+          {isOwner && weekly.length > 0 ? <WeeklyMissions missions={weekly} /> : null}
 
           {/*
             Закреплённый бит. Заголовок у него свой: покупатель должен

@@ -75,7 +75,7 @@ export function PlayerFullscreen({ onClose }: { onClose: () => void }) {
         <div className="flex w-full max-w-xl flex-col gap-1">
           <h2 className="truncate font-display text-xl font-bold text-paper uppercase">{track.title}</h2>
           <span className="label truncate text-mute">
-            @{track.username} · {track.bpm} BPM · {track.musicalKey}
+            {track.username} · {track.bpm} BPM · {track.musicalKey}
           </span>
         </div>
 
