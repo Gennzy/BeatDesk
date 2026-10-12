@@ -6,6 +6,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
+      // Пакет ставит Next.js, а vitest его не видит. Заглушка объявлена в
+      // конфиге, а не снимается с модулей: снятый маркер означал бы, что
+      // серверный код можно случайно утащить в клиент.
+      "server-only": fileURLToPath(new URL("./src/test/server-only-stub.ts", import.meta.url)),
     },
   },
   test: {
