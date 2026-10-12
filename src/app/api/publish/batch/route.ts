@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { decryptSecret } from "@/lib/crypto";
+import { normalizePrices } from "@/lib/prices";
 import type { PublishBeat } from "@/lib/platforms/payload";
 import { isPlatformId } from "@/lib/platforms/registry";
 import { getBotToken } from "@/lib/platforms/telegram-client";
@@ -91,7 +92,8 @@ export async function POST(request: Request) {
       bpm: beat.bpm,
       musicalKey: beat.key,
       tags: beat.tags ?? [],
-      prices: (beat.prices ?? { mp3: null, bundle: null, exclusive: null }) as PublishBeat["prices"],
+      // Нормализуем, а не кастуем: в базе уровень WAV лежит под `bundle`.
+      prices: normalizePrices(beat.prices),
       currency: beat.currency ?? "RUB",
       username: owner?.username ?? "",
       mp3Url: beat.mp3_url,

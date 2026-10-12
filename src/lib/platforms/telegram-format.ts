@@ -18,28 +18,51 @@ export function formatBeatCaption(input: {
   currency?: string;
   username: string;
 }): string {
-  const typeBeat = input.artists.length > 0 ? `type beat ${input.artists.join(", ")}` : "instrumental";
+  /*
+   * Уровни лицензий идут каждый на своей строке.
+   *
+   * Раньше они склеивались в одну строку через разделитель, и при четырёх
+   * уровнях она не помещалась в ширину телефона: MP3, MP3+WAV и Track Out
+   * ещё влезали, а «эксклюзив» уезжал за край. Строка на уровень
+   * переносится вся и читается без прокрутки боком.
+   */
+  const tiers = [
+    [input.prices.mp3, "MP3"],
+    [input.prices.wav, "MP3+WAV"],
+    [input.prices.trackout, "Track Out"],
+    [input.prices.exclusive, "Эксклюзив"],
+  ]
+    .filter(([price]) => typeof price === "number" && price > 0)
+    .map(([price, label]) => `${label}  ${formatMoney(price as number, input.currency)}`);
 
-  const prices = [
-    input.prices.mp3 ? `MP3 ${formatMoney(input.prices.mp3, input.currency)}` : null,
-    input.prices.wav ? `MP3+WAV ${formatMoney(input.prices.wav, input.currency)}` : null,
-    input.prices.trackout ? `Track Out ${formatMoney(input.prices.trackout, input.currency)}` : null,
-    input.prices.exclusive ? `эксклюзив ${formatMoney(input.prices.exclusive, input.currency)}` : null,
-  ].filter(Boolean) as string[];
+  /*
+   * Подпись под названием повторяла само название.
+   *
+   * Биты называют «PITTKIID TYPE BEAT | ZIP», и строкой ниже вставало
+   * «type beat PittKid» — то же самое словами. Дубликат читался как
+   * недоделка, а не как описание.
+   *
+   * Поэтому подпись ставится только тогда, когда в названии её действительно
+   * нет: если продавец уже написал, кто артист и что это type beat, вторая
+   * строка молча убирается.
+   */
+  const typeBeat = input.artists.length > 0 ? `type beat ${input.artists.join(", ")}` : "instrumental";
+  const titleSaysIt = input.artists.every((artist) =>
+    input.title.toLowerCase().includes(artist.toLowerCase()),
+  );
 
   return [
     `<b>${escapeHtml(input.title.toUpperCase())}</b>`,
-    `<i>${escapeHtml(typeBeat)}</i>`,
+    titleSaysIt ? null : `<i>${escapeHtml(typeBeat)}</i>`,
     "",
     `<code>${input.bpm} BPM · ${escapeHtml(input.musicalKey)}</code>`,
-    prices.length > 0 ? "" : null,
-    prices.length > 0 ? escapeHtml(prices.join("  ·  ")) : null,
+    ...tiers.map((tier) => escapeHtml(tier)),
     input.tags.length > 0 ? "" : null,
     telegramTags(input.tags, input.artists),
     "",
     `by @${escapeHtml(input.username)}`,
   ]
-    .filter((line) => line !== null)
+    .filter((line) => line !== null && line !== undefined)
     .join("\n");
 }
 

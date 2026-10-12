@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { decryptSecret } from "@/lib/crypto";
+import { normalizePrices } from "@/lib/prices";
 import type { PublishBeat } from "@/lib/platforms/payload";
 import { isPlatformId } from "@/lib/platforms/registry";
 import { notifySelf } from "@/lib/notifications/self";
@@ -46,7 +47,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     bpm: beat.bpm,
     musicalKey: beat.key,
     tags: beat.tags ?? [],
-    prices: (beat.prices ?? { mp3: null, bundle: null, exclusive: null }) as PublishBeat["prices"],
+    /*
+     * Цены нормализуются, а не кастуются.
+     *
+     * В базе уровень WAV лежит под ключом `bundle` — так он назывался
+     * раньше, и переименование сломало бы старые записи. Дальше по коду
+     * читается уже `wav`, и каст без нормализации приводил к тому, что
+     * уровень MP3+WAV просто исчезал из поста: цена в базе есть, а в
+     * сообщении её нет, и никто не может понять почему.
+     */
+    prices: normalizePrices(beat.prices),
     currency: beat.currency ?? "RUB",
     username: owner?.username ?? "",
     mp3Url: beat.mp3_url,
