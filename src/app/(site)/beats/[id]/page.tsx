@@ -9,6 +9,7 @@ import { BeatStats } from "@/components/beat/beat-stats";
 import { LicenseTerms } from "@/components/beat/license-terms";
 import { SellerCard } from "@/components/beat/seller-card";
 import { BeatShare } from "@/components/beat/beat-share";
+import { ShareToTelegram } from "@/components/platforms/share-to-telegram";
 import { BeatOffer } from "@/components/sales/beat-offer";
 import { Container } from "@/components/ui/container";
 import { Icon } from "@/components/ui/icon";
@@ -259,7 +260,17 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
 
                 <LicenseTerms tiers={tiers} />
 
-                <BeatShare beatId={beat.id} title={beat.title} />
+                <div className="flex flex-wrap items-center gap-3">
+                  <BeatShare beatId={beat.id} title={beat.title} />
+
+                  {/*
+                    Отправка в Telegram — только владельцу. Ссылку выдаёт
+                    сервер и только ему: подпись защищает бит от подмены, но
+                    право выдать ссылку на чужой бит — это уже право, а не
+                    целостность.
+                  */}
+                  {isOwner ? <ShareToTelegram beatId={beat.id} /> : null}
+                </div>
               </div>
             </div>
 

@@ -7,8 +7,13 @@ import { channelOf, channelToRemember, rememberChannel } from "@/lib/platforms/t
 import {
   getBotToken,
   sendTelegramMessage,
+  sendTelegramPhoto,
   type TelegramMessage,
 } from "@/lib/platforms/telegram-client";
+import { readBeatShareLink } from "@/lib/platforms/telegram-beat-share";
+import { formatBeatCaption, buildKeyboard } from "@/lib/platforms/telegram-format";
+import { getAdminClient } from "@/lib/supabase/admin";
+import { normalizePrices } from "@/lib/prices";
 
 type CallbackQuery = {
   id: string;
@@ -107,8 +112,19 @@ export async function POST(request: Request) {
   const siteUrl = await getSiteUrl();
 
   try {
-    if (update.message?.text?.startsWith("/start")) {
-      const chat = update.message.chat;
+    const text0 = update.message?.text ?? "";
+
+    /*
+     * Ссылка с битом приходит как /start <подпись>. Она длинная, поэтому её
+     * надо разобрать раньше обычного /start: иначе человек, открывший
+     * ссылку, получил бы приветствие вместо бита.
+     */
+    if (text0.startsWith("/start ")) {
+      await sendSharedBeat(token, text0.slice("/start ".length).trim(), update.message!.chat, siteUrl);
+    }
+
+    if (text0.startsWith("/start")) {
+      const chat = update.message!.chat;
       await sendTelegramMessage(token, {
         chat_id: chat.id,
         text: welcome([chat.title, chat.username].filter(Boolean).join(" ")),
@@ -215,4 +231,103 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ ok: true, updateId: update.update_id });
+}
+
+/**
+ * Присылает бит по подписанной ссылке.
+ *
+ * Ссылку выдаёт кнопка «Отправить в Telegram» на странице бита, и открыть
+ * её может кто угодно: бит публичный, его страница и так доступна без
+ * входа. Поэтому проверяется не личность, а подпись — иначе в start можно
+ * было бы подставить выдуманный идентификатор и попросить бота собрать
+ * несуществующий бит.
+ *
+ * Обложка и карточка идут одним сообщением, а не двумя: два сообщения подряд
+ * в личке читаются как спам, а не как карточка бита.
+ */
+async function sendSharedBeat(token: string, share: string, chat: Chat, siteUrl: string) {
+  const payload = readBeatShareLink(share);
+
+  if (!payload) {
+    await sendTelegramMessage(token, {
+      chat_id: chat.id,
+      text: [
+        "<b>Ссылка не сработала</b>",
+        "",
+        "Она протухла или её правили по дороге. Открой бит на сайте и нажми «Отправить в Telegram» ещё раз.",
+      ].join("\n"),
+      parse_mode: "HTML",
+      reply_markup: { inline_keyboard: [[{ text: "▶ Открыть BeatDesk", url: `${siteUrl}/` }]] },
+    });
+    return;
+  }
+
+  const admin = getAdminClient();
+
+  const { data: beat } = await admin
+    .from("beats")
+    .select("id, title, bpm, key, tags, type_beat_artists, cover_url, prices, currency, owner_id")
+    .eq("id", payload.b)
+    .maybeSingle();
+
+  if (!beat || beat.owner_id !== payload.o) {
+    await sendTelegramMessage(token, {
+      chat_id: chat.id,
+      text: "<b>Бит не найден</b>\n\nВозможно, его сняли с продажи или удалили.",
+      parse_mode: "HTML",
+      reply_markup: { inline_keyboard: [[{ text: "▶ Открыть BeatDesk", url: `${siteUrl}/` }]] },
+    });
+    return;
+  }
+
+  const { data: owner } = await admin
+    .from("profiles")
+    .select("username")
+    .eq("id", payload.o)
+    .maybeSingle();
+
+  const username = owner?.username ?? "beatdesk";
+
+  const prices = normalizePrices(beat.prices);
+
+  const caption = formatBeatCaption({
+    title: beat.title,
+    artists: (beat.type_beat_artists ?? []) as string[],
+    bpm: beat.bpm,
+    musicalKey: beat.key ?? "",
+    tags: (beat.tags ?? []) as string[],
+    prices,
+    currency: beat.currency ?? "RUB",
+    username,
+  });
+
+  const keyboard = buildKeyboard({
+    beatUrl: `${siteUrl}/beats/${beat.id}`,
+    audioUrl: null,
+    profileUrl: `${siteUrl}/beatmakers/${username}`,
+  });
+
+  /*
+   * Обложка отправляется вместе с подписью: Telegram показывает картинку
+   * превью, а текст — под ней, и получается та же карточка, что в канале.
+   * Без обложки присылаем просто текст: пустая картинка-заглушка в личке
+   * выглядит хуже, чем просто текст.
+   */
+  if (beat.cover_url) {
+    await sendTelegramPhoto(token, {
+      chat_id: chat.id,
+      photo: beat.cover_url,
+      caption,
+      parse_mode: "HTML",
+      reply_markup: keyboard,
+    });
+    return;
+  }
+
+  await sendTelegramMessage(token, {
+    chat_id: chat.id,
+    text: caption,
+    parse_mode: "HTML",
+    reply_markup: keyboard,
+  });
 }
