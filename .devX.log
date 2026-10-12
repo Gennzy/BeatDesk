@@ -1,6 +1,0 @@
-$ cross-env NODE_OPTIONS=--max-old-space-size=1536 next start "-p" "3032"
-▲ Next.js 16.3.8
-- Local:         http://localhost:3032
-- Network:       http://172.19.0.1:3032
-✓ Ready in 279ms
-✓ Running next.config.ts took 65ms
