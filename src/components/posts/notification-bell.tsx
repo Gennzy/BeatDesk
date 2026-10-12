@@ -162,7 +162,7 @@ export function NotificationBell() {
         if (!remember(item.id)) continue;
 
         const kind = TOAST_KINDS[item.kind];
-        const who = item.actorUsername ? `@${item.actorUsername}` : t("notifications.system");
+        const who = item.actorUsername ? item.actorUsername : t("notifications.system");
         const text = kind ? t(kind.label) : t("notifications.system");
         // Подпись хранит плейсхолдер {beat}, поэтому бит подставляется
         // строкой: уведомление о посте бита не содержит.

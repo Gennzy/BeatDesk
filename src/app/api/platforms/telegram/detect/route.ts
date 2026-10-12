@@ -32,7 +32,7 @@ export async function GET() {
 
     const title =
       message.chat.type === "private"
-        ? (message.chat.username ? `@${message.chat.username}` : "Личный чат")
+        ? (message.chat.username ? message.chat.username : "Личный чат")
         : (message.chat.title ?? message.chat.type);
 
     chats.set(String(message.chat.id), { chatId: String(message.chat.id), type: message.chat.type, title });

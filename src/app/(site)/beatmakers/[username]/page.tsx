@@ -44,11 +44,11 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
     alternates: { canonical: `/beatmakers/${data.username}` },
     openGraph: {
       type: "profile",
-      title: `@${data.username} · BeatDesk`,
+      title: `${data.username} · BeatDesk`,
       description,
       images: data.avatar_url ? [{ url: data.avatar_url }] : undefined,
     },
-    twitter: { card: "summary_large_image", title: `@${data.username}`, description },
+    twitter: { card: "summary_large_image", title: `${data.username}`, description },
   };
 }
 
@@ -199,8 +199,7 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
 
           <div className="flex flex-col gap-5">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="flex items-baseline gap-1 font-display text-section font-semibold text-paper uppercase">
-                <span className="font-mono text-title text-mute">@</span>
+              <h1 className="font-display text-section font-semibold text-paper uppercase">
                 {profile.username}
               </h1>
 

@@ -68,7 +68,7 @@ export function formatBeatCaption(input: {
 
 /** Подпись к аудиофайлу, который бот кладёт под постом. */
 export function formatAudioCaption(title: string, username: string): string {
-  return `<b>${escapeHtml(title)}</b> · @${escapeHtml(username)}`;
+  return `<b>${escapeHtml(title)}</b> · ${escapeHtml(username)}`;
 }
 
 export type TelegramButton = {

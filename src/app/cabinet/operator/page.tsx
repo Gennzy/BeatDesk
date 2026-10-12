@@ -105,11 +105,11 @@ export default async function OperatorPage() {
           currency: row.currency,
           buyerEmail: row.buyer_email,
           createdAt: row.created_at,
-          formattedTotal: formatMoney(row.total_minor, row.currency),
+          formattedTotal: formatMoney(row.total_minor / 100, row.currency),
         }))}
         payouts={payouts.map((row) => ({
           ...row,
-          formattedAmount: formatMoney(row.amountMinor, row.currency),
+          formattedAmount: formatMoney(row.amountMinor / 100, row.currency),
         }))}
       />
     </Container>

@@ -12,6 +12,7 @@ import { DiscountPrice, beforePrice } from "@/components/beat/discount-price";
 import { SALE_STATE_LABELS } from "@/lib/sales/state";
 import type { FeedBeat } from "@/lib/feed";
 import { PRICE_KEYS, priceLabel } from "@/lib/prices";
+import { trackFromBeat } from "@/lib/player";
 import { useI18n } from "@/lib/i18n/provider";
 
 /**
@@ -43,7 +44,7 @@ export function BeatCard({
   isOwn?: boolean;
 }) {
   const { t } = useI18n();
-  const { track, isPlaying, currentTime, duration } = usePlayer();
+  const { track, isPlaying, play, toggle, currentTime, duration } = usePlayer();
   const ref = useRef<HTMLElement | null>(null);
 
   const active = track?.id === beat.id && isPlaying;
@@ -87,6 +88,17 @@ export function BeatCard({
   );
 
   const cheapest = cheapestTier ? (cheapestTier.value as number) : null;
+
+  /*
+   * Запуск из ленты — через глобальный плеер, а не ссылкой: карточка
+   * остаётся витриной, а играет нижняя панель, как в музыкальных сервисах.
+   */
+  function listen() {
+    const next = trackFromBeat(beat);
+    if (!next) return;
+    if (active) toggle();
+    else play(next);
+  }
 
   /*
    * Показ засчитывается, когда карточка реально попала в поле зрения, а не
@@ -158,15 +170,46 @@ export function BeatCard({
         />
 
         {/*
-          Полоска прогресса идёт по нижнему краю обложки: если бит играет
-          прямо из ленты, видно, где играет. Кнопки play поверх обложки нет —
-          клик по обложке открывает страницу бита, а слушают там же в плеере.
+          Запуск — стеклянная кнопка поверх обложки, а не пятно на ней.
+          На широком экране прячется до наведения: сетка из двенадцати
+          одинаковых кружков читалась бы как панель управления, а не как
+          витрина. На телефоне наведения нет, поэтому там видна всегда.
+          В игре кнопка залита акцентом и светится — состояние считывается
+          краем глаза, без чтения иконки.
         */}
-        {!beat.mp3Url ? (
+        {beat.mp3Url ? (
+          <button
+            type="button"
+            onClick={listen}
+            aria-label={active ? t("player.pause") : t("player.play")}
+            aria-pressed={active}
+            className={cn(
+              "absolute bottom-3 left-3 z-20 grid size-11 cursor-pointer place-items-center rounded-full border backdrop-blur-md transition-all duration-220 ease-out",
+              "translate-y-0 opacity-100 sm:translate-y-2 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100",
+              active
+                ? "border-signal bg-signal text-ink shadow-[var(--glow-accent)]"
+                : "border-white/25 bg-black/45 text-white hover:border-signal hover:bg-signal hover:text-ink active:scale-95",
+            )}
+          >
+            {active ? (
+              <svg viewBox="0 0 10 12" aria-hidden className="h-4 w-3.5 fill-current">
+                <path d="M0 0h3.5v12H0zM6.5 0H10v12H6.5z" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 10 12" aria-hidden className="ml-0.5 h-4 w-3.5 fill-current">
+                <path d="M0 0l10 6-10 6z" />
+              </svg>
+            )}
+          </button>
+        ) : (
           <span className="label absolute bottom-3 left-3 z-20 rounded-full border border-line bg-ink/85 px-3 py-1.5 text-mute">
             {t("feed.noAudio")}
           </span>
-        ) : null}
+        )}
+        {/*
+          Полоска прогресса идёт по нижнему краю обложки: если бит играет
+          прямо из ленты, видно, где играет.
+        */}
         {active ? (
           <span className="absolute inset-x-0 bottom-0 z-20 block">
             <ProgressLine value={duration > 0 ? currentTime / duration : 0} label={t("player.progress")} />

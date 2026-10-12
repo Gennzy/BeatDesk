@@ -174,7 +174,7 @@ function NotificationRow({ item, onRead }: { item: Notification; onRead: () => v
   const { t, locale } = useI18n();
 
   const row = KINDS[item.kind] ?? KINDS.reply;
-  const who = item.actorUsername ? `@${item.actorUsername}` : t("notifications.system");
+  const who = item.actorUsername ? item.actorUsername : t("notifications.system");
   const text = t(row.label);
   const body = item.beatTitle ? text.replace("{beat}", `«${item.beatTitle}»`) : text.replace("{beat}", "");
   const unread = !item.readAt;

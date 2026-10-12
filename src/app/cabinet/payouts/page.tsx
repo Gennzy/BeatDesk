@@ -121,10 +121,10 @@ export default async function PayoutsPage() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Tile label={t("payouts.balance")} value={formatMoney(balance, "RUB")} accent />
-        <Tile label={t("payouts.earned")} value={formatMoney(earned, "RUB")} />
-        <Tile label={t("payouts.withdrawn")} value={formatMoney(withdrawn, "RUB")} />
-        <Tile label={t("payouts.pending")} value={formatMoney(pending, "RUB")} />
+        <Tile label={t("payouts.balance")} value={formatMoney(balance / 100, "RUB")} accent />
+        <Tile label={t("payouts.earned")} value={formatMoney(earned / 100, "RUB")} />
+        <Tile label={t("payouts.withdrawn")} value={formatMoney(withdrawn / 100, "RUB")} />
+        <Tile label={t("payouts.pending")} value={formatMoney(pending / 100, "RUB")} />
       </div>
 
       <p className="max-w-[70ch] text-sm leading-relaxed text-mute">
@@ -165,7 +165,7 @@ export default async function PayoutsPage() {
                   {row.commission_minor > 0 ? (
                     <span className="text-xs text-mute">
                       {t("payouts.commissionLine", {
-                        amount: formatMoney(row.commission_minor, "RUB"),
+                        amount: formatMoney(row.commission_minor / 100, "RUB"),
                       })}
                     </span>
                   ) : null}
@@ -175,7 +175,7 @@ export default async function PayoutsPage() {
                     }`}
                   >
                     {row.amount_minor > 0 ? "+" : "−"}
-                    {formatMoney(Math.abs(row.amount_minor), "RUB")}
+                    {formatMoney(Math.abs(row.amount_minor) / 100, "RUB")}
                   </span>
                 </span>
               </li>
@@ -202,7 +202,7 @@ export default async function PayoutsPage() {
                       : t("payouts.statusPending")}
                 </span>
                 <span className="font-mono text-sm tabular-nums text-paper">
-                  {formatMoney(row.amount_minor, "RUB")}
+                  {formatMoney(row.amount_minor / 100, "RUB")}
                 </span>
               </li>
             ))}

@@ -186,8 +186,10 @@ function toPost(row: PostRow, liked: Set<string>, branchTotal?: number): Post {
  *
  * Триггер в базе увеличивает счётчик у непосредственного родителя, поэтому
  * на глубоком ответе он показывал «0», хотя под ним была целая переписка.
- * Считаем здесь по карте (id → parent_id): запрос забирает две колонки
- * вместо обхода поддерева на каждую карточку, а результат один на страницу.
+ * Считает база рекурсивным обходом (branch_counts, миграция 0049): раньше
+ * приложение забирало всю таблицу двумя колонками, и это молча сломалось,
+ * когда постов стало больше тысячи, — PostgREST режет выдачу настройкой
+ * max-rows, которую лимит в запросе не перекрывает.
  *
  * Возвращает число только для запрошенных id: у корня это размер ветки,
  * у вложенного поста — число ответов под ним.
@@ -199,44 +201,15 @@ export async function branchCounts(
   const counts = new Map<string, number>();
   if (ids.length === 0) return counts;
 
-  const { data, error } = await supabase.from("posts").select("id, parent_id").limit(20_000);
+  const { data, error } = await supabase.rpc("branch_counts", { p_ids: ids });
 
   if (error) {
     console.error("branch counts query failed", error);
     return counts;
   }
 
-  const children = new Map<string, string[]>();
-  for (const row of data ?? []) {
-    const { id, parent_id: parentId } = row as { id: string; parent_id: string | null };
-    if (!parentId) continue;
-    const list = children.get(parentId);
-    if (list) list.push(id);
-    else children.set(parentId, [id]);
-  }
-
-  // Обход в ширину с защитой от повторов: при испорченных данных цикл
-  // не должен превращаться в бесконечный цикл на странице.
-  for (const rootId of ids) {
-    const seen = new Set<string>([rootId]);
-    const queue = [rootId];
-    let total = 0;
-
-    while (queue.length > 0) {
-      const next: string[] = [];
-      for (const id of queue) {
-        for (const child of children.get(id) ?? []) {
-          if (seen.has(child)) continue;
-          seen.add(child);
-          total += 1;
-          next.push(child);
-        }
-      }
-      queue.length = 0;
-      queue.push(...next);
-    }
-
-    counts.set(rootId, total);
+  for (const row of (data ?? []) as { root_id: string; total: number | string }[]) {
+    counts.set(row.root_id, Number(row.total) || 0);
   }
 
   return counts;

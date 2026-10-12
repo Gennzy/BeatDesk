@@ -221,7 +221,7 @@ function CommentRow({
   // У только что отправленного комментария ника нет: рисовать «@ты» вместо
   // ссылки на профиль было бы враньём, поэтому имя выводится текстом.
   const profileHref = comment.authorUsername ? `/beatmakers/${comment.authorUsername}` : null;
-  const name = comment.authorUsername ? `@${comment.authorUsername}` : t("comments.anonymous");
+  const name = comment.authorUsername ? comment.authorUsername : t("comments.anonymous");
 
   return (
     <div className="flex gap-3">
