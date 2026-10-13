@@ -33,7 +33,10 @@ export async function GET() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) {
+    console.error("cart read failed", error.code);
+    return NextResponse.json({ error: "Не удалось загрузить корзину" }, { status: 400 });
+  }
 
   return NextResponse.json({ items: data ?? [] });
 }
@@ -93,7 +96,10 @@ export async function POST(request: Request) {
     { onConflict: "user_id,beat_id" },
   );
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) {
+    console.error("cart upsert failed", error.code);
+    return NextResponse.json({ error: "Не удалось добавить в корзину" }, { status: 400 });
+  }
 
   return NextResponse.json({ beatId, tier });
 }

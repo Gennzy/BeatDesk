@@ -67,7 +67,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .eq("user_id", user.id)
       .eq("kind", kind);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error) {
+      console.error("beat reaction delete failed", error.code);
+      return NextResponse.json({ error: "Не удалось убрать реакцию" }, { status: 400 });
+    }
     return NextResponse.json({ active: false });
   }
 
@@ -78,7 +81,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (error.message.includes("Свой бит")) {
       return NextResponse.json({ error: "Свой бит реагировать нельзя" }, { status: 400 });
     }
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    console.error("beat reaction failed", error.code);
+    return NextResponse.json({ error: "Не удалось поставить реакцию" }, { status: 400 });
   }
 
   return NextResponse.json({ active: true }, { status: 201 });

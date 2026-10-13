@@ -30,7 +30,10 @@ export function BeatShare({ beatId, title }: { beatId: string; title: string }) 
    */
   const [url, setUrl] = useState("");
 
+  // Клиентские значения — только после монтирования: window и navigator
+  // на сервере нет, и подстановка в рендере ломала гидрацию.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- window доступен только в браузере
     setUrl(`${window.location.origin}/beats/${beatId}`);
 
     /*

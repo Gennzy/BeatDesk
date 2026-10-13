@@ -62,7 +62,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ be
     .eq("user_id", user.id)
     .eq("beat_id", beatId);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) {
+    console.error("cart update failed", error.code);
+    return NextResponse.json({ error: "Не удалось сменить уровень" }, { status: 400 });
+  }
 
   return NextResponse.json({ beatId, tier });
 }
@@ -87,7 +90,10 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ b
 
   const { error } = await supabase.from("cart_items").delete().eq("user_id", user.id).eq("beat_id", beatId);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) {
+    console.error("cart delete failed", error.code);
+    return NextResponse.json({ error: "Не удалось убрать из корзины" }, { status: 400 });
+  }
 
   return NextResponse.json({ removed: beatId });
 }

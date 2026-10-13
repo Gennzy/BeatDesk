@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { FeedTabs } from "@/components/feed/feed-tabs";
-import type { FeedFilterState } from "@/lib/feed-filters";
 import { CatalogTiles } from "@/components/feed/catalog-tiles";
 import { FeedBanners } from "@/components/feed/feed-banners";
 import { Container } from "@/components/ui/container";

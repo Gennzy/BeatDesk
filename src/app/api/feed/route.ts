@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
   const { beats, nextOffset } = await fetchPublicBeats(supabase, offset, undefined, filters, user?.id ?? null);
     return NextResponse.json({ beats, nextOffset });
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "feed_error" }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Не удалось загрузить ленту" }, { status: 500 });
   }
 }

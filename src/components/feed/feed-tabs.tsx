@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense } from "react";
 
 import { FeedFiltersBar, type FeedFilterState } from "@/components/feed/feed-filters";
 import { FeedList } from "@/components/feed/feed-list";
@@ -34,26 +34,28 @@ export function FeedTabs({ beats, nextOffset, filters, posts, myBeats, loggedIn,
   const searchParams = useSearchParams();
 
   // Источник истины — адресная строка: вкладку можно переслать ссылкой,
-  // и кнопка «назад» работает как ожидается.
-  const [view, setView] = useState<View>(searchParams.get("view") === "posts" ? "posts" : "beats");
-  const [postsTab, setPostsTab] = useState<PostsTab>(searchParams.get("tab") === "following" ? "following" : "all");
-
-  /*
-   * Состояние догоняет адрес при навигации назад/вперёд: инициализация
-   * один раз оставляла вкладку на месте, хотя адрес уже сменился.
-   */
-  useEffect(() => {
-    setView(searchParams.get("view") === "posts" ? "posts" : "beats");
-    setPostsTab(searchParams.get("tab") === "following" ? "following" : "all");
-  }, [searchParams]);
+  // и кнопка «назад» работает как ожидается. Состояния нет вовсе: адрес
+  // меняется через router.replace, и строка сама перерисовывает вкладки.
+  const view: View = searchParams.get("view") === "posts" ? "posts" : "beats";
+  const postsTab: PostsTab = searchParams.get("tab") === "following" ? "following" : "all";
 
   function switchTo(next: View) {
     if (next === view) return;
-    setView(next);
 
     const params = new URLSearchParams(searchParams.toString());
     if (next === "posts") params.set("view", "posts");
     else params.delete("view");
+
+    router.replace(`/?${params.toString()}#feed`, { scroll: false });
+  }
+
+  function switchPostsTab(next: PostsTab) {
+    if (next === postsTab) return;
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", "posts");
+    if (next === "following") params.set("tab", "following");
+    else params.delete("tab");
 
     router.replace(`/?${params.toString()}#feed`, { scroll: false });
   }
@@ -98,7 +100,7 @@ export function FeedTabs({ beats, nextOffset, filters, posts, myBeats, loggedIn,
           myBeats={myBeats}
           loggedIn={loggedIn}
           myUsername={myUsername}
-          onTabChange={(next) => setPostsTab(next)}
+          onTabChange={switchPostsTab}
         />
         </div>
       )}

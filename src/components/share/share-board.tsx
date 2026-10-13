@@ -38,6 +38,22 @@ export function ShareBoard({ beats, channels, published }: Props) {
 
   const [selected, setSelected] = useState<string[]>([]);
   const [targets, setTargets] = useState<string[]>(channels.filter((item) => item.connected).map((item) => item.id));
+  const [prevChannels, setPrevChannels] = useState(channels);
+
+  /*
+   * Цели догоняют подключения в рендере, а не в эффекте: свежеподключённый
+   * канал выбирается сам, отключённый — уходит из выбора. Это штатный
+   * паттерн «состояние догоняет пропсы», а не побочка.
+   */
+  if (prevChannels !== channels) {
+    setPrevChannels(channels);
+    setTargets((prev) => {
+      const connected = new Set(channels.filter((item) => item.connected).map((item) => item.id));
+      const kept = prev.filter((id) => connected.has(id));
+      const added = [...connected].filter((id) => !prev.includes(id));
+      return [...kept, ...added];
+    });
+  }
   const [onlyPublic, setOnlyPublic] = useState(false);
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<ShareResult[] | null>(null);

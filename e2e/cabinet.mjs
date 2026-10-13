@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -78,6 +78,10 @@ try {
   console.log(`\nОшибки страницы: ${errors.length}`);
   for (const e of errors.slice(0, 5)) console.log(`  - ${e}`);
   console.log(`\nСнимки: ${OUT}`);
+
+  // Снимки без assertions всё равно должны ронять прогон при ошибках
+  // страницы: иначе это генератор картинок, а не проверка.
+  if (errors.length > 0) process.exitCode = 1;
 } finally {
   await browser.close();
 }

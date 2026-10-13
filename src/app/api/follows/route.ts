@@ -35,7 +35,10 @@ export async function POST(request: NextRequest) {
     { onConflict: "follower_id,following_id", ignoreDuplicates: true },
   );
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("follow failed", error.code);
+    return NextResponse.json({ error: "Не удалось подписаться" }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true, following: true });
 }
@@ -69,7 +72,10 @@ export async function DELETE(request: NextRequest) {
     .eq("follower_id", user.id)
     .eq("following_id", followingId);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("unfollow failed", error.code);
+    return NextResponse.json({ error: "Не удалось отписаться" }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true, following: false });
 }

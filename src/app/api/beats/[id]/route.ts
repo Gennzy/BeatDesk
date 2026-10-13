@@ -204,7 +204,10 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
   const { error } = await access.supabase.from("beats").delete().eq("id", id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("beat delete failed", error.code);
+    return NextResponse.json({ error: "Не удалось удалить бит" }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true, cleaned: folder });
 }

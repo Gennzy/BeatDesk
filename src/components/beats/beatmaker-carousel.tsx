@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useI18n } from "@/lib/i18n/provider";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { pluralRu } from "@/lib/plural";
 
 /**
@@ -43,12 +44,6 @@ type Maker = {
 /** Расстояние между соседями на экране, в долях ширины плитки. */
 const STEP = 0.34;
 
-/** Сколько плиток видно с каждой стороны. Дальше они за краем окна. */
-const VISIBLE = 4;
-
-/** Кадров в секунду. Медленно: лента должна читаться, а не мельтешить. */
-const FPS = 60;
-
 /** Скорость: плиток в секунду. */
 const SPEED = 0.22;
 
@@ -59,7 +54,7 @@ export function BeatmakerCarousel({ makers }: { makers: Maker[] }) {
   // Позиция с дробной частью: между целыми она и создаёт движение.
   const [position, setPosition] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [reduceMotion, setReduceMotion] = useState(false);
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   const count = makers.length;
 
@@ -82,16 +77,6 @@ export function BeatmakerCarousel({ makers }: { makers: Maker[] }) {
     },
     [count],
   );
-
-  useEffect(() => {
-    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduceMotion(query.matches);
-
-    const onChange = (event: MediaQueryListEvent) => setReduceMotion(event.matches);
-    query.addEventListener("change", onChange);
-
-    return () => query.removeEventListener("change", onChange);
-  }, []);
 
   useEffect(() => {
     // При одном продавце гонять пустую ленту незачем, а при включённом

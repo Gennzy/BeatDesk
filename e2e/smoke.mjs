@@ -161,13 +161,6 @@ function baseDir() {
  * и mp3Url лежит там текстом. Это детерминированно: значение либо есть,
  * либо нет, и ждать его не нужно.
  */
-/** Все ссылки на биты витрины — по ним меряется темп каждого трека. */
-async function allBeatLinks(page) {
-  return page.evaluate(() => [
-    ...new Set([...document.querySelectorAll('a[href^="/beats/"]')].map((node) => node.getAttribute("href"))),
-  ]);
-}
-
 async function findRealAudio(browser, beatHref, declaredBpm) {
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
@@ -673,6 +666,179 @@ async function main() {
       }
     }
 
+    // --- деньги: полный цикл с временным оператором -----------------------
+    /*
+     * КРИТ-путь, который раньше проверялся только текстом кнопки: создание
+     * считает комиссию, подтверждает только оператор, начисление ложится
+     * продавцу, возврат отзывает его же. Прогон временно выдаёт своему
+     * пользователю флаг оператора служебным ключом, а в конце снимает его
+     * вместе с самой учёткой. Без ключа блок пропускается, а не падает:
+     * руками его гоняют по прод-стенду с настоящей оплатой.
+     */
+    {
+      const env = loadEnvFile();
+      const url = env.NEXT_PUBLIC_SUPABASE_URL;
+      const key = env.SUPABASE_SERVICE_ROLE_KEY;
+
+      if (url && key) {
+        const headers = {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        };
+        // Ник с учётом повторных регистраций: суффикс мог нарасти x1, x2.
+        const e2eName = createdUsernames.at(-1) ?? `e2e${stamp}`;
+        const e2eEmail = `${e2eName}@studio.ru`;
+        const api = async (path, options = {}) => {
+          const response = await fetch(`${url}/rest/v1${path}`, { headers, ...options });
+          return response.json();
+        };
+
+        let orderId = null;
+        let madeOperator = false;
+
+        try {
+          // Бит для покупки: чужой, в продаже, с ценой MP3.
+          const target = await user.evaluate(async () => {
+            const response = await fetch("/api/feed?offset=0");
+            const { beats } = await response.json();
+            return (beats ?? []).find((beat) => beat.prices?.mp3 > 0) ?? null;
+          });
+
+          check("есть чужой бит для тестовой покупки", Boolean(target), "витрина пуста");
+
+          if (target) {
+            const created = await user.evaluate(
+              async ({ beatId, email }) => {
+                const response = await fetch("/api/orders", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ beatId, tier: "mp3", email }),
+                });
+                return { status: response.status, body: await response.json().catch(() => null) };
+              },
+              { beatId: target.id, email: e2eEmail },
+            );
+
+            check("заказ создаётся", created.status === 201 && Boolean(created.body?.id), `статус ${created.status}`);
+            orderId = created.body?.id ?? null;
+          }
+
+          if (orderId) {
+            // Продавец (он же покупатель здесь — не оператор) подтвердить не может.
+            const paidDenied = await user.evaluate(
+              async (id) => (await fetch(`/api/orders/${id}/paid`, { method: "POST" })).status,
+              orderId,
+            );
+            check("не оператор не подтверждает оплату", paidDenied === 403, `статус ${paidDenied}`);
+
+            const cancelDenied = await user.evaluate(
+              async (id) =>
+                (await fetch(`/api/orders/${id}/cancel`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ status: "cancelled" }),
+                })).status,
+              orderId,
+            );
+            check("чужой заказ не отменяется", cancelDenied === 403, `статус ${cancelDenied}`);
+
+            // Временный оператор: свой пользователь, флаг снимается в finally.
+            const me = await api(`/profiles?select=id&username=eq.${e2eName}`);
+            const myId = me?.[0]?.id;
+            if (myId) {
+              await fetch(`${url}/rest/v1/profiles?id=eq.${myId}`, {
+                method: "PATCH",
+                headers,
+                body: JSON.stringify({ is_operator: true }),
+              });
+              madeOperator = true;
+            }
+
+            if (madeOperator) {
+              const paid = await user.evaluate(
+                async (id) => (await fetch(`/api/orders/${id}/paid`, { method: "POST" })).status,
+                orderId,
+              );
+              check("оператор подтверждает оплату", paid === 200, `статус ${paid}`);
+
+              // Математика начисления: цена из витрины, комиссия 10%.
+              const price = target.prices.mp3;
+              const rows = await api(`/seller_transactions?select=kind,amount_minor,commission_minor&order_id=eq.${orderId}`);
+              const sale = (Array.isArray(rows) ? rows : []).find((row) => row.kind === "sale");
+              const commission = Math.round(price * 100 * 0.1);
+              check(
+                "начисление и комиссия 10%",
+                sale?.amount_minor === price * 100 - commission && sale?.commission_minor === commission,
+                `продавец получил ${sale?.amount_minor}, комиссия ${sale?.commission_minor}`,
+              );
+
+              // Покупатель забирает свой файл, чужой — нет.
+              const items = await api(`/order_items?select=id&order_id=eq.${orderId}`);
+              const itemId = items?.[0]?.id;
+              const download = itemId
+                ? await user.evaluate(
+                    async ({ order, item }) =>
+                      (await fetch(`/api/orders/${order}/download?item=${item}&kind=mp3`)).status,
+                    { order: orderId, item: itemId },
+                  )
+                : -1;
+              check("покупатель скачивает свой файл", download === 200, `статус ${download}`);
+
+              // Возврат отзывает начисление и лицензию.
+              const refunded = await user.evaluate(
+                async (id) =>
+                  (await fetch(`/api/orders/${id}/cancel`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: "refunded" }),
+                  })).status,
+                orderId,
+              );
+              check("оператор делает возврат", refunded === 200, `статус ${refunded}`);
+
+              const after = await api(`/seller_transactions?select=kind&order_id=eq.${orderId}`);
+              const kinds = new Set((Array.isArray(after) ? after : []).map((row) => row.kind));
+              check("возврат оставил отзыв начисления", kinds.has("sale") && kinds.has("refund"));
+
+              // Проверочные RPC отвечают, а не падают: счётчик веток пустым
+              // входом, верификация — булевым значением.
+              const emptyBranches = await fetch(`${url}/rest/v1/rpc/branch_counts`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify({ p_ids: [] }),
+              }).then((r) => r.json());
+              check("branch_counts отвечает пустым", Array.isArray(emptyBranches) && emptyBranches.length === 0);
+
+              const verified = await fetch(`${url}/rest/v1/rpc/weekly_verified`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify({ p_user: myId }),
+              }).then((r) => r.json());
+              check("weekly_verified отвечает булевым", typeof verified === "boolean", `получено ${verified}`);
+            }
+          }
+        } finally {
+          // Следы тестового цикла: лицензия, журнал, позиции, заказ.
+          // Флаг оператора умирает вместе с профилем в общей чистке.
+          if (orderId) {
+            const itemRows = await api(`/order_items?select=id&order_id=eq.${orderId}`);
+            for (const row of Array.isArray(itemRows) ? itemRows : []) {
+              await fetch(`${url}/rest/v1/licenses?order_item_id=eq.${row.id}`, { method: "DELETE", headers });
+            }
+            await fetch(`${url}/rest/v1/seller_transactions?order_id=eq.${orderId}`, { method: "DELETE", headers });
+            await fetch(`${url}/rest/v1/order_items?order_id=eq.${orderId}`, { method: "DELETE", headers });
+            await fetch(`${url}/rest/v1/orders?id=eq.${orderId}`, { method: "DELETE", headers });
+          }
+          if (madeOperator) {
+            console.log("  (флаг оператора снят вместе с учёткой в чистке)");
+          }
+        }
+      } else {
+        console.log("  (денежный цикл пропущен: нет SUPABASE_SERVICE_ROLE_KEY)");
+      }
+    }
+
     // --- витрина продавцов -------------------------------------------------
     /*
      * Конвейер проверяем на двух вещах: он есть и в нём только те, у кого
@@ -1079,7 +1245,6 @@ const guestOrder = await guestContext.newPage();
      */
     const tempoPage = await browser.newPage();
     await tempoPage.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 60_000 });
-    const beatLinks = await allBeatLinks(tempoPage);
     const declared = await tempoPage.evaluate(() =>
       [...document.querySelectorAll("article")].map((node) => {
         const link = node.querySelector('a[href^="/beats/"]');
@@ -1297,10 +1462,16 @@ async function cleanupCreatedUsers() {
   ];
 
   for (const [table, column] of steps) {
-    await fetch(`${url}/rest/v1/${table}?${column}=in.(${idList})`, {
+    const failed = await fetch(`${url}/rest/v1/${table}?${column}=in.(${idList})`, {
       method: "DELETE",
       headers,
-    }).catch(() => {});
+    })
+      .then((response) => !response.ok)
+      .catch(() => true);
+
+    // Молчаливый catch прятал неуборку под видом «убрано»: шаг, который
+    // не прошёл, виден в логе, а не в тишине.
+    if (failed) console.warn(`  уборка: ${table} по ${column} не удалилась`);
   }
 
   /*

@@ -146,6 +146,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
    * дефолтом, поэтому без этого шага сохранённый выбор не применился бы
    * никогда.
    */
+  // Громкость из localStorage применяется после монтирования: Audio
+  // и localStorage на сервере недоступны.
   useEffect(() => {
     if (volumeRestored) return;
 
@@ -153,6 +155,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const saved = readVolume();
 
     audio.volume = saved;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage доступен только в браузере
     setVolumeState(saved);
     setVolumeRestored(true);
   }, [ensureAudio, volumeRestored]);

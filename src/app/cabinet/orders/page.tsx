@@ -91,7 +91,10 @@ export default async function CabinetOrdersPage({
   // продавцов, и вся сумма заказа продавцу не принадлежит.
   const paidRows = rows.filter((row) => ["paid", "delivered"].includes(statusById.get(row.order_id) ?? ""));
 
-  const cutoff = period.days ? Date.now() - period.days * 86_400_000 : null;
+  const cutoff = period.days
+    ? // eslint-disable-next-line react-hooks/purity -- серверный рендер раз в запрос, а не подписка
+      Date.now() - period.days * 86_400_000
+    : null;
   const paidAtById = new Map(allOrders.map((order) => [order.id, order.paid_at ?? order.created_at]));
   const inPeriod = paidRows.filter((row) => {
     if (cutoff === null) return true;

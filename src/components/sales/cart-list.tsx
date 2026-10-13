@@ -10,7 +10,6 @@ import { EmptyState } from "@/components/ui/states";
 import { formatMoney } from "@/lib/currency";
 import { useI18n } from "@/lib/i18n/provider";
 import type { PriceKey } from "@/lib/prices";
-import { PRICE_KEYS } from "@/lib/prices";
 
 export type CartItem = {
   beatId: string;
@@ -46,7 +45,7 @@ export function CartList({ items, total, label, priceNames }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [tierError, setTierError] = useState<{ beatId: string; message: string } | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   if (items.length === 0) {
     return <EmptyState title={label.emptyTitle} description={label.emptyNote} action={{ label: label.toCatalog, href: "/#feed" }} />;
@@ -105,6 +104,7 @@ export function CartList({ items, total, label, priceNames }: Props) {
           >
             <Link href={`/beats/${item.beatId}`} className="focusable shrink-0">
               {item.coverUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={item.coverUrl}
                   alt=""

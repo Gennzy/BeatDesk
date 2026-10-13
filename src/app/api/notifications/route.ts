@@ -65,7 +65,10 @@ export async function GET(request: NextRequest) {
     .order("created_at", { ascending: false })
     .range(offset, offset + PAGE_SIZE - 1);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("notifications failed", error.code);
+    return NextResponse.json({ error: "Не удалось загрузить уведомления" }, { status: 500 });
+  }
 
   const rows = (data ?? []) as {
     id: string;
@@ -130,7 +133,10 @@ export async function PATCH(request: NextRequest) {
 
   const { error } = ids.length > 0 ? await query.in("id", ids).is("read_at", null) : await query.is("read_at", null);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("notifications read failed", error.code);
+    return NextResponse.json({ error: "Не удалось отметить уведомления" }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }

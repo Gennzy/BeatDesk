@@ -29,7 +29,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     { onConflict: "post_id,user_id", ignoreDuplicates: true },
   );
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("post like failed", error.code);
+    return NextResponse.json({ error: "Не удалось поставить лайк" }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true, liked: true });
 }
@@ -59,7 +62,10 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     .eq("post_id", id)
     .eq("user_id", user.id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("post unlike failed", error.code);
+    return NextResponse.json({ error: "Не удалось убрать лайк" }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true, liked: false });
 }

@@ -3,9 +3,8 @@
 import { CURRENCIES, DEFAULT_CURRENCY, formatMoney, isCurrency, type CurrencyCode } from "@/lib/currency";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 
-import { GenreSelect } from "@/components/beat/genre-select";
 import { BeatAssistant } from "@/components/beats/beat-assistant";
 import { SellReadiness } from "@/components/beats/sell-readiness";
 import { CurrencyPicker } from "@/components/profile/currency-picker";
@@ -56,20 +55,17 @@ export function EditBeatForm({ beat }: Props) {
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
 
   /*
-   * Превью обложки держим в состоянии, а не создаём в рендере: новый
-   * objectURL на каждый рендер тёк, а старый никто не освобождал.
+   * Превью создаётся в обработчике выбора, а не в эффекте: новый objectURL
+   * на каждый рендер тёк, а старый никто не освобождал. Здесь старый
+   * освобождается до создания нового.
    */
-  useEffect(() => {
-    if (!cover) {
-      setCoverPreview(null);
-      return;
-    }
-
-    const url = URL.createObjectURL(cover);
-    setCoverPreview(url);
-
-    return () => URL.revokeObjectURL(url);
-  }, [cover]);
+  function pickCover(file: File | null) {
+    setCoverPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return file ? URL.createObjectURL(file) : null;
+    });
+    setCover(file);
+  }
   // Валюта приходит из базы, поэтому проверяем её, а не верим на слово:
   // неизвестный код оставил бы пикер без выбранной валюты и тихо записал бы
   // рубли вместо того, что стоит в бите.
@@ -213,7 +209,7 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
             accept="image/jpeg,image/png,image/webp"
             onChange={async (event) => {
               const file = event.target.files?.[0];
-              setCover(file ? await compressImage(file) : null);
+              pickCover(file ? await compressImage(file) : null);
             }}
             className="label h-9 w-full max-w-xs cursor-pointer rounded-xs border border-line bg-ink px-3 py-2 text-mute file:mr-3 file:border-0 file:bg-signal file:px-2 file:py-1 file:text-ink"
           />

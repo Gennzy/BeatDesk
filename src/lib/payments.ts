@@ -8,9 +8,10 @@
  */
 export function platformPayment(): { supportEmail: string; account: string | null } {
   const account = (process.env.PLATFORM_ACCOUNT_DETAILS ?? "").trim();
+  const email = (process.env.SUPPORT_EMAIL ?? "").trim();
 
   return {
-    supportEmail: process.env.SUPPORT_EMAIL ?? "support@beatdesk.ru",
+    supportEmail: email.length > 0 ? email : "support@beatdesk.ru",
     account: account.length > 0 ? account : null,
   };
 }

@@ -66,7 +66,8 @@ export async function POST(request: NextRequest) {
     if (error.code === "23505") {
       return NextResponse.json({ error: "Ты уже ответил на этот комментарий" }, { status: 409 });
     }
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    console.error("beat comment failed", error.code);
+    return NextResponse.json({ error: "Не удалось оставить комментарий" }, { status: 400 });
   }
 
   return NextResponse.json({ status: "created" }, { status: 201 });
@@ -99,7 +100,10 @@ export async function DELETE(request: NextRequest) {
   // строка вернёт пустой результат, а не ошибку.
   const { error } = await supabase.from("beat_comments").delete().eq("id", id).eq("author_id", user.id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) {
+    console.error("beat comment delete failed", error.code);
+    return NextResponse.json({ error: "Не удалось удалить комментарий" }, { status: 400 });
+  }
 
   return NextResponse.json({ status: "deleted" });
 }
