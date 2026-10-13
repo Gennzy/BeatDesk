@@ -756,11 +756,15 @@ async function main() {
             }
 
             if (madeOperator) {
-              const paid = await user.evaluate(
-                async (id) => (await fetch(`/api/orders/${id}/paid`, { method: "POST" })).status,
-                orderId,
+              const paid = await user.evaluate(async (id) => {
+                const response = await fetch(`/api/orders/${id}/paid`, { method: "POST" });
+                return { status: response.status, body: await response.json().catch(() => null) };
+              }, orderId);
+              check(
+                "оператор подтверждает оплату",
+                paid.status === 200,
+                `статус ${paid.status}: ${JSON.stringify(paid.body).slice(0, 160)}`,
               );
-              check("оператор подтверждает оплату", paid === 200, `статус ${paid}`);
 
               // Математика начисления: цена из витрины, комиссия 10%.
               const price = target.prices.mp3;
