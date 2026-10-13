@@ -184,7 +184,7 @@ export function BeatCard({
             aria-label={active ? t("player.pause") : t("player.play")}
             aria-pressed={active}
             className={cn(
-              "absolute bottom-3 left-3 z-20 grid size-11 cursor-pointer place-items-center rounded-full border backdrop-blur-md transition-all duration-220 ease-out",
+              "absolute bottom-3 left-3 z-20 grid size-11 cursor-pointer place-items-center rounded-full border backdrop-blur-md transition-all duration-base ease-out",
               "translate-y-0 opacity-100 sm:translate-y-2 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100",
               active
                 ? "border-signal bg-signal text-ink shadow-[var(--glow-accent)]"

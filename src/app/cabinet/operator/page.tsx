@@ -7,7 +7,7 @@ import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 
-export const metadata = { title: "Оператор" };
+export const metadata = { title: "Оператор", robots: { index: false, follow: false } };
 
 type PendingOrder = {
   id: string;

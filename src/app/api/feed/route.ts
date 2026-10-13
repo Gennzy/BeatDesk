@@ -27,14 +27,24 @@ export async function GET(request: NextRequest) {
     return params.has(key) && Number.isFinite(value) ? value : undefined;
   };
 
-  const sort: FeedSort = params.get("sort") === "popular" ? "popular" : "new";
+  const sortParam = params.get("sort");
+  // По умолчанию — как у витрины: иначе первая страница (top с сервера)
+  // и догрузка (new отсюда) шли бы разным порядком.
+  const sort: FeedSort = sortParam === "popular" || sortParam === "new" ? sortParam : "top";
+
+  const bpmMin = number("bpmMin");
+  const bpmMax = number("bpmMax");
+  // Перевёрнутый диапазон читаем как опечатку порядка, а не как пустой
+  // фильтр: молча показать всё значило бы спрятать ошибку ввода.
+  const [lo, hi] =
+    bpmMin !== undefined && bpmMax !== undefined && bpmMin > bpmMax ? [bpmMax, bpmMin] : [bpmMin, bpmMax];
 
   const filters: FeedFilters = {
     sort,
-    query: params.get("q") ?? undefined,
+    query: params.get("q")?.trim() || undefined,
     key: params.get("key") || undefined,
-    bpmMin: number("bpmMin"),
-    bpmMax: number("bpmMax"),
+    bpmMin: lo,
+    bpmMax: hi,
   };
 
   try {

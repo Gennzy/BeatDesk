@@ -1,4 +1,5 @@
 import { getT } from "@/lib/i18n/server";
+import type { TranslationKey } from "@/lib/i18n/dictionaries";
 
 /**
  * Условия лицензии с конкретными числами.
@@ -32,7 +33,7 @@ export async function LicenseTerms({ tiers }: { tiers: { key: string; label: str
   const rows: { label: string; value: string }[] = [
     { label: t("license.type"), value: t(base === "exclusive" ? "license.typeExclusive" : "license.typeRegular") },
     { label: t("license.term"), value: t("license.termYears") },
-    { label: t("license.files"), value: filesSummary(tiers) },
+    { label: t("license.files"), value: filesSummary(t, tiers) },
     { label: t("license.paidStreams"), value: t("license.paidStreamsValue") },
     { label: t("license.copies"), value: t("license.copiesValue") },
     { label: t("license.performances"), value: t("license.performancesValue") },
@@ -67,17 +68,17 @@ export async function LicenseTerms({ tiers }: { tiers: { key: string; label: str
  * Названия уровней не повторяются: строка «MP3: MP3 · MP3 + WAV: MP3 + WAV»
  * читалась как тавтология. Перечисляются сами наборы, каждый — один раз.
  */
-function filesSummary(tiers: { key: string; label: string }[]): string {
+function filesSummary(t: (key: TranslationKey) => string, tiers: { key: string; label: string }[]): string {
   if (tiers.length === 0) return "—";
 
-  const sets = [...new Set(tiers.map((tier) => filesFor(tier.key)))];
+  const sets = [...new Set(tiers.map((tier) => filesFor(t, tier.key)))];
 
   return sets.join(" · ");
 }
 
-function filesFor(tier: string): string {
-  if (tier === "wav") return "MP3 + WAV";
-  if (tier === "trackout") return "MP3 + WAV + дорожки";
-  if (tier === "exclusive") return "MP3 + WAV + дорожки + аранжировка";
-  return "MP3";
+function filesFor(t: (key: TranslationKey) => string, tier: string): string {
+  if (tier === "wav") return t("license.setWav");
+  if (tier === "trackout") return t("license.setTrackout");
+  if (tier === "exclusive") return t("license.setExclusive");
+  return t("license.setMp3");
 }

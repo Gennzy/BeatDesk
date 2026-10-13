@@ -43,6 +43,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
   }
 
+  if (parentId !== null && !/^[0-9a-f-]{36}$/i.test(parentId)) {
+    return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
+  }
+
   if (text.length === 0) {
     return NextResponse.json({ error: "Пустой комментарий" }, { status: 400 });
   }
@@ -76,6 +80,14 @@ export async function DELETE(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) return NextResponse.json({ error: "Нужно войти" }, { status: 401 });
+
+  const delGate = rateLimit(clientKey(request, `beat-comment-del:${user.id}`), 60, 60_000);
+  if (!delGate.ok) {
+    return NextResponse.json(
+      { error: "Слишком много запросов, подожди минуту" },
+      { status: 429, headers: { "Retry-After": String(delGate.retryAfter) } },
+    );
+  }
 
   const id = new URL(request.url).searchParams.get("id") ?? "";
 

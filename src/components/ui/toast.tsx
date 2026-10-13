@@ -35,7 +35,7 @@ type ToastApi = {
 const ToastContext = createContext<ToastApi | null>(null);
 
 const VISIBLE_MS = 5_000;
-const EXIT_MS = 260;
+const EXIT_MS = 220;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -117,7 +117,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
           const className = cn(
             "pointer-events-auto flex w-full max-w-sm items-center gap-3 border border-line bg-ink-2 px-3 py-2.5 text-left shadow-lg shadow-black/40",
-            "transition duration-200 ease-out motion-safe:transition-transform",
+            "transition duration-base ease-out motion-safe:transition-transform",
             leaving.includes(toast.id) ? "opacity-0 -translate-y-2" : "opacity-100 translate-y-0",
           );
 

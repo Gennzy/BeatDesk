@@ -120,7 +120,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <div className="mt-8">
             <Suspense fallback={null}>
               {feedError && feed.beats.length === 0 ? (
-                <ErrorState title={t("feed.errorTitle")} description={feedError} />
+                <ErrorState label={t("states.errorLabel")} title={t("feed.errorTitle")} description={feedError} />
               ) : (
                 <FeedTabs
                   beats={feed.beats}

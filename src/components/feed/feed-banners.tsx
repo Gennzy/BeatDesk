@@ -109,19 +109,19 @@ function Motif({ kind }: { kind: Banner["motif"] }) {
   if (kind === "layers") {
     return (
       <svg viewBox="0 0 120 120" className={common} aria-hidden>
-        <rect x="14" y="16" width="74" height="74" rx="8" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent" />
-        <rect x="30" y="32" width="74" height="74" rx="8" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.65" className="text-accent" />
-        <rect x="46" y="48" width="60" height="58" rx="8" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.35" className="text-accent" />
+        <rect x="14" y="16" width="74" height="74" rx="8" fill="none" stroke="currentColor" strokeWidth="2" className="text-signal" />
+        <rect x="30" y="32" width="74" height="74" rx="8" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.65" className="text-signal" />
+        <rect x="46" y="48" width="60" height="58" rx="8" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.35" className="text-signal" />
       </svg>
     );
   }
 
   return (
     <svg viewBox="0 0 120 120" className={common} aria-hidden>
-      <path d="M60 84V30" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="text-accent" />
-      <path d="M40 48 60 28l20 20" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-accent" />
-      <path d="M22 92h76" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="text-accent" />
-      <path d="M34 106h52" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.4" className="text-accent" />
+      <path d="M60 84V30" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="text-signal" />
+      <path d="M40 48 60 28l20 20" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-signal" />
+      <path d="M22 92h76" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="text-signal" />
+      <path d="M34 106h52" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.4" className="text-signal" />
     </svg>
   );
 }

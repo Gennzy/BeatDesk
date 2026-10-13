@@ -272,6 +272,7 @@ export function UploadForm({ userId }: { userId: string }) {
               label={t(KIND_LABELS[kind])}
               prompt={t(KIND_PROMPTS[kind])}
               hint={t(KIND_HINTS[kind])}
+              removeLabel={t("upload.removeFile")}
               accept={BEAT_FILE_RULES[kind].accept}
               format={
                 kind === "mp3"
@@ -288,6 +289,7 @@ export function UploadForm({ userId }: { userId: string }) {
             label={t("upload.cover")}
             prompt={t("upload.coverPrompt")}
             hint={t("upload.coverHint")}
+            removeLabel={t("upload.removeFile")}
             accept="image/jpeg,image/png,image/webp"
             format="JPG · PNG · WEBP"
             selected={cover}

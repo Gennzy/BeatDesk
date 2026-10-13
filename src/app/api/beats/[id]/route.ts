@@ -2,6 +2,7 @@ import { isCurrency } from "@/lib/currency";
 import { NextResponse } from "next/server";
 
 import { MAX_COVER_BYTES, extensionOf, validateCoverFile } from "@/lib/beats";
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeGenre } from "@/lib/beat-validation";
 import { applyDiscount, normalizeDiscount, normalizePrices, pricesForDb } from "@/lib/prices";
@@ -17,7 +18,7 @@ async function requireOwner(beatId: string) {
   const { data: beat } = await supabase.from("beats").select("id, owner_id").eq("id", beatId).maybeSingle();
 
   if (!beat) return { error: NextResponse.json({ error: "Бит не найден" }, { status: 404 }) };
-  if (beat.owner_id !== user.id) return { error: NextResponse.json({ error: "Это не твой бит" }, { status: 403 }) };
+  if (beat.owner_id !== user.id) return { error: NextResponse.json({ error: "Чужой бит" }, { status: 403 }) };
 
   return { supabase, user, beat };
 }
@@ -46,6 +47,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params;
   const access = await requireOwner(id);
   if ("error" in access) return access.error;
+
+  const gate = rateLimit(clientKey(request, `beat-edit:${access.user.id}`), 60, 60_000);
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "Слишком много запросов, подожди минуту" },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
+    );
+  }
 
   const form = await request.formData();
   const text = (key: string) => {
@@ -81,7 +90,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   const musicalKey = text("key");
-  if (musicalKey) patch.key = musicalKey;
+  if (musicalKey) patch.key = musicalKey.trim();
 
   /*
    * Жанр сверяется со списком и не может быть пустым: снять его нельзя,
@@ -172,10 +181,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 }
 
 /** Удаление бита вместе с файлами: освобождаем хранилище. */
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const access = await requireOwner(id);
   if ("error" in access) return access.error;
+
+  const gate = rateLimit(clientKey(request, `beat-delete:${access.user.id}`), 20, 60_000);
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "Слишком много запросов, подожди минуту" },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
+    );
+  }
 
   const folder = `${access.user.id}/${id}`;
 

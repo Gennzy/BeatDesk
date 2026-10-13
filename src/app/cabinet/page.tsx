@@ -1,6 +1,6 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-
 import { Container } from "@/components/ui/container";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { formatMoney, formatMoneyByCurrency } from "@/lib/currency";
@@ -9,6 +9,11 @@ import { collectBeatmakerStats, computeAchievements } from "@/lib/sales/achievem
 import { computeWeekly } from "@/lib/sales/weekly";
 import { WeeklyMissions } from "@/components/sales/weekly-missions";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = {
+  title: "Кабинет",
+  robots: { index: false, follow: false },
+};
 
 /**
  * Кабинет битмейкера.
@@ -309,7 +314,7 @@ type T = Awaited<ReturnType<typeof getT>>;
  * а не фразы интерфейса, и «MP3 + WAV» переводить нечего.
  */
 function tierLabel(tier: string): string {
-  return tier === "mp3" ? "MP3" : tier === "wav" ? "MP3 + WAV" : tier === "trackout" ? "TRACK OUT" : "ЭКСКЛЮЗИВ";
+  return tier === "mp3" ? "MP3" : tier === "wav" ? "MP3 + WAV" : tier === "trackout" ? "Track Out" : "Эксклюзив";
 }
 
 /** Следующая цель: без неё список достижений выглядит как список медалей. */

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PostCard } from "@/components/posts/post-card";
 import { PostComposer } from "@/components/posts/post-composer";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/states";
 import type { FeedBeat } from "@/lib/feed";
 import { useI18n } from "@/lib/i18n/provider";
 import { useRealtime } from "@/lib/realtime";
@@ -57,23 +58,33 @@ export function PostsFeed({ tab, initial, myBeats, loggedIn, myUsername, onTabCh
   }, []);
 
   /** Забирает свежие посты и решает: показать плашкой или добавить сразу. */
+  /*
+   * Известные id держим в ref, а не в зависимостях: visible и pending — новые
+   * массивы каждый рендер, и колбэк пересоздавался бы вместе с ними, снося
+   * realtime-подписку и таймер страховки на каждый чих ленты.
+   */
+  const knownIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    knownIds.current = new Set([...visible, ...pending].map((post) => post.id));
+  });
+
   const absorbNew = useCallback(async () => {
     if (!loggedIn) return;
     const response = await fetch("/api/posts?tab=all&offset=0", { cache: "no-store" }).catch(() => null);
     if (!response?.ok) return;
 
     const data = (await response.json()) as { posts?: Post[] };
-    const fresh = (data.posts ?? []).filter(
-      (post) => !visible.some((item) => item.id === post.id) && !pending.some((item) => item.id === post.id),
-    );
+    const fresh = (data.posts ?? []).filter((post) => !knownIds.current.has(post.id));
     if (fresh.length === 0) return;
+
+    for (const post of fresh) knownIds.current.add(post.id);
 
     if (topRef.current && isAll) {
       setLive((prev) => [...fresh, ...prev]);
     } else {
       setPending((prev) => [...fresh, ...prev]);
     }
-  }, [isAll, loggedIn, pending, visible]);
+  }, [isAll, loggedIn]);
 
   useRealtime("posts", () => void absorbNew(), loggedIn);
 
@@ -215,7 +226,10 @@ export function PostsFeed({ tab, initial, myBeats, loggedIn, myUsername, onTabCh
       ) : null}
 
       {visible.length === 0 && !loading ? (
-        <p className="text-sub text-mute">{isAll ? t("posts.empty") : t("posts.emptyFollowing")}</p>
+        <EmptyState
+          title={isAll ? t("posts.emptyTitle") : t("posts.emptyFollowingTitle")}
+          description={isAll ? t("posts.empty") : t("posts.emptyFollowing")}
+        />
       ) : (
         <ul className="flex flex-col gap-4">
           {visible.map((post) => (

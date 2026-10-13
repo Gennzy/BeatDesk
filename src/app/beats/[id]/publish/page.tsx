@@ -69,7 +69,7 @@ export default async function PublishPage({ params }: { params: Promise<{ id: st
 
           <p className="label text-mute">
             <Link href={`/beats/${id}`} className="underline-offset-4 hover:text-paper hover:underline">
-              ← {t("share.title")}
+              <span aria-hidden>←</span> {t("beat.backToBeat")}
             </Link>
           </p>
         </div>

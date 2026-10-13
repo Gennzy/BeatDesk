@@ -32,7 +32,14 @@ export function AuthPromptProvider({ loggedIn, children }: { loggedIn: boolean; 
   return (
     <AuthPromptContext.Provider value={value}>
       {children}
-      {request ? <AuthPrompt nextPath={pathname} username={request.username} action={request.action} /> : null}
+      {request ? (
+        <AuthPrompt
+          nextPath={pathname}
+          username={request.username}
+          action={request.action}
+          onClose={() => setRequest(null)}
+        />
+      ) : null}
     </AuthPromptContext.Provider>
   );
 }
@@ -40,6 +47,7 @@ export function AuthPromptProvider({ loggedIn, children }: { loggedIn: boolean; 
 export function useAuthPrompt(): ContextValue {
   const context = useContext(AuthPromptContext);
 
-  // Без провайдера ничего не ломаем: компоненты просто работают как раньше.
-  return context ?? { requireAuth: () => undefined, loggedIn: true };
+  // Без провайдера считаем гостем: открыть гейт по умолчанию значило бы
+  // показать гостю то, что положено только вошедшему.
+  return context ?? { requireAuth: () => undefined, loggedIn: false };
 }

@@ -13,6 +13,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Лента закрыта для гостей везде одинаково: RLS и так отдаст пустоту,
+  // но явный 401 честнее пустого списка — пустота выглядит как «ответов нет».
+  if (!user) return NextResponse.json({ error: "Нужно войти" }, { status: 401 });
+
   const gate = rateLimit(clientKey(request, `replies:${id}`), 120, 60_000);
   if (!gate.ok) {
     return NextResponse.json({ error: "Слишком много запросов" }, { status: 429 });
@@ -21,7 +25,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const raw = Number(request.nextUrl.searchParams.get("offset") ?? 0);
   const offset = Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 0;
 
-  const replies = await fetchReplies(supabase, id, user?.id ?? null, offset, REPLIES_PAGE_SIZE);
+  const replies = await fetchReplies(supabase, id, user.id, offset, REPLIES_PAGE_SIZE);
 
   return NextResponse.json({
     replies,

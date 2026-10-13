@@ -138,5 +138,19 @@ export async function POST(request: Request) {
 
   const failed = results.filter((item) => !item.ok).length;
 
-  return NextResponse.json({ results, done: results.length - failed, failed });
+  /*
+   * Запрошенные, но пропущенные — тоже в ответе: чужие или удалённые биты
+   * и неизвестные площадки отбрасываются выше молча, и без этих строк
+   * «готово 2 из 2» врало бы при запрошенных пяти.
+   */
+  const foundIds = new Set(beats.map((beat) => beat.id));
+  const skipped = [
+    ...beatIds.filter((beatId) => !foundIds.has(beatId)).map((beatId) => ({ beatId, title: "", platform: "", ok: false as const, error: "Бит не найден или чужой" })),
+    ...(body.platforms ?? [])
+      .filter((platform): platform is string => typeof platform === "string" && platform.length > 0 && !isPlatformId(platform))
+      .slice(0, MAX_PLATFORMS)
+      .map((platform) => ({ beatId: "", title: "", platform, ok: false as const, error: "Неизвестная площадка" })),
+  ];
+
+  return NextResponse.json({ results: [...results, ...skipped], done: results.length - failed, failed: failed + skipped.length });
 }

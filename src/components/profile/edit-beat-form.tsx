@@ -3,7 +3,7 @@
 import { CURRENCIES, DEFAULT_CURRENCY, formatMoney, isCurrency, type CurrencyCode } from "@/lib/currency";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { GenreSelect } from "@/components/beat/genre-select";
 import { BeatAssistant } from "@/components/beats/beat-assistant";
@@ -53,6 +53,23 @@ export function EditBeatForm({ beat }: Props) {
   const router = useRouter();
 
   const [cover, setCover] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+
+  /*
+   * Превью обложки держим в состоянии, а не создаём в рендере: новый
+   * objectURL на каждый рендер тёк, а старый никто не освобождал.
+   */
+  useEffect(() => {
+    if (!cover) {
+      setCoverPreview(null);
+      return;
+    }
+
+    const url = URL.createObjectURL(cover);
+    setCoverPreview(url);
+
+    return () => URL.revokeObjectURL(url);
+  }, [cover]);
   // Валюта приходит из базы, поэтому проверяем её, а не верим на слово:
   // неизвестный код оставил бы пикер без выбранной валюты и тихо записал бы
   // рубли вместо того, что стоит в бите.
@@ -179,7 +196,7 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
         <div className="grid size-24 shrink-0 place-items-center overflow-hidden border border-line bg-ink-2">
           {cover ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={URL.createObjectURL(cover)} alt="" className="size-full object-cover" />
+            <img src={coverPreview ?? undefined} alt="" className="size-full object-cover" />
           ) : beat.coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={beat.coverUrl} alt="" className="size-full object-cover" />
@@ -365,7 +382,7 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
           {state === "saving" ? t("edit.saving") : t("profile.save")}
         </Button>
         <Button type="button" variant="ink" size="lg" href={`/beats/${beat.id}`}>
-          {t("share.title")}
+          {t("beat.backToBeat")}
         </Button>
       </div>
     </form>

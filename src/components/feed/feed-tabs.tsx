@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 import { FeedFiltersBar, type FeedFilterState } from "@/components/feed/feed-filters";
 import { FeedList } from "@/components/feed/feed-list";
@@ -37,6 +37,15 @@ export function FeedTabs({ beats, nextOffset, filters, posts, myBeats, loggedIn,
   // и кнопка «назад» работает как ожидается.
   const [view, setView] = useState<View>(searchParams.get("view") === "posts" ? "posts" : "beats");
   const [postsTab, setPostsTab] = useState<PostsTab>(searchParams.get("tab") === "following" ? "following" : "all");
+
+  /*
+   * Состояние догоняет адрес при навигации назад/вперёд: инициализация
+   * один раз оставляла вкладку на месте, хотя адрес уже сменился.
+   */
+  useEffect(() => {
+    setView(searchParams.get("view") === "posts" ? "posts" : "beats");
+    setPostsTab(searchParams.get("tab") === "following" ? "following" : "all");
+  }, [searchParams]);
 
   function switchTo(next: View) {
     if (next === view) return;

@@ -95,10 +95,16 @@ describe("тональность бита", () => {
     expect(normalizeKey("A♯ minor")).toBe("A# minor");
   });
 
+  it("бемоль приводится к диезу, а не отбрасывается", () => {
+    // Db minor и C# minor — одна нота: анализатор аудио понимает бемоли,
+    // и форма обязана тоже, иначе человек перепечатывает верную тональность.
+    expect(normalizeKey("Db minor")).toBe("C# minor");
+    expect(normalizeKey("Bb major")).toBe("A# major");
+    expect(normalizeKey("E b minor")).toBe("D# minor");
+  });
+
   it("бемоль у не той ноты отбрасывается", () => {
-    // В списке тональностей Gb нет, только G#. Тихая подмена звука опаснее
-    // отказа: фильтр площадки не найдёт бит по несуществующей тональности.
-    expect(normalizeKey("E b minor")).toBeNull();
+    // B# не существует ни в какой записи — здесь отказ честен.
     expect(normalizeKey("B# major")).toBeNull();
   });
 });

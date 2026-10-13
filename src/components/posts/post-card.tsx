@@ -140,19 +140,14 @@ export function PostCard({ post, loggedIn = true, depth = 0, inThread = false }:
           </Link>
 
           {track ? (
-            <span
-              role="button"
-              tabIndex={0}
+            <button
+              type="button"
               onClick={togglePreview}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter" && event.key !== " ") return;
-                event.preventDefault();
-                togglePreview();
-              }}
+              aria-pressed={isBeatPlaying}
               className="chip chip-hover shrink-0 px-3 py-1.5"
             >
               {isBeatPlaying ? t("posts.pause") : t("posts.play")}
-            </span>
+            </button>
           ) : null}
         </div>
       ) : null}

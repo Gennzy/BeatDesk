@@ -8,6 +8,7 @@ import { DiscountPrice } from "@/components/beat/discount-price";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/states";
 import { formatMoney } from "@/lib/currency";
+import { useI18n } from "@/lib/i18n/provider";
 import type { PriceKey } from "@/lib/prices";
 import { PRICE_KEYS } from "@/lib/prices";
 
@@ -41,8 +42,10 @@ type Props = {
  * человеку то, чего этот бит не продаёт.
  */
 export function CartList({ items, total, label, priceNames }: Props) {
+  const { t } = useI18n();
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
+  const [tierError, setTierError] = useState<{ beatId: string; message: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
   if (items.length === 0) {
@@ -64,6 +67,7 @@ export function CartList({ items, total, label, priceNames }: Props) {
 
   async function setTier(beatId: string, tier: PriceKey) {
     setBusy(beatId);
+    setTierError(null);
 
     try {
       const response = await fetch(`/api/cart/${beatId}`, {
@@ -75,7 +79,7 @@ export function CartList({ items, total, label, priceNames }: Props) {
       if (!response.ok) {
         const data = (await response.json().catch(() => null)) as { error?: string } | null;
 
-        window.alert(data?.error ?? "Не удалось сменить уровень");
+        setTierError({ beatId, message: data?.error ?? t("cart.tierError") });
         return;
       }
 
@@ -100,13 +104,17 @@ export function CartList({ items, total, label, priceNames }: Props) {
             }
           >
             <Link href={`/beats/${item.beatId}`} className="focusable shrink-0">
-              <img
-                src={item.coverUrl ?? ""}
-                alt=""
-                width={64}
-                height={64}
-                className="size-16 rounded-lg object-cover"
-              />
+              {item.coverUrl ? (
+                <img
+                  src={item.coverUrl}
+                  alt=""
+                  width={64}
+                  height={64}
+                  className="size-16 rounded-lg object-cover"
+                />
+              ) : (
+                <span aria-hidden className="cover-grid block size-16 rounded-lg border border-line" />
+              )}
             </Link>
 
             <div className="flex min-w-48 flex-1 flex-col gap-1.5">
@@ -136,6 +144,9 @@ export function CartList({ items, total, label, priceNames }: Props) {
                   ))}
                 </select>
               </label>
+              {tierError?.beatId === item.beatId ? (
+                <p className="label leading-relaxed text-amber">{tierError.message}</p>
+              ) : null}
             </div>
 
             <div className="flex items-center gap-5">

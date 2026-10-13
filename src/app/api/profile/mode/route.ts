@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -17,6 +18,14 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) return NextResponse.json({ error: "Нужно войти" }, { status: 401 });
+
+  const gate = rateLimit(clientKey(request, `mode:${user.id}`), 30, 60_000);
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "Слишком много запросов, подожди минуту" },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
+    );
+  }
 
   const body = (await request.json().catch(() => null)) as { mode?: unknown } | null;
   const mode = body?.mode === "seller" ? "seller" : body?.mode === "buyer" ? "buyer" : null;

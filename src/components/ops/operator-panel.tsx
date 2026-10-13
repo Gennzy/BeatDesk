@@ -37,7 +37,7 @@ type Payout = {
  * уже сделанную работу как ожидающую.
  */
 export function OperatorPanel({ orders, payouts }: { orders: Order[]; payouts: Payout[] }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
 
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -69,7 +69,7 @@ export function OperatorPanel({ orders, payouts }: { orders: Order[]; payouts: P
   }
 
   const date = (value: string) =>
-    new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(
+    new Intl.DateTimeFormat(locale === "ru" ? "ru-RU" : "en-US", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(
       new Date(value),
     );
 

@@ -24,7 +24,7 @@ import { useI18n } from "@/lib/i18n/provider";
  * третьим слоем — чтобы кнопка просто не рисовалась там, где нажатие всё
  * равно было бы отклонено.
  */
-export function SellerActions({ orderId }: { orderId: string }) {
+export function SellerActions({ orderId, status }: { orderId: string; status: "pending" | "paid" }) {
   const { t } = useI18n();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -52,11 +52,49 @@ export function SellerActions({ orderId }: { orderId: string }) {
     }
   }
 
+  /*
+   * Возврат — здесь же, а не отдельным экраном: оператор уже на странице
+   * заказа, деньги уже у площадки, и уводить его в кабинет ради одного
+   * нажатия — лишний шаг. Продавцу эта кнопка не рисуется: страницу с ней
+   * видит только оператор.
+   */
+  async function refund() {
+    setBusy(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/orders/${orderId}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "refunded" }),
+      });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+
+        setError(data?.error ?? t("order.error"));
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      setError(t("order.error"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-3 pt-8">
-      <Button type="button" size="md" disabled={busy} onClick={() => void confirm()}>
-        {busy ? t("order.confirming") : t("order.confirmPayment")}
-      </Button>
+      {status === "pending" ? (
+        <Button type="button" size="md" disabled={busy} onClick={() => void confirm()}>
+          {busy ? t("order.confirming") : t("order.confirmPayment")}
+        </Button>
+      ) : (
+        <Button type="button" size="md" variant="ink" disabled={busy} onClick={() => void refund()}>
+          {busy ? t("order.confirming") : t("order.refund")}
+        </Button>
+      )}
       <span className="max-w-[52ch] text-xs leading-relaxed text-mute">{t("order.operatorHint")}</span>
       {error ? <span className="label text-amber">{error}</span> : null}
     </div>

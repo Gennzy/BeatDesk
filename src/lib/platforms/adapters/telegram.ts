@@ -14,18 +14,23 @@ import type { PublishPayload, PublishResult } from "../payload";
 
 export { fetchUpdates };
 
-function chatLink(chatId: number, messageId: number): string {
+function chatLink(chatId: number, messageId: number): string | null {
   const numeric = String(chatId);
 
   if (numeric.startsWith("-100")) {
     return `https://t.me/c/${numeric.slice(4)}/${messageId}`;
   }
 
-  return `https://t.me/c/${messageId}`;
+  /*
+   * У обычной группы и лички публичной ссылки вида t.me/c нет: там нужен
+   * id чата, которого в ссылке нет. Возвращаем null вместо битой ссылки —
+   * раньше уходила https://t.me/c/{messageId} без чата, и вела в никуда.
+   */
+  return null;
 }
 
 /**
- * Пост бита в канал или в личку: обложка с подписью и кнопками,
+ * Пост бита в канал или в личку: обложка с подписью,
  * под ней сам mp3.
  */
 export async function publishToTelegram(
@@ -132,7 +137,7 @@ export async function publishToTelegram(
           // но пост есть — иначе бит просто не опубликован.
           return {
             ok: true,
-            externalUrl: chatLink(Number(chatId), message.message_id),
+            externalUrl: chatLink(Number(chatId), message.message_id) ?? undefined,
             detail: {
               messages: [message.message_id],
               chatId,
@@ -174,7 +179,7 @@ export async function publishToTelegram(
 
   return {
     ok: true,
-    externalUrl: chatLink(Number(chatId), message.message_id),
+    externalUrl: chatLink(Number(chatId), message.message_id) ?? undefined,
     detail: { messages: [message.message_id], chatId },
   };
 }

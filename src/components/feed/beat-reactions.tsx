@@ -175,6 +175,7 @@ function Reaction({
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={active}
       aria-label={count > 0 ? `${label}: ${count}` : label}
       title={hint}

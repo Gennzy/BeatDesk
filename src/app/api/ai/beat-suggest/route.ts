@@ -23,9 +23,25 @@ const number = (value: unknown): number | undefined => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 };
 
+/** Темп бита: за пределами 40–300 это не темп, а мусор в промпт. */
+const bpm = (value: unknown): number | undefined => {
+  const parsed = number(value);
+  return parsed !== undefined && parsed >= 40 && parsed <= 300 ? parsed : undefined;
+};
+
+/** Длительность в секундах: час — потолок с запасом. */
+const duration = (value: unknown): number | undefined => {
+  const parsed = number(value);
+  return parsed !== undefined && parsed <= 3600 ? parsed : undefined;
+};
+
 const list = (value: unknown, max: number, limit: number): string[] =>
   Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean).slice(0, limit)
+    ? value
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim().slice(0, max))
+        .filter(Boolean)
+        .slice(0, limit)
     : [];
 
 export async function POST(request: Request) {
@@ -58,11 +74,13 @@ export async function POST(request: Request) {
 
   const facts: BeatFacts = {
     title: text(body.title, 80) || undefined,
-    bpm: number(body.bpm),
+    // Темп и длительность в разумных пределах: иначе чужое число раздувает
+    // промпт платного AI без пользы для подсказки.
+    bpm: bpm(body.bpm),
     musicalKey: text(body.key, 12) || undefined,
     tags: list(body.tags, 24, 12),
     artists: list(body.artists, 60, 30),
-    duration: number(body.duration),
+    duration: duration(body.duration),
     hasStems: body.hasStems === true,
     hasWav: body.hasWav === true,
   };

@@ -114,6 +114,7 @@ export function FeedList({ initial, initialNextOffset, filters, signedIn }: Prop
 
         {status === "error" ? (
           <ErrorState
+            label={t("states.errorLabel")}
             title={t("states.error.title")}
             description={t("states.error.sub")}
             action={

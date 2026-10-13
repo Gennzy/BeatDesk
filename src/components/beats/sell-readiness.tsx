@@ -56,7 +56,7 @@ export function SellReadiness({ prices, title, tags, roles }: Props) {
       {/* Заголовок тем же стилем, что и остальные разделы формы: блок был
           единственным, кто остался на старой мелкой подписи. */}
       <div className="flex items-center gap-3">
-        <span aria-hidden className="size-1.5 shrink-0 bg-accent" />
+        <span aria-hidden className="size-1.5 shrink-0 bg-signal" />
         <span className="text-sm font-semibold uppercase tracking-wider text-paper">
           {t("readiness.title")}
         </span>

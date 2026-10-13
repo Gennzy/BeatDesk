@@ -20,6 +20,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   if (!user) return NextResponse.json({ error: "Нужно войти" }, { status: 401 });
 
+  // Подписанная ссылка — это фактически выдача доступа к файлу: лимит
+  // стоит до обращений в базу, а не после.
+  const gate = rateLimit(clientKey(request, `masters:${user.id}`), 30, 60_000);
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "Слишком много запросов, подожди минуту" },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
+    );
+  }
+
   const { data: beat } = await supabase
     .from("beats")
     .select("owner_id")
@@ -29,15 +39,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!beat) return NextResponse.json({ error: "Бит не найден" }, { status: 404 });
   if (beat.owner_id !== user.id) {
     return NextResponse.json({ error: "Мастера доступны только автору бита" }, { status: 403 });
-  }
-
-  // Подписанная ссылка — это фактически выдача доступа к файлу, лимит обязателен.
-  const gate = rateLimit(clientKey(request, `masters:${user.id}`), 30, 60_000);
-  if (!gate.ok) {
-    return NextResponse.json(
-      { error: "Слишком много запросов, подожди минуту" },
-      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
-    );
   }
 
   let paths: string[];
@@ -52,8 +53,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (paths.length === 0) return NextResponse.json({ urls: [] });
   if (paths.length > 60) return NextResponse.json({ error: "Слишком много частей" }, { status: 400 });
 
-  const mine = paths.every((path) => path.startsWith(`${user.id}/`));
-  if (!mine) return NextResponse.json({ error: "Это не твой файл" }, { status: 403 });
+  /*
+   * Путь привязан к биту из адреса, а не просто к папке автора: иначе
+   * подписью через один бит можно было бы выдавать файлы другого.
+   * Точки отсекаем явно — нормализацию Storage на веру не берём.
+   */
+  const prefix = `${user.id}/${id}/`;
+  const mine = paths.every((path) => path.startsWith(prefix) && !path.includes(".."));
+  if (!mine) return NextResponse.json({ error: "Чужой файл" }, { status: 403 });
 
   const urls: string[] = [];
 

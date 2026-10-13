@@ -24,9 +24,9 @@ const STATUS_LABEL: Record<Status, "order.pending" | "order.paid" | "order.faile
 /**
  * Заказ в списке продавца.
  *
- * Заказ, ждущий подтверждения, можно закрыть прямо отсюда: заходить в него
- * ради одного нажатия — лишний шаг, а неподтверждённый заказ держит деньги
- * и файлы покупателя.
+ * Подтвердить оплату отсюда может только оператор: деньги приходят на счёт
+ * площадки, и продавец поступления не видит. Продавцу видна ссылка на заказ,
+ * где написано, что подтверждение — за оператором.
  */
 export function SellerOrderRow({
   orderId,
@@ -34,12 +34,14 @@ export function SellerOrderRow({
   buyerEmail,
   createdAt,
   items,
+  canConfirm = false,
 }: {
   orderId: string;
   status: Status;
   buyerEmail: string;
   createdAt: string;
   items: Item[];
+  canConfirm?: boolean;
 }) {
   const { t, locale } = useI18n();
   const toast = useToast();
@@ -50,10 +52,38 @@ export function SellerOrderRow({
   const total = items.reduce((sum, item) => sum + item.net, 0);
   const currency = items[0]?.currency ?? "RUB";
 
-  async function confirm() {
+  async function cancel() {
     if (busy) return;
     setBusy(true);
 
+    /*
+     * Отмена висящего заказа освобождает бит из придержания: пока заказ
+     * висит, бит никому не продаётся, и тянуть с отменой — значит держать
+     * витрину закрытой. Денег здесь нет, поэтому продавец делает это сам.
+     */
+    try {
+      const response = await fetch(`/api/orders/${orderId}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "cancelled" }),
+      });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+        toast.show({ icon: "close", title: data?.error ?? t("order.error") });
+        return;
+      }
+
+      setCurrent("cancelled");
+      toast.show({ icon: "check", title: t("order.cancelledDone") });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirm() {
+    if (busy) return;
+    setBusy(true);
     try {
       const response = await fetch(`/api/orders/${orderId}/paid`, {
         method: "POST",
@@ -105,7 +135,7 @@ export function SellerOrderRow({
       <div className="flex shrink-0 items-center gap-3 sm:flex-col sm:items-end">
         <span className="font-mono text-sm text-paper tabular-nums">{formatMoney(total / 100, currency)}</span>
 
-        {current === "pending" ? (
+        {current === "pending" && canConfirm ? (
           <button
             type="button"
             onClick={() => void confirm()}
@@ -114,6 +144,15 @@ export function SellerOrderRow({
           >
             <Icon name="check" className="size-3.5" />
             {busy ? t("order.confirming") : t("order.confirmPayment")}
+          </button>
+        ) : current === "pending" ? (
+          <button
+            type="button"
+            onClick={() => void cancel()}
+            disabled={busy}
+            className="label flex h-8 items-center rounded-pill border border-line px-3 text-mute transition-colors hover:border-line-2 hover:text-paper disabled:opacity-50"
+          >
+            {busy ? t("order.confirming") : t("order.cancel")}
           </button>
         ) : (
           <a href={`/orders/${orderId}`} className="chip chip-hover">
@@ -128,5 +167,5 @@ export function SellerOrderRow({
 
 /** Названия уровней одинаковы на двух языках: это ключи тарифов. */
 function tierLabel(tier: string): string {
-  return tier === "mp3" ? "MP3" : tier === "bundle" ? "MP3 + WAV" : tier === "trackout" ? "TRACK OUT" : "ЭКСКЛЮЗИВ";
+  return tier === "mp3" ? "MP3" : tier === "bundle" ? "MP3 + WAV" : tier === "trackout" ? "Track Out" : "Эксклюзив";
 }

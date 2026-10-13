@@ -47,7 +47,7 @@ export default async function BeatmakersPage() {
           />
 
           <div className="flex items-center gap-3 pt-4">
-            <span aria-hidden className="size-1.5 shrink-0 bg-accent" />
+            <span aria-hidden className="size-1.5 shrink-0 bg-signal" />
             <span className="text-sm font-semibold uppercase tracking-wider text-paper">
               {t("beatmakers.list")}
             </span>
@@ -67,7 +67,7 @@ export default async function BeatmakersPage() {
                       {maker.username}
                     </span>
                     {maker.level >= 3 ? (
-                      <span className="label text-accent">
+                      <span className="label text-signal">
                         {t("seller.level", { level: String(maker.level) })}
                       </span>
                     ) : null}

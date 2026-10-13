@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { Container } from "@/components/ui/container";
@@ -7,6 +8,11 @@ import { fetchBeatsByOwner } from "@/lib/feed";
 import { getT } from "@/lib/i18n/server";
 import { SALE_STATE_LABELS } from "@/lib/sales/state";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = {
+  title: "Мои биты",
+  robots: { index: false, follow: false },
+};
 
 /**
  * Мои биты: список того, что загружено, с состоянием продажи и быстрыми

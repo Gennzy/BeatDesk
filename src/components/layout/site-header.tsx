@@ -96,7 +96,7 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
                   key={link.href}
                   href={link.href}
                   className={cn(
-                    "label rounded-pill px-3 py-1.5 transition-colors duration-150",
+                    "label rounded-pill px-3 py-1.5 transition-colors duration-fast",
                     pathname === link.href
                       ? "bg-ink-3 text-paper"
                       : "text-mute hover:bg-ink-2 hover:text-paper",
@@ -194,7 +194,7 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
               aria-label={open ? t("nav.close") : t("nav.menu")}
               className="label grid size-10 place-items-center border border-line text-mute transition-colors hover:border-line-2 hover:text-paper sm:hidden"
             >
-              {open ? "✕" : "☰"}
+              <span aria-hidden>{open ? "✕" : "☰"}</span>
             </button>
           </div>
         </div>
@@ -212,9 +212,7 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
                   className="flex items-center justify-between py-5 font-display text-lg uppercase text-paper"
                 >
                   {link.label}
-                  <span aria-hidden className="label text-mute">
-                    {link.href}
-                  </span>
+                  <Icon name="chevronRight" className="size-4 text-mute" />
                 </Link>
               ))}
               {user ? (
@@ -244,7 +242,6 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
             </nav>
             <div className="flex items-center justify-between py-5">
               <LanguageSwitch />
-              <span className="label text-mute">RU / EN</span>
             </div>
           </Container>
         </div>

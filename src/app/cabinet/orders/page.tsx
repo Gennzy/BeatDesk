@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { SellerOrderRow } from "@/components/sales/seller-order-row";
@@ -7,6 +8,11 @@ import { Icon } from "@/components/ui/icon";
 import { formatMoneyByCurrency } from "@/lib/currency";
 import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = {
+  title: "Заказы",
+  robots: { index: false, follow: false },
+};
 
 /**
  * Заказы и выручка битмейкера.
@@ -35,6 +41,14 @@ export default async function CabinetOrdersPage({
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login?next=/cabinet/orders");
+
+  /*
+   * Кнопка подтверждения видна только оператору: деньги приходят на счёт
+   * площадки, и продавец подтвердить поступление не может — только увидеть
+   * отказ. Проверка в маршруте и функции остаётся, это лишь про интерфейс.
+   */
+  const { data: me } = await supabase.from("profiles").select("is_operator").eq("id", user.id).maybeSingle();
+  const canConfirm = me?.is_operator === true;
 
   const period = PERIODS.find((item) => item.key === params.period) ?? PERIODS[0];
 
@@ -165,6 +179,7 @@ export default async function CabinetOrdersPage({
                   status={order.status as "pending" | "paid" | "failed" | "refunded" | "cancelled"}
                   buyerEmail={order.buyer_email}
                   createdAt={order.created_at}
+                  canConfirm={canConfirm}
                   items={order.items.map((item) => ({
                     id: item.beat_id,
                     title: item.beat_title,

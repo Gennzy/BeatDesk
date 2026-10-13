@@ -16,7 +16,7 @@ export type Tariff = {
   label: string;
   /** Цена в рублях в месяц. Ноль — бесплатный. */
   priceMonthly: number;
-  /** Комиссия в базисных пунктах: 2000 = 20%. */
+  /** Комиссия в базисных пунктах: 1000 = 10%, как в оферте и в money.ts. */
   commissionBps: number;
   /** Сколько места на файлы даёт тариф, в байтах. */
   storageBytes: number;
@@ -41,9 +41,9 @@ export const TARIFFS: Tariff[] = [
     id: "start",
     label: "Старт",
     priceMonthly: 0,
-    // Комиссия одинаковая на всех тарифах: скидка за подписку без юрлица
-    // и без выплат была бы просто надбавкой к отсутствующей услуге.
-    commissionBps: 2000,
+    // Комиссия одинаковая на всех тарифах и равна боевой: скидка за подписку
+    // без юрлица и без выплат была бы просто надбавкой к отсутствующей услуге.
+    commissionBps: 1000,
     // Бакет на бесплатном тарифе Supabase — 1 ГБ, и держать в нём файлы
     // битов бессмысленно: два мастера по 500 МБ съедают всё место.
     storageBytes: GB,
@@ -55,7 +55,7 @@ export const TARIFFS: Tariff[] = [
     id: "pro",
     label: "Pro",
     priceMonthly: 990,
-    commissionBps: 2000,
+    commissionBps: 1000,
     storageBytes: 20 * GB,
     maxFileBytes: GB,
     maxBeatsOnSale: 100,
@@ -65,7 +65,7 @@ export const TARIFFS: Tariff[] = [
     id: "label",
     label: "Лейбл",
     priceMonthly: 2990,
-    commissionBps: 2000,
+    commissionBps: 1000,
     storageBytes: 100 * GB,
     maxFileBytes: 2 * GB,
     maxBeatsOnSale: 1000,

@@ -58,7 +58,7 @@ export default async function EditBeatPage({ params }: { params: Promise<{ id: s
               href={`/beats/${id}`}
               className="label text-mute underline-offset-4 hover:text-paper hover:underline"
             >
-              ← {t("share.title")}
+              <span aria-hidden>←</span> {t("beat.backToBeat")}
             </Link>
           </div>
         </div>

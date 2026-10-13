@@ -94,6 +94,7 @@ export function ReviewForm({
             aria-checked={rating === value}
             aria-label={`${value} ${t("review.ofFive")}`}
             onClick={() => setRating(value)}
+            disabled={busy}
             className={cn(
               "grid size-8 place-items-center border transition-colors",
               rating >= value ? "border-signal text-signal" : "border-line text-mute hover:text-paper",

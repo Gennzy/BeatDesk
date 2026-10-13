@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { FollowButton } from "@/components/posts/follow-button";
 import { Avatar } from "@/components/ui/avatar";
 import { Icon } from "@/components/ui/icon";
@@ -87,7 +89,7 @@ export async function SellerCard({
             {isVerified ? (
               <span className="inline-flex items-center gap-1.5">
                 <span className="truncate text-base font-semibold text-paper">{username}</span>
-                <span title={t("seller.verifiedTitle")} className="text-signal">
+                <span role="img" aria-label={t("seller.verifiedTitle")} title={t("seller.verifiedTitle")} className="text-signal">
                   <Icon name="verified" className="size-4" filled />
                 </span>
               </span>
@@ -130,9 +132,9 @@ export async function SellerCard({
 
 function LinkRow({ username, children }: { username: string; children: React.ReactNode }) {
   return (
-    <a href={`/beatmakers/${username}`} className="min-w-0 transition-colors hover:text-signal">
+    <Link href={`/beatmakers/${username}`} className="min-w-0 transition-colors hover:text-signal">
       {children}
-    </a>
+    </Link>
   );
 }
 

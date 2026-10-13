@@ -154,7 +154,17 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                   : "label text-mute"
             }
           >
-            {t(`order.status.${typed.status}` as "order.status.paid")}
+            {t(
+              (
+                {
+                  paid: "order.paid",
+                  pending: "order.pending",
+                  failed: "order.failed",
+                  refunded: "order.refunded",
+                  cancelled: "order.cancelled",
+                } as const
+              )[typed.status as "paid" | "pending" | "failed" | "refunded" | "cancelled"] ?? "order.pending",
+            )}
           </p>
         </div>
 
@@ -211,7 +221,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           </div>
         ) : null}
 
-        {typed.status === "pending" && isOperator ? <SellerActions orderId={typed.id} /> : null}
+        {isOperator && (typed.status === "pending" || typed.status === "paid") ? (
+          <SellerActions orderId={typed.id} status={typed.status} />
+        ) : null}
 
         {typed.status === "pending" && !isSeller ? (
           <div className="flex flex-col gap-3 pt-8">

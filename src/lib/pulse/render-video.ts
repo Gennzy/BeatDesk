@@ -109,7 +109,9 @@ async function decodeAudio(blob: Blob): Promise<AudioBuffer> {
 /** Разбивка дорожки на столбики: пиковые значения участков. */
 function peaksOf(buffer: AudioBuffer, columns: number): Float32Array {
   const data = buffer.getChannelData(0);
-  const step = Math.floor(data.length / columns);
+  // Короткий файл короче числа столбиков: шаг ноль давал тишину на весь
+  // кадр. Единица вместо нуля — каждый сэмпл виден хотя бы раз.
+  const step = Math.max(1, Math.floor(data.length / columns));
   const peaks = new Float32Array(columns);
 
   for (let i = 0; i < columns; i += 1) {

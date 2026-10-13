@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { tierAllows, tierLabel, type FileKind } from "@/lib/sales/delivery";
+import { useI18n } from "@/lib/i18n/provider";
 
 type Props = {
   orderId: string;
@@ -16,10 +17,10 @@ type Props = {
  * Состав файлов приходит из правил уровня, а не из верстки: новый уровень
  * автоматически отдаёт правильный набор, ничего дописывать не нужно.
  */
-const KIND_LABELS: Record<FileKind, string> = {
-  mp3: "Превью MP3",
-  wav: "Мастер WAV",
-  stems: "Стемы",
+const KIND_KEYS: Record<FileKind, "download.fileMp3" | "download.fileWav" | "download.fileStems"> = {
+  mp3: "download.fileMp3",
+  wav: "download.fileWav",
+  stems: "download.fileStems",
 };
 
 /**
@@ -29,19 +30,19 @@ const KIND_LABELS: Record<FileKind, string> = {
  * клиенте: серверу пришлось бы пропускать через себя полгигабайта ради
  * каждой покупки.
  */
-async function saveFile(orderId: string, itemId: string, kind: FileKind): Promise<void> {
+async function saveFile(orderId: string, itemId: string, kind: FileKind, missing: string): Promise<void> {
   const response = await fetch(`/api/orders/${orderId}/download?item=${itemId}&kind=${kind}`);
 
   const data = (await response.json()) as { urls?: string[]; name?: string; error?: string };
 
-  if (!response.ok || !data.urls?.length) throw new Error(data.error ?? "Файл недоступен");
+  if (!response.ok || !data.urls?.length) throw new Error(data.error ?? missing);
 
   const chunks: Blob[] = [];
 
   for (const part of data.urls) {
     const file = await fetch(part);
 
-    if (!file.ok) throw new Error("Файл недоступен");
+    if (!file.ok) throw new Error(missing);
 
     chunks.push(await file.blob());
   }
@@ -59,6 +60,7 @@ async function saveFile(orderId: string, itemId: string, kind: FileKind): Promis
 }
 
 export function OrderItemDownloads({ orderId, itemId, tier }: Props) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState<FileKind | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,9 +69,9 @@ export function OrderItemDownloads({ orderId, itemId, tier }: Props) {
     setError(null);
 
     try {
-      await saveFile(orderId, itemId, kind);
+      await saveFile(orderId, itemId, kind, t("download.fileMissing"));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Файл недоступен");
+      setError(cause instanceof Error ? cause.message : t("download.fileMissing"));
     } finally {
       setBusy(null);
     }
@@ -87,7 +89,7 @@ export function OrderItemDownloads({ orderId, itemId, tier }: Props) {
             onClick={() => void download(kind)}
             className="label h-9 rounded-pill border border-line px-3.5 text-mute transition-colors hover:border-line-2 hover:text-paper disabled:opacity-50"
           >
-            {busy === kind ? "Скачиваем…" : KIND_LABELS[kind]}
+            {busy === kind ? t("download.fileBusy") : t(KIND_KEYS[kind])}
           </button>
         ))}
 

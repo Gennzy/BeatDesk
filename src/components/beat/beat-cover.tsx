@@ -77,7 +77,7 @@ export function BeatCover({
     <div className={cn("relative aspect-square overflow-hidden rounded-lg bg-ink-3", className)}>
       {coverUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={coverUrl} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
+        <img src={coverUrl} alt="" loading="lazy" decoding="async" width={1200} height={1200} className="size-full object-cover" />
       ) : (
         <div className="cover-grid size-full" />
       )}

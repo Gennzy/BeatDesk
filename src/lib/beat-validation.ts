@@ -75,9 +75,19 @@ export function normalizeKey(input: unknown): string | null {
 
   if (!quality) return null;
   if (accidental === "#" && !["C", "D", "F", "G", "A"].includes(root)) return null;
-  if (accidental === "b" && !["C", "D", "F", "G", "A"].includes(root)) return null;
+  // Бемоль возможен у любой ноты: F♭ — это E, и отказ здесь был бы
+  // придиркой, а не проверкой. Диезы ограничены списком выше.
+  if (accidental === "b" && !["A", "B", "C", "D", "E", "F", "G"].includes(root)) return null;
 
-  const key = `${root}${accidental === "b" ? "b" : accidental} ${quality}`;
+  /*
+   * Бемоли приводим к диезам, как анализатор аудио: «Db minor» и «C# minor»
+   * — одна нота, а список тональностей держит только диезы. Иначе форма
+   * отвергала то, что разбор файла понимает.
+   */
+  const flatToSharp: Record<string, string> = { Bb: "A#", Cb: "B", Db: "C#", Eb: "D#", Fb: "E", Gb: "F#", Ab: "G#" };
+  const note = accidental === "b" ? (flatToSharp[`${root}b`] ?? `${root}b`) : `${root}${accidental}`;
+
+  const key = `${note} ${quality}`;
 
   return MUSICAL_KEYS.includes(key) ? key : null;
 }
@@ -112,7 +122,9 @@ export function normalizeTags(input: unknown): string[] {
  * Привести цены к виду.
  *
  * Правила проверки остаются здесь, а не в prices.ts: там только форма,
- * а потолок цены — это правило валидации бита.
+ * а потолок цены — это правило валидации бита. Две функции с одним именем
+ * не случайны: эта — для входа (с потолком), та — для чтения из базы
+ * (без него, иначе старый бит с большой ценой перестал бы читаться).
  */
 export function normalizePrices(input: unknown): Prices {
   if (typeof input !== "object" || input === null) return emptyPrices();

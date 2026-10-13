@@ -214,11 +214,18 @@ export function captionForPost(text: string, limit?: number): string {
   const lastBreak = cut.lastIndexOf("\n");
   const body = lastBreak > limit * 0.5 ? cut.slice(0, lastBreak) : cut;
 
-  // Закрываем неоткрытый тег, иначе разметка останется незавершённой.
-  const opened = (body.match(/<b>/g) ?? []).length;
-  const closed = (body.match(/<\/b>/g) ?? []).length;
+  // Закрываем неоткрытые теги, иначе разметка останется незавершённой
+  // и Telegram отвергнет пост. Тегов три вида: b, i и code.
+  const tags = ["b", "i", "code"] as const;
+  let tail = "";
 
-  return body + (opened > closed ? "</b>" : "");
+  for (const tag of tags) {
+    const opened = (body.match(new RegExp(`<${tag}>`, "g")) ?? []).length;
+    const closed = (body.match(new RegExp(`</${tag}>`, "g")) ?? []).length;
+    if (opened > closed) tail += `</${tag}>`;
+  }
+
+  return body + tail;
 }
 
 /** Как отправить пост: трек с обложкой, одна картинка или просто текст. */

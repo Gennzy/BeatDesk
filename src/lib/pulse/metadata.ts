@@ -67,9 +67,9 @@ function techLineOf(beat: Pick<BeatMeta, "bpm" | "musicalKey">): string {
 /**
  * Название видео.
  *
- * У BeatChain и у нас форма одинаковая: префикс, «type beat», название и
- * продюсер. Именно по такой строке биты ищутся в YouTube, и разбор её на
- * части заново приходилось бы каждому, кто ищет «type beat 150bpm».
+ * Форма устоявшаяся: префикс, «type beat», название и продюсер. Именно по
+ * такой строке биты ищутся в YouTube, и разбор её на части заново
+ * приходился бы каждому, кто ищет «type beat 150bpm».
  */
 function titleOf(beat: BeatMeta, template: PulseTemplate): string {
   const free = template === "nonProfit" ? "[FREE] " : "";

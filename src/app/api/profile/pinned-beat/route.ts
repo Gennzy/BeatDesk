@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -22,6 +23,14 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) return NextResponse.json({ error: "Нужно войти" }, { status: 401 });
+
+  const gate = rateLimit(clientKey(request, `pin:${user.id}`), 60, 60_000);
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "Слишком много запросов, подожди минуту" },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
+    );
+  }
 
   const body = (await request.json().catch(() => null)) as { beatId?: unknown } | null;
   const beatId = typeof body?.beatId === "string" ? body.beatId : null;
@@ -52,7 +61,7 @@ export async function POST(request: NextRequest) {
 }
 
 /** Снять закрепление: витрина возвращается к порядку по свежести. */
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   const supabase = await createClient();
 
   const {
@@ -60,6 +69,14 @@ export async function DELETE() {
   } = await supabase.auth.getUser();
 
   if (!user) return NextResponse.json({ error: "Нужно войти" }, { status: 401 });
+
+  const gate = rateLimit(clientKey(request, `pin:${user.id}`), 60, 60_000);
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "Слишком много запросов, подожди минуту" },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
+    );
+  }
 
   const { error } = await supabase.from("profiles").update({ pinned_beat_id: null }).eq("id", user.id);
 

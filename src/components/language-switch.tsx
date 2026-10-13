@@ -23,7 +23,7 @@ export function LanguageSwitch({ className }: { className?: string }) {
           onClick={() => setLocale(item)}
           aria-pressed={locale === item}
           className={cn(
-            "label h-7 rounded-pill px-2.5 transition-colors duration-150",
+            "label h-7 rounded-pill px-2.5 transition-colors duration-fast",
             locale === item ? "bg-signal text-ink" : "text-mute hover:text-paper",
           )}
         >

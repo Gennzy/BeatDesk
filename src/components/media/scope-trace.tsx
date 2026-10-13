@@ -10,8 +10,14 @@ type ScopeTraceProps = {
   className?: string;
 };
 
+/*
+ * Цвета канваса — те же токены, что у всего сайта, но строкой для rgba():
+ * LIME — --color-signal (#d8ff3e), PAPER — --color-paper (#e9e7e1),
+ * подложка — --color-ink (#050505). Числа продублированы здесь, потому что
+ * canvas не понимает var() внутри rgba().
+ */
 const LIME = "216, 255, 62";
-const PAPER = "242, 242, 236";
+const PAPER = "233, 231, 225";
 
 /**
  * Осциллограф вместо видео на странице входа: тонкая линия сигнала,
@@ -175,7 +181,7 @@ export function ScopeTrace({ className }: ScopeTraceProps) {
     <div aria-hidden className={cn("pointer-events-none absolute inset-0 overflow-hidden select-none", className)}>
       <canvas ref={canvasRef} className="absolute inset-0 size-full" />
 
-      <div className="absolute inset-0 bg-[radial-gradient(120%_85%_at_50%_45%,transparent_15%,rgba(8,8,10,0.92)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(120%_85%_at_50%_45%,transparent_15%,rgba(5,5,5,0.92)_100%)]" />
       <div className="absolute inset-y-0 left-0 w-[62%] bg-linear-to-r from-ink via-ink/72 to-transparent" />
     </div>
   );

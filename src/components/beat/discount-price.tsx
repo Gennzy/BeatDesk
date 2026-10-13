@@ -35,7 +35,7 @@ export function DiscountPrice({ price, before, percent, currency }: Props) {
     <span className="flex items-baseline gap-1.5">
       <span className="font-mono text-base text-paper tabular-nums">{formatMoney(price, currency)}</span>
       <span className="font-mono text-xs text-mute line-through tabular-nums">{formatMoney(before, currency)}</span>
-      <span className="rounded-full bg-accent/12 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-accent tabular-nums">
+      <span className="rounded-full bg-signal/12 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-signal tabular-nums">
         {t("discount.badge", { percent })}
       </span>
     </span>

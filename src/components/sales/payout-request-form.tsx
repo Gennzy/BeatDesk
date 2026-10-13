@@ -50,7 +50,7 @@ export function PayoutRequestForm({
     }
 
     if (minor > balanceMinor) {
-      setError(t("payouts.moreThanBalance", { balance: value }));
+      setError(t("payouts.moreThanBalance", { balance: String(rubles) }));
       return;
     }
 
@@ -104,7 +104,10 @@ export function PayoutRequestForm({
           max={rubles}
           step="1"
           value={amount}
-          onChange={(event) => setAmount(event.target.value)}
+          onChange={(event) => {
+            setAmount(event.target.value);
+            setDone(false);
+          }}
           placeholder={String(rubles)}
           className="control h-12 w-40 text-base sm:text-sm"
           disabled={busy || done}

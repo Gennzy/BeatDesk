@@ -38,7 +38,10 @@ export function translit(input: string): string {
     .split("")
     .map((char) => TRANSLIT[char] ?? char)
     .join("")
-    .replace(/[^a-z0-9#]+/g, "_")
+    // Решётка в имени файла — это якорь в URL: скачивание по такой ссылке
+    // обрезается. Пишем словом, как в keyForFile.
+    .replace(/#/g, "sharp")
+    .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
 }
 

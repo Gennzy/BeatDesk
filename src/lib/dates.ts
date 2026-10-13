@@ -12,7 +12,13 @@ const RU_UNITS: [number, Intl.RelativeTimeFormatUnit][] = [
 
 /** «5 минут назад». Для ленты важно расстояние, а не календарная дата. */
 export function timeAgo(iso: string, locale: Locale): string {
-  const seconds = (Date.now() - new Date(iso).getTime()) / 1000;
+  const time = new Date(iso).getTime();
+
+  // Битая дата — не «в этом году», а пустота: год из NaN врёт сильнее,
+  // чем отсутствие подписи.
+  if (!Number.isFinite(time)) return "";
+
+  const seconds = (Date.now() - time) / 1000;
   const unitLocale = locale === "ru" ? "ru" : "en";
 
   for (const [limit, unit] of RU_UNITS) {

@@ -20,7 +20,7 @@ import { createClient } from "@/lib/supabase/server";
  * объяснить.
  */
 
-export const metadata = { title: "Баланс" };
+export const metadata = { title: "Баланс", robots: { index: false, follow: false } };
 
 type LedgerRow = {
   id: string;
@@ -43,13 +43,8 @@ type PayoutRow = {
   paid_at: string | null;
 };
 
-const KIND_LABEL = {
-  sale: "Продажа",
-  payout: "Вывод",
-  payout_back: "Возврат вывода",
-  refund: "Отзыв продажи",
-  adjustment: "Правка",
-} as const;
+const kindLabel = (t: (key: "payout.kind.sale") => string, kind: LedgerRow["kind"]) =>
+  t(`payout.kind.${kind}` as "payout.kind.sale");
 
 export default async function PayoutsPage() {
   const supabase = await createClient();
@@ -153,10 +148,10 @@ export default async function PayoutsPage() {
                         href={`/orders/${row.order_id}`}
                         className="transition-colors hover:text-signal"
                       >
-                        {KIND_LABEL[row.kind]}
+                        {kindLabel(t, row.kind)}
                       </Link>
                     ) : (
-                      KIND_LABEL[row.kind]
+                      kindLabel(t, row.kind)
                     )}
                   </span>
                   <span className="text-xs text-mute">{date(row.created_at)}</span>

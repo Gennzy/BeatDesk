@@ -126,7 +126,21 @@ export function safeFileName(name: string): string {
     .replace(/_+/g, "_")
     .replace(/^_|_$/g, "");
 
-  return (base || "file").slice(-60);
+  /*
+   * Режем с начала, но расширение бережём: хвост из 60 символов оставлял
+   * расширение, но съедал начало имени — «my-beat-final» превращался в
+   * «-final». Теперь начало сохраняется, а предел держит расширение.
+   */
+  const clean = base || "file";
+  const dot = clean.lastIndexOf(".");
+
+  if (dot <= 0 || clean.length <= 60) return clean.slice(0, 60) || "file";
+
+  const stem = clean.slice(0, dot).replace(/_+$/, "");
+  const ext = clean.slice(dot);
+  const keep = Math.max(1, 60 - ext.length);
+
+  return `${stem.slice(0, keep)}${ext}`;
 }
 
 function partName(kind: BeatFileKind, fileName: string, index: number, total: number): string {

@@ -77,14 +77,15 @@ export function useAudioAnalysis() {
   );
 
   /** Прогреть Essentia заранее: разбор не должен ждать два мегабайта. */
-  function warmUp() {
+  const warmUp = useCallback(() => {
     if (essentiaReady() || essentiaLoading) return;
     setEssentiaLoading(true);
 
     void import("@/lib/audio/essentia")
       .then((module) => module.loadEssentia())
       .finally(() => setEssentiaLoading(false));
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return { analyze, reset, warmUp, state, error, result, fileName, essentiaLoading };
 }

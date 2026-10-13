@@ -1,11 +1,14 @@
 import { Container } from "@/components/ui/container";
 import { Skeleton } from "@/components/ui/states";
+import { getT } from "@/lib/i18n/server";
 
-export default function Loading() {
+export default async function Loading() {
+  const t = await getT();
+
   return (
     <section className="py-14 lg:py-20">
       <Container>
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-8" role="status" aria-label={t("feed.loading")}>
           <Skeleton className="h-4 w-40" />
           <Skeleton className="h-12 w-2/3 max-w-xl" />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

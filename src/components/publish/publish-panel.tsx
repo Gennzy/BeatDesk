@@ -9,9 +9,6 @@ import { cn } from "@/lib/cn";
 import { absoluteDateTime } from "@/lib/dates";
 import { useI18n } from "@/lib/i18n/provider";
 import {
-  GROUP_HINTS,
-  GROUP_LABELS,
-  LEVEL_LABELS,
   platformsByGroup,
   type Platform,
   type PlatformGroup,
@@ -29,7 +26,7 @@ type Status = { kind: "idle" } | { kind: "busy"; platform: string } | { kind: "e
 type Result = { ok: boolean; message: string; url?: string };
 
 export function PublishPanel({ beatId, connections, botReady, posts }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const [selected, setSelected] = useState<PlatformId[]>([]);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -142,9 +139,9 @@ export function PublishPanel({ beatId, connections, botReady, posts }: Props) {
             <header className="flex flex-col gap-2 border-b border-line pb-4">
               <div className="flex flex-wrap items-center gap-3">
                 <span aria-hidden className="size-1.5 bg-mute/50" />
-                <span className="label text-paper">{GROUP_LABELS[group]}</span>
+                <span className="label text-paper">{t("platform.group.broadcast")}</span>
               </div>
-              <p className="max-w-[76ch] text-sm leading-relaxed text-mute">{GROUP_HINTS[group]}</p>
+              <p className="max-w-[76ch] text-sm leading-relaxed text-mute">{t("platform.groupHint.broadcast")}</p>
             </header>
 
             {group === "broadcast" ? (
@@ -185,7 +182,7 @@ export function PublishPanel({ beatId, connections, botReady, posts }: Props) {
                             platform.level === "live" ? "text-paper" : "text-amber",
                           )}
                         >
-                          {LEVEL_LABELS[platform.level]}
+                          {t(`platform.level.${platform.level}` as "platform.level.live")}
                           {platform.sendsFile ? ` · ${t("publish.withFile")}` : ""}
                         </span>
                       </div>
@@ -306,7 +303,7 @@ export function PublishPanel({ beatId, connections, botReady, posts }: Props) {
                 <span className={post.status === "published" ? "label text-paper" : "label text-amber"}>
                   {post.status === "published" ? t("publish.sent") : (post.error ?? t("publish.error"))}
                 </span>
-                <span className="label text-mute">{absoluteDateTime(post.createdAt, "ru")}</span>
+                <span className="label text-mute">{absoluteDateTime(post.createdAt, locale)}</span>
                 {post.externalUrl ? (
                   <a
                     href={post.externalUrl}

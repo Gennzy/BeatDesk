@@ -14,7 +14,8 @@ import { createClient } from "@/lib/supabase/server";
  * Счётчик пересчитывает триггер в базе: забытый пересчёт скора оставил бы
  * бит в ленте на старой позиции, и это выглядело бы как «работает через раз».
  */
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = await createClient();
 
   const {
@@ -33,10 +34,18 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json().catch(() => null)) as { beatId?: unknown; kind?: unknown } | null;
 
-  const beatId = typeof body?.beatId === "string" ? body.beatId : "";
+  /*
+   * Бит берём из адреса, а не из тела: иначе адрес врёт, а проверяется
+   * другое. Тело со старым клиентом ещё шлёт beatId — требуем совпадения.
+   */
+  const beatId = id;
   const kind = body?.kind === "save" ? "save" : body?.kind === "like" ? "like" : null;
 
   if (!/^[0-9a-f-]{36}$/i.test(beatId) || !kind) {
+    return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
+  }
+
+  if (typeof body?.beatId === "string" && body.beatId !== beatId) {
     return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
   }
 

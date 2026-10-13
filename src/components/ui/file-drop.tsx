@@ -8,6 +8,8 @@ type FileDropProps = {
   label: string;
   hint?: string;
   prompt?: string;
+  /** Подпись кнопки «убрать файл» для скринридера. */
+  removeLabel: string;
   accept: string;
   /** короткая подпись формата, например MP3 или JPG · PNG */
   format?: string;
@@ -30,7 +32,7 @@ function formatSize(bytes: number): string {
  * Зона выбора файла. Файл наружу не отдаётся сам: его держит родитель,
  * здесь только отображение состояния и ошибки.
  */
-export function FileDrop({ label, hint, prompt, accept, format, selected, error, onSelect, inputProps }: FileDropProps) {
+export function FileDrop({ label, hint, prompt, removeLabel, accept, format, selected, error, onSelect, inputProps }: FileDropProps) {
   const [over, setOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -53,8 +55,8 @@ export function FileDrop({ label, hint, prompt, accept, format, selected, error,
       <div className="flex items-baseline justify-between gap-4">
         <span className={cn("label", error ? "text-amber" : "text-paper")}>{label}</span>
         {selected ? (
-          <button type="button" onClick={() => accept_(null)} className="label text-mute hover:text-paper">
-            ×
+          <button type="button" onClick={() => accept_(null)} aria-label={removeLabel} className="label text-mute hover:text-paper">
+            <span aria-hidden>×</span>
           </button>
         ) : null}
       </div>

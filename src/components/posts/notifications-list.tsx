@@ -185,7 +185,7 @@ function NotificationRow({ item, onRead }: { item: Notification; onRead: () => v
         href={row.href(item)}
         onClick={onRead}
         className={cn(
-          "group flex items-start gap-3 rounded-lg border p-3.5 transition-all duration-200",
+          "group flex items-start gap-3 rounded-lg border p-3.5 transition-all duration-base",
           unread
             ? "border-line-2 bg-ink-2 hover:border-signal/40"
             : "border-line bg-ink-2/60 hover:border-line-2",
@@ -216,13 +216,11 @@ function NotificationRow({ item, onRead }: { item: Notification; onRead: () => v
             )}
           </span>
 
-          {item.beatTitle ? <span className="truncate text-xs text-mute">{item.beatTitle}</span> : null}
-
           <TimeAgo iso={item.createdAt} locale={locale} className="label text-mute" />
         </span>
 
         {unread ? (
-          <span aria-label={t("notifications.unreadOnly")} className="mt-1.5 size-2 shrink-0 rounded-full bg-signal" />
+          <span role="img" aria-label={t("notifications.unreadOnly")} className="mt-1.5 size-2 shrink-0 rounded-full bg-signal" />
         ) : null}
       </Link>
     </li>

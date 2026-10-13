@@ -34,7 +34,7 @@ export function ProgressLine({
       className={cn("h-[2px] w-full overflow-hidden bg-line", className)}
     >
       <div
-        className={cn("h-full transition-[width] duration-150 ease-linear", tone === "signal" ? "bg-signal" : "bg-mute")}
+        className={cn("h-full transition-[width] duration-fast ease-linear", tone === "signal" ? "bg-signal" : "bg-mute")}
         style={{ width: `${safe * 100}%` }}
       />
     </div>

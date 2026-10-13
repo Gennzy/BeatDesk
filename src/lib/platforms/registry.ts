@@ -60,7 +60,7 @@ export const PLATFORMS: Platform[] = [
     fields: [
       { key: "chatId", label: "ID канала или чата", placeholder: "-1001234567890", hint: "Напиши боту @beatdesk_bot — он подскажет ID" },
     ],
-    note: "Бот уже настроен. Пост уходит с обложкой, кнопкой «Слушать» и ссылкой на профиль.",
+    note: "Бот уже настроен. Пост уходит с обложкой, ценами и ссылкой на профиль — без кнопок: нажатие на пост уже даёт прослушивание.",
     docsUrl: "https://core.telegram.org/bots/api#sendphoto",
   },
   {

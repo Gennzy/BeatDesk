@@ -185,7 +185,9 @@ export function checkAsset(kind: AssetKind, asset: AssetFacts): Finding[] {
   // Обложка проверяется иначе: там важна квадратность, а не потолок.
   if (kind === "artwork") {
     const side = rule?.artworkMinSide;
-    const isSquare = asset.width === asset.height;
+    // Непрочитанный размер — не квадрат: undefined === undefined давало true,
+    // и битая обложка проходила проверку молча.
+    const isSquare = asset.width !== undefined && asset.width === asset.height;
     const bigEnough = side === undefined || (asset.width ?? 0) >= side;
     const measured = asset.width && asset.height ? `${asset.width}×${asset.height}` : undefined;
 

@@ -29,9 +29,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ available: false, reason: "3–24 символа, латиница, цифры и _" });
   }
 
-  const { data } = await supabase.from("profiles").select("id").eq("username", requested).maybeSingle();
+  // Сравнение без учёта регистра: «Beat» и «beat» выглядят одинаково,
+  // и второй такой ник — это мимикрия. Добивает уникальный индекс
+  // lower(username) в миграции 0050.
+  //
+  // Подстановка в ilike без экранирования: «_» в шаблоне — джокер на один
+  // символ, поэтому точное равенство проверяем в коде, а не запросом.
+  const { data } = await supabase.from("profiles").select("id, username").ilike("username", requested).limit(10);
 
-  if (data && data.id !== user.id) {
+  const taken = ((data ?? []) as { id: string; username: string }[]).some(
+    (row) => row.username.toLowerCase() === requested.toLowerCase() && row.id !== user.id,
+  );
+
+  if (taken) {
     return NextResponse.json({ available: false, reason: "Ник уже занят" });
   }
 

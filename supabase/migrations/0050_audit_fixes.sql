@@ -145,6 +145,14 @@ grant execute on function public.release_expired_reservations() to service_role;
 -- Счётчик кликов и так закрыт для входа; добираем public для полноты.
 revoke all on function public.bump_short_link(text) from anon, authenticated, public;
 
+-- Владелец удаляет свою короткую ссылку: политики на удаление не было,
+-- и кнопка в интерфейсе упиралась в RLS.
+drop policy if exists "own links delete" on public.short_links;
+create policy "own links delete"
+  on public.short_links
+  for delete
+  using (auth.uid() = user_id);
+
 -- ---------------------------------------------------------------------------
 -- 3. Счётчик веток: кап на вход и UNION ALL.
 --
@@ -174,3 +182,14 @@ as $$
 $$;
 
 comment on function public.branch_counts(uuid[]) is 'Число ответов в ветке целиком для каждого запрошенного корня';
+
+-- ---------------------------------------------------------------------------
+-- 4. Никнеймы уникальны без учёта регистра.
+--
+-- Колонка username уникальна как текст: «Beat» и «beat» — разные ники с
+-- точки зрения базы и одинаковые с точки зрения человека. Идеальная
+-- мимикрия под продавца. Индекс по lower закрывает её на уровне базы,
+-- проверка в маршруте — на уровне интерфейса.
+-- ---------------------------------------------------------------------------
+create unique index if not exists profiles_username_lower_uidx
+  on public.profiles (lower(username));

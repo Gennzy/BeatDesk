@@ -204,7 +204,7 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
               </h1>
 
               {isVerified ? (
-                <span title={t("seller.verifiedTitle")} className="text-signal">
+                <span role="img" aria-label={t("seller.verifiedTitle")} title={t("seller.verifiedTitle")} className="text-signal">
                   <Icon name="verified" className="size-5" filled />
                 </span>
               ) : null}

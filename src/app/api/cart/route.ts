@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { normalizeTier, tierPrice } from "@/lib/sales/tier";
 import { createClient } from "@/lib/supabase/server";
 
@@ -45,6 +46,14 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
 
   if (!user) return NextResponse.json({ error: "Нужно войти" }, { status: 401 });
+
+  const gate = rateLimit(clientKey(request, `cart:${user.id}`), 60, 60_000);
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "Слишком много запросов, подожди минуту" },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
+    );
+  }
 
   const body = (await request.json().catch(() => null)) as { beatId?: unknown; tier?: unknown } | null;
   const beatId = typeof body?.beatId === "string" ? body.beatId : null;

@@ -18,6 +18,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .from("beats")
     .select("id, owner_id, created_at")
     .eq("is_public", true)
+    .eq("sale_state", "on_sale")
     .order("created_at", { ascending: false })
     .limit(500);
 

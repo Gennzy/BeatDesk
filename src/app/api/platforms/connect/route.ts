@@ -21,7 +21,18 @@ async function getUser() {
 }
 
 /** Ключи, которые нельзя оставлять в meta: токены живут только в зашифрованной колонке. */
-const SECRET_KEYS = new Set(["accesstoken", "token", "secret", "password", "webhookurl"]);
+const SECRET_KEYS = new Set([
+  "accesstoken",
+  "refreshtoken",
+  "token",
+  "authtoken",
+  "apikey",
+  "clientsecret",
+  "secret",
+  "privatekey",
+  "password",
+  "webhookurl",
+]);
 
 function stripSecrets(meta: Record<string, string | number | null>): Record<string, string | number | null> {
   return Object.fromEntries(Object.entries(meta).filter(([key]) => !SECRET_KEYS.has(key.toLowerCase())));

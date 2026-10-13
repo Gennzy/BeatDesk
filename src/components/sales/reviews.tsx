@@ -1,7 +1,7 @@
 import { Icon } from "@/components/ui/icon";
 import { TimeAgo } from "@/components/ui/time-ago";
 import { getLocale, getT } from "@/lib/i18n/server";
-import { pluralRu } from "@/lib/plural";
+import { pluralEn, pluralRu } from "@/lib/plural";
 import type { SupabaseServerClient } from "@/lib/supabase/server";
 
 type ReviewRow = {
@@ -106,7 +106,10 @@ export async function Reviews({
             <Stars rating={Math.round(summary.average ?? 0)} className="text-paper" />
             <span className="font-mono text-sm text-paper tabular-nums">{(summary.average ?? 0).toFixed(1)}</span>
             <span className="label text-mute">
-              {summary.count} {locale === "ru" ? pluralRu(summary.count, "отзыв", "отзыва", "отзывов") : "reviews"}
+              {summary.count}{" "}
+              {locale === "ru"
+                ? pluralRu(summary.count, "отзыв", "отзыва", "отзывов")
+                : pluralEn(summary.count, "review", "reviews")}
             </span>
           </span>
         ) : null}

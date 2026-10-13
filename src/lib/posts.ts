@@ -99,7 +99,7 @@ type PostRow = {
   reply_count: number | null;
   created_at: string;
   beats: PostRowBeat | PostRowBeat[] | null;
-  profiles: { username: string; avatar_url: string | null } | { username: string; avatar_url: string | null }[] | null;
+  profiles: { username: string; avatar_url: string | null; level?: number | null } | { username: string; avatar_url: string | null; level?: number | null }[] | null;
 };
 
 type PostRowBeat = {
@@ -129,7 +129,7 @@ function one<T>(value: T | T[] | null): T | null {
   return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
-function toBeat(value: PostRowBeat | PostRowBeat[] | null): PostBeat | null {
+function toBeat(value: PostRowBeat | PostRowBeat[] | null, sellerLevel: number): PostBeat | null {
   const beat = one(value);
   if (!beat) return null;
 
@@ -150,7 +150,9 @@ function toBeat(value: PostRowBeat | PostRowBeat[] | null): PostBeat | null {
     mp3Url: beat.mp3_url,
     plays: beat.plays ?? 0,
     score: beat.score ?? 0,
-    sellerLevel: 1,
+    // Уровень берём у автора поста: приложить можно только свой бит,
+    // и уровень его владельца — это уровень автора.
+    sellerLevel,
     genre: normalizeGenre(beat.genre),
     discountPercent: beat.discount_percent ?? 0,
     pricesBefore: beat.prices_before ? normalizePrices(beat.prices_before) : null,
@@ -169,7 +171,7 @@ function toPost(row: PostRow, liked: Set<string>, branchTotal?: number): Post {
     authorId: row.author_id,
     parentId: row.parent_id,
     body: row.body,
-    beat: toBeat(row.beats),
+    beat: toBeat(row.beats, author?.level ?? 1),
     author: { username: author?.username ?? "", avatarUrl: author?.avatar_url ?? null },
     likeCount: row.like_count ?? 0,
     // Колонка reply_count в базе растёт только у непосредственного родителя,
@@ -236,6 +238,12 @@ async function withPostColumns<T>(supabase: SupabaseServerClient, run: (columns:
   const first = await run(POST_COLUMNS);
 
   if (!(first as { error?: unknown } | null)?.error) return first;
+
+  // Сначала набор без скидочных колонок: если не хватает только их,
+  // полный откат прятал бы ещё и уровень с рейтингом.
+  const preDiscount = await run(POST_COLUMNS_PRE_DISCOUNT);
+
+  if (!(preDiscount as { error?: unknown } | null)?.error) return preDiscount;
 
   return run(POST_COLUMNS_LEGACY);
 }

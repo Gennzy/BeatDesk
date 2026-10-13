@@ -9,10 +9,16 @@
 
 /** Окно Ханна. Съедает края спектра, зато убирает утечку между тонами. */
 export function hann(size: number): Float32Array {
-  const window = new Float32Array(size);
+  const window = new Float32Array(Math.max(0, Math.floor(size)));
 
-  for (let i = 0; i < size; i += 1) {
-    window[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (size - 1)));
+  // Окно из одной точки — это единица: формула ниже делила бы на ноль.
+  if (window.length <= 1) {
+    if (window.length === 1) window[0] = 1;
+    return window;
+  }
+
+  for (let i = 0; i < window.length; i += 1) {
+    window[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (window.length - 1)));
   }
 
   return window;
@@ -204,7 +210,9 @@ export function toMono(channels: Float32Array[]): Float32Array {
   if (channels.length === 0) return new Float32Array(0);
   if (channels.length === 1) return channels[0]!;
 
-  const length = channels[0]!.length;
+  // Короче всех: короткий канал дополнять нулями нельзя — хвост
+  // превратился бы в тишину, а выход за длину — в NaN на весь микс.
+  const length = Math.min(...channels.map((channel) => channel.length));
   const out = new Float32Array(length);
 
   for (const channel of channels) {

@@ -1173,11 +1173,16 @@ const guestOrder = await guestContext.newPage();
       await wait(8000);
 
       const fileInput = await page.$('input[type=file]');
-      await fileInput.uploadFile(real.path);
-      await wait(30000);
+      if (!fileInput) {
+        check("студия приняла настоящий файл", false, "нет поля загрузки");
+      } else {
+        await fileInput.uploadFile(real.path);
+        await wait(30000);
+      }
 
       const text = await page.evaluate(() => document.body.innerText);
-      const bpm = Number((text.match(/(\d+[.,]\d)\s*BPM/) ?? ["0"])[1].replace(",", "."));
+      const tempoMatch = text.match(/(\d+[.,]\d)\s*BPM/);
+      const bpm = tempoMatch ? Number(tempoMatch[1].replace(",", ".")) : Number.NaN;
       const key = (text.match(/[A-G]#?\s(?:MAJOR|MINOR)/) ?? [""])[0].toUpperCase().replace(/\s+/, " ");
 
       check("на настоящем бите найден темп", Math.abs(bpm - real.bpm) / real.bpm < 0.02, `получено ${bpm}`);
@@ -1287,7 +1292,7 @@ async function cleanupCreatedUsers() {
     ["beat_comments", "author_id"],
     ["beats", "owner_id"],
     ["posts", "author_id"],
-    ["platform_posts", "author_id"],
+    ["platform_posts", "user_id"],
     ["profile_collaborators", "profile_id"],
   ];
 

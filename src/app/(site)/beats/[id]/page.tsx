@@ -294,7 +294,7 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
             {siblings.length > 0 ? (
               <section className="flex flex-col gap-4">
                 <div className="flex items-center gap-3">
-                  <span aria-hidden className="size-1.5 shrink-0 bg-accent" />
+                  <span aria-hidden className="size-1.5 shrink-0 bg-signal" />
                   <span className="text-sm font-semibold uppercase tracking-wider text-paper">
                     {t("beat.moreFromSeller")}
                   </span>

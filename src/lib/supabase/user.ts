@@ -35,7 +35,10 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   return {
     id: user.id,
     email: user.email ?? null,
-    username: profile?.username ?? (user.email ? user.email.split("@")[0] : "user"),
+    // Без профиля — нейтральное имя, а не кусок почты: local-part адреса
+    // светить в шапку нельзя. Профиль создаёт триггер при регистрации,
+    // поэтому сюда код попадает только в сломанном состоянии.
+    username: profile?.username ?? "user",
     avatarUrl: profile?.avatar_url ?? null,
     mode: profile?.mode === "seller" ? "seller" : "buyer",
   };

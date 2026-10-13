@@ -28,9 +28,11 @@ export function PinBeatToggle({ beatId, pinnedBeatId }: Props) {
   const router = useRouter();
   const [pinned, setPinned] = useState(pinnedBeatId === beatId);
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
 
   async function toggle() {
     setBusy(true);
+    setFailed(null);
 
     // Оптимистично: закрепление не терпит ощущения задержки, а откат при
     // ошибке честнее, чем кнопка, которая нажата, но ничего не сделала.
@@ -50,34 +52,37 @@ export function PinBeatToggle({ beatId, pinnedBeatId }: Props) {
         const data = (await response.json().catch(() => null)) as { error?: string } | null;
 
         setPinned(!next);
-        window.alert(data?.error ?? t("profile.pinError"));
+        setFailed(data?.error ?? t("profile.pinError"));
       } else {
         router.refresh();
       }
     } catch {
       setPinned(!next);
-      window.alert(t("profile.pinError"));
+      setFailed(t("profile.pinError"));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <button
-      type="button"
-      onClick={toggle}
-      disabled={busy}
-      aria-pressed={pinned}
+    <>
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={busy}
+        aria-pressed={pinned}
       title={t(pinned ? "profile.unpin" : "profile.pin")}
       className={
         pinned
-          ? "flex size-8 items-center justify-center rounded-pill border border-accent/40 bg-accent/12 text-accent transition-colors hover:border-accent"
+          ? "flex size-8 items-center justify-center rounded-pill border border-signal/40 bg-signal/12 text-signal transition-colors hover:border-signal"
           : "flex size-8 items-center justify-center rounded-pill border border-line text-mute transition-colors hover:border-line-2 hover:text-paper"
       }
     >
       <Icon filled={pinned} />
       <span className="sr-only">{t(pinned ? "profile.unpin" : "profile.pin")}</span>
     </button>
+      {failed ? <span className="label leading-relaxed text-amber">{failed}</span> : null}
+    </>
   );
 }
 

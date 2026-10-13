@@ -35,7 +35,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .maybeSingle();
 
   if (!beat) return NextResponse.json({ error: "Бит не найден" }, { status: 404 });
-  if (beat.owner_id !== user.id) return NextResponse.json({ error: "Это не твой бит" }, { status: 403 });
+  if (beat.owner_id !== user.id) return NextResponse.json({ error: "Чужой бит" }, { status: 403 });
 
   const owner = Array.isArray(beat.profiles) ? beat.profiles[0] : beat.profiles;
   const siteUrl = await getSiteUrl();

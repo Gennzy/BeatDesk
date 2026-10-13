@@ -4,7 +4,7 @@ import path from "node:path";
 import { ImageResponse } from "next/og";
 
 
-export const alt = "BeatDesk — публикация битов без рутины";
+export const alt = "BeatDesk · маркетплейс битов";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -27,8 +27,10 @@ export default async function OpengraphImage() {
           flexDirection: "column",
           justifyContent: "space-between",
           padding: 72,
-          background: "#08080a",
-          color: "#f4f4f0",
+          // Цвета — токены сайта вручную: OG-кадр рисуется без CSS,
+          // var() здесь не работает. ink #050505, paper #e9e7e1, mute #9a9a96.
+          background: "#050505",
+          color: "#e9e7e1",
           fontFamily: "sans-serif",
         }}
       >
@@ -41,15 +43,15 @@ export default async function OpengraphImage() {
           <div style={{ fontSize: 78, fontWeight: 800, lineHeight: 1.05 }}>
             Маркетплейс битов
           </div>
-          <div style={{ fontSize: 34, color: "#8f8f98", lineHeight: 1.3 }}>
+          <div style={{ fontSize: 34, color: "#9a9a96", lineHeight: 1.3 }}>
             Цены по лицензиям, мастер и стемы после оплаты. Публикация в Telegram, ВК и YouTube — одним нажатием
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 20, fontSize: 26, color: "#8f8f98" }}>
-          <div style={{ border: "1px solid #26262b", padding: "12px 22px" }}>Telegram</div>
-          <div style={{ border: "1px solid #26262b", padding: "12px 22px" }}>YouTube</div>
-          <div style={{ border: "1px solid #26262b", padding: "12px 22px" }}>ВК</div>
+        <div style={{ display: "flex", gap: 20, fontSize: 26, color: "#9a9a96" }}>
+          <div style={{ border: "1px solid #2c2c2c", padding: "12px 22px" }}>Telegram</div>
+          <div style={{ border: "1px solid #2c2c2c", padding: "12px 22px" }}>YouTube</div>
+          <div style={{ border: "1px solid #2c2c2c", padding: "12px 22px" }}>ВК</div>
         </div>
       </div>
     ),

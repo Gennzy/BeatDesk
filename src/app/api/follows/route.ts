@@ -50,6 +50,14 @@ export async function DELETE(request: NextRequest) {
 
   if (!user) return NextResponse.json({ error: "Нужно войти" }, { status: 401 });
 
+  const gate = rateLimit(clientKey(request, `unfollow:${user.id}`), 60, 60_000);
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "Слишком много запросов, подожди минуту" },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
+    );
+  }
+
   const body = (await request.json().catch(() => ({}))) as { followingId?: string };
   const followingId = String(body.followingId ?? "");
 

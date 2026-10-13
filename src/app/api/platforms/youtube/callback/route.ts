@@ -74,14 +74,22 @@ export async function GET(request: Request) {
 
   // Google отдаёт refresh_token только при первом согласии. Сохраняем
   // старый, иначе повторный вход тихо убивает автоматическое продление.
-  const refreshCipher = tokens.refreshToken ? encryptSecret(tokens.refreshToken) : null;
+  let refreshCipher: string | null = null;
+  let accessCipher: string;
+
+  try {
+    refreshCipher = tokens.refreshToken ? encryptSecret(tokens.refreshToken) : null;
+    accessCipher = encryptSecret(tokens.accessToken);
+  } catch {
+    return back(siteUrl, { youtube: "error", detail: "Сервер не настроен: не задан PLATFORM_TOKEN_SECRET" });
+  }
 
   const { error } = await supabase.from("platform_connections").upsert(
     {
       user_id: user.id,
       platform: "youtube",
       label: channel.title,
-      access_token_cipher: encryptSecret(tokens.accessToken),
+      access_token_cipher: accessCipher,
       refresh_token_cipher: refreshCipher ?? previous?.refresh_token_cipher ?? null,
       expires_at: new Date(tokens.expiresAt).toISOString(),
       meta: {

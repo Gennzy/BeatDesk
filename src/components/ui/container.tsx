@@ -27,7 +27,7 @@ export function SectionHead({
           одинаковых серых плашек читалась как одна стена, и прокручивая
           форму, человек не понимал, где оказался.
         */}
-        <span aria-hidden className="size-1.5 shrink-0 bg-accent" />
+        <span aria-hidden className="size-1.5 shrink-0 bg-signal" />
         <span className="text-sm font-semibold uppercase tracking-wider text-paper">{label}</span>
         {hint ? <span className="label ml-auto hidden text-mute sm:block">{hint}</span> : null}
         {action}

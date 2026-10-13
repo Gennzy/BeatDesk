@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { VisibilityToggle } from "@/components/profile/visibility-toggle";
 import { useI18n } from "@/lib/i18n/provider";
+import { pluralEn, pluralRu } from "@/lib/plural";
 import type { FeedBeat } from "@/lib/feed";
 import { PLATFORM_MAP } from "@/lib/platforms/registry";
 
@@ -32,7 +33,7 @@ type Props = {
 };
 
 export function ShareBoard({ beats, channels, published }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
 
   const [selected, setSelected] = useState<string[]>([]);
@@ -178,8 +179,9 @@ export function ShareBoard({ beats, channels, published }: Props) {
             <ul className="flex flex-col gap-1">
               {failures.slice(0, 6).map((item, index) => (
                 <li key={`${item.beatId}-${item.platform}-${index}`} className="label text-amber">
-                  {item.title} → {PLATFORM_MAP[item.platform as keyof typeof PLATFORM_MAP]?.label ?? item.platform}:{" "}
-                  {item.error}
+                  {item.beatId && item.platform
+                    ? `${item.title} → ${PLATFORM_MAP[item.platform as keyof typeof PLATFORM_MAP]?.label ?? item.platform}: ${item.error}`
+                    : (item.error ?? t("publish.error"))}
                 </li>
               ))}
             </ul>
@@ -229,7 +231,7 @@ export function ShareBoard({ beats, channels, published }: Props) {
                   checked={checked}
                   onChange={() => toggleBeat(beat.id)}
                   aria-label={beat.title}
-                  className="size-4 shrink-0 accent-[#d8ff3e]"
+                  className="size-4 shrink-0 accent-signal"
                 />
 
                 {beat.coverUrl ? (
@@ -242,7 +244,10 @@ export function ShareBoard({ beats, channels, published }: Props) {
                 <Link href={`/beats/${beat.id}`} className="flex min-w-0 flex-1 flex-col gap-1 hover:opacity-80">
                   <span className="truncate font-display text-sm tracking-tight text-paper uppercase">{beat.title}</span>
                   <span className="label text-mute">
-                    {beat.bpm} BPM · {beat.musicalKey} · {beat.plays} {t("sharing.plays")}
+                    {beat.bpm} BPM · {beat.musicalKey} · {beat.plays}{" "}
+                    {locale === "ru"
+                      ? pluralRu(beat.plays, "прослушивание", "прослушивания", "прослушиваний")
+                      : pluralEn(beat.plays, "play", "plays")}
                   </span>
                 </Link>
 

@@ -49,7 +49,7 @@ function parseSort(raw: string | null): FeedFilterState["sort"] {
 }
 
 function parseScope(raw: string | null): FeedScope {
-  return raw === "following" || raw === "liked" ? raw : "all";
+  return raw === "following" || raw === "liked" || raw === "discounted" ? raw : "all";
 }
 
 /** Число из адреса: пустое или мусорное значение отбрасывается. */

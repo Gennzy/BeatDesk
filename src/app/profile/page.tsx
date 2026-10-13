@@ -14,7 +14,7 @@ import { getSupabase } from "@/lib/supabase/user";
 
 export const metadata: Metadata = {
   title: "Профиль",
-  description: "Ник, аватар, био и ссылки на площадки: BitChain, YouTube, ВК, Telegram, Instagram.",
+  description: "Ник, аватар, био и ссылки на площадки: Telegram, YouTube, ВК, Instagram.",
   robots: { index: false, follow: false },
 };
 

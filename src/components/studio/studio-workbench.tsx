@@ -35,7 +35,20 @@ export function StudioWorkbench() {
 
   return (
     <div className="flex flex-col gap-8">
-      <label
+      {/*
+        Зона — div с ролью кнопки, а не label: внутри лежит настоящая кнопка
+        выбора файла, а кнопка в label давала двойной триггер и невалидный
+        HTML. Клавиатура и скринридер идут через роль и подпись.
+      */}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={t("studio.dropTitle")}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          inputRef.current?.click();
+        }}
         onDragOver={(event) => {
           event.preventDefault();
           setDragging(true);
@@ -77,7 +90,7 @@ export function StudioWorkbench() {
           {t("studio.localOnly")}
           {essentiaLoading ? ` · ${t("studio.tonalityLoading")}` : ""}
         </span>
-      </label>
+      </div>
 
       {error ? (
         <p className="border border-amber/40 bg-ink-2 px-4 py-3 text-sm text-amber">
@@ -119,8 +132,8 @@ function Results({
           <Row
             label={t("studio.swing")}
             value={
-              swing.amount
-                ? `${Math.round(swing.amount * 100)}% · ${(swing.amountRatio! * 100).toFixed(0)}`
+              swing.amount !== null && swing.amountRatio !== null
+                ? `${Math.round(swing.amount * 100)}% · ${(swing.amountRatio * 100).toFixed(0)}`
                 : t("studio.swingNone")
             }
           />

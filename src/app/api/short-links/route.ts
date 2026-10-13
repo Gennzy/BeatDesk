@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 }
 
 /** Свои ссылки с числом переходов. */
-export async function GET() {
+export async function GET(request: Request) {
   if (!isAvailable()) return NextResponse.json({ links: [] });
 
   const supabase = await createClient();
@@ -50,6 +50,14 @@ export async function GET() {
   } = await supabase.auth.getUser();
 
   if (!user) return NextResponse.json({ error: "Нужно войти" }, { status: 401 });
+
+  const gate = rateLimit(clientKey(request, `short-links-get:${user.id}`), 60, 60_000);
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "Слишком много запросов, подожди минуту" },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
+    );
+  }
 
   const siteUrl = await getSiteUrl();
   const links = await listLinks(user.id);

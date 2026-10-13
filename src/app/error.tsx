@@ -4,8 +4,11 @@ import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
+import { useI18n } from "@/lib/i18n/provider";
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  const { t } = useI18n();
+
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -16,18 +19,16 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         <div className="signal-rail flex max-w-[56ch] flex-col gap-6 pl-8">
           <span className="flex items-center gap-3">
             <span aria-hidden className="size-1.5 bg-amber" />
-            <span className="label text-amber">Ошибка загрузки</span>
+            <span className="label text-amber">{t("error.kicker")}</span>
           </span>
-          <h1 className="font-display text-section font-semibold text-paper uppercase">Страница не открылась</h1>
-          <p className="text-sub text-mute">
-            Скорее всего, нет связи с базой или сеть моргнула. Проверь соединение и попробуй ещё раз.
-          </p>
+          <h1 className="font-display text-section font-semibold text-paper uppercase">{t("error.title")}</h1>
+          <p className="text-sub text-mute">{t("error.sub")}</p>
           <div className="flex flex-wrap items-center gap-3">
             <Button size="lg" onClick={reset}>
-              Повторить
+              {t("error.retry")}
             </Button>
             <Button href="/" variant="ink" size="lg">
-              В ленту
+              {t("error.home")}
             </Button>
           </div>
         </div>

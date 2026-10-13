@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 import { Container } from "@/components/ui/container";
-import { getT } from "@/lib/i18n/server";
+import { getLocale, getT } from "@/lib/i18n/server";
+import { pluralEn, pluralRu } from "@/lib/plural";
 import { fetchTrendingBeats, TRENDING_DAYS } from "@/lib/trending";
 import { createClient } from "@/lib/supabase/server";
 
@@ -51,6 +52,7 @@ const SPECS: TileSpec[] = [
 
 export async function CatalogTiles() {
   const [t, supabase] = await Promise.all([getT(), createClient()]);
+  const locale = await getLocale();
 
   /*
    * Обложки не должны повторяться.
@@ -132,6 +134,7 @@ export async function CatalogTiles() {
       note: t("catalog.trendingNote", {
         days: String(TRENDING_DAYS),
         count: String(lead.playsLast),
+        plays: locale === "ru" ? pluralRu(lead.playsLast, "прослушивание", "прослушивания", "прослушиваний") : pluralEn(lead.playsLast, "play", "plays"),
       }),
       href: `/beats/${lead.id}`,
       cover: lead.coverUrl,
@@ -154,6 +157,8 @@ export async function CatalogTiles() {
                   <img
                     src={tile.cover}
                     alt=""
+                    width={1200}
+                    height={1200}
                     className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                   />
                   {/*

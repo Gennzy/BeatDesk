@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n/provider";
 import type { TranslationKey } from "@/lib/i18n/dictionaries";
 import { isConnected } from "@/lib/platforms/connection-state";
-import { GROUP_LABELS, type Platform, type PlatformGroup } from "@/lib/platforms/registry";
+import { type Platform, type PlatformGroup } from "@/lib/platforms/registry";
 
 export type ConnectionRow = {
   platform: string;
@@ -57,9 +57,9 @@ export function ConnectionsBoard({ connected, platforms, groups, oauthReturn }: 
    */
   const [error, setError] = useState<string | null>(() => {
     if (!oauthReturn) return null;
-    if (oauthReturn.youtube === "denied") return "Доступ не выдан — это нормально, подключать было необязательно.";
-    if (oauthReturn.youtube === "error") return oauthReturn.detail ?? "Подключение не удалось";
-    if (oauthReturn.youtube === "ok" && oauthReturn.channel) return `Канал «${oauthReturn.channel}» подключён`;
+    if (oauthReturn.youtube === "denied") return t("connections.denied");
+    if (oauthReturn.youtube === "error") return oauthReturn.detail ?? t("connections.failed");
+    if (oauthReturn.youtube === "ok" && oauthReturn.channel) return t("connections.connected", { channel: oauthReturn.channel });
 
     return null;
   });
@@ -80,14 +80,14 @@ export function ConnectionsBoard({ connected, platforms, groups, oauthReturn }: 
       const data = (await response.json()) as { error?: string };
 
       if (!response.ok) {
-        setError(data.error ?? "Не удалось подключить");
+        setError(data.error ?? t("connections.connectFailed"));
         return;
       }
 
       setOpenId(null);
       router.refresh();
     } catch {
-      setError("Сеть недоступна");
+      setError(t("connections.offline"));
     } finally {
       setBusy(null);
     }
@@ -110,7 +110,7 @@ export function ConnectionsBoard({ connected, platforms, groups, oauthReturn }: 
       });
       router.refresh();
     } catch {
-      setError("Сеть недоступна");
+      setError(t("connections.offline"));
     } finally {
       setBusy(null);
     }
@@ -160,7 +160,7 @@ export function ConnectionsBoard({ connected, platforms, groups, oauthReturn }: 
         setLabels((prev) => ({ ...prev, [platformId]: data.label! }));
       }
     } catch {
-      setError("Сеть недоступна");
+      setError(t("connections.offline"));
     } finally {
       setBusy(null);
     }
@@ -183,7 +183,7 @@ export function ConnectionsBoard({ connected, platforms, groups, oauthReturn }: 
             <header className="flex flex-col gap-2 border-b border-line pb-4">
               <div className="flex items-center gap-3">
                 <span aria-hidden className="size-1.5 bg-mute/50" />
-                <span className="label text-paper">{GROUP_LABELS[group]}</span>
+                <span className="label text-paper">{t("platform.group.broadcast")}</span>
               </div>
               <p className="max-w-[68ch] text-sub text-mute">{t(`connections.groupHint.${group}` as "connections.groupHint.broadcast")}</p>
             </header>

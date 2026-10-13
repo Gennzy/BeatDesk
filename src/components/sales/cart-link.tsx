@@ -70,7 +70,7 @@ export function CartLink() {
       </svg>
 
       {count > 0 ? (
-        <span className="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-pill bg-accent px-1 font-mono text-[10px] font-semibold text-ink tabular-nums">
+        <span className="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-pill bg-signal px-1 font-mono text-[10px] font-semibold text-ink tabular-nums">
           {count}
         </span>
       ) : null}

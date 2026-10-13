@@ -19,14 +19,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const supabase = await createClient();
     const { error } = await supabase.rpc("increment_plays", { beat_id: id });
 
+    // Текст ошибки базы наружу не отдаём: там имена функций и столбцов.
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("play count failed", error.code);
+      return NextResponse.json({ error: "Не удалось засчитать прослушивание" }, { status: 500 });
     }
 
     const { data } = await supabase.from("beats").select("plays").eq("id", id).maybeSingle();
 
     return NextResponse.json({ ok: true, plays: data?.plays ?? null });
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "play_error" }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Не удалось засчитать прослушивание" }, { status: 500 });
   }
 }

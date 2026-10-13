@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -31,9 +32,9 @@ export function FollowButton({ profileId, username, isFollowing, followerCount, 
 
   if (!loggedIn) {
     return (
-      <a href={loginHref} className={buttonClass({ variant: "ink", size: "sm" })}>
+      <Link href={loginHref} className={buttonClass({ variant: "ink", size: "sm" })}>
         {t("profile.followLogin")}
-      </a>
+      </Link>
     );
   }
 

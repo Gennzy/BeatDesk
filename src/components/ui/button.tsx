@@ -18,7 +18,7 @@ type Size = "sm" | "md" | "lg";
  */
 const base =
   "inline-flex items-center justify-center gap-2 font-display uppercase tracking-[0.14em] whitespace-nowrap " +
-  "transition-[background-color,border-color,color,transform,box-shadow] duration-150 select-none " +
+  "transition-[background-color,border-color,color,transform,box-shadow] duration-fast select-none " +
   "active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40";
 
 const variants: Record<Variant, string> = {

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -96,7 +97,7 @@ export function PostComposer({ parentId = null, beats, loggedIn = true, myUserna
         parentId,
         body,
         beat: attached ? toPostBeat(attached) : null,
-        author: { username: myUsername ?? "?", avatarUrl: null },
+        author: { username: myUsername ?? t("comments.anonymous"), avatarUrl: null },
         likeCount: 0,
         replyCount: 0,
         likedByMe: false,
@@ -114,13 +115,13 @@ export function PostComposer({ parentId = null, beats, loggedIn = true, myUserna
   if (!loggedIn) {
     return (
       <div className="flex items-center gap-3 rounded-lg border border-line bg-ink-2 px-4 py-3.5">
-        <Avatar username="?" size="sm" className="opacity-40" />
-        <a
+        <Avatar username={t("comments.anonymous")} size="sm" className="opacity-40" />
+        <Link
           href={`/login?next=${encodeURIComponent(parentId ? `/posts/${parentId}` : "/")}`}
           className="text-sub text-mute transition-colors hover:text-paper"
         >
           {t("posts.loginToPost")}
-        </a>
+        </Link>
       </div>
     );
   }
@@ -128,11 +129,12 @@ export function PostComposer({ parentId = null, beats, loggedIn = true, myUserna
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-line bg-ink-2 p-4 transition-colors focus-within:border-signal">
       <div className="flex items-start gap-3">
-        <Avatar username={myUsername ?? "?"} size="sm" />
+        <Avatar username={myUsername ?? t("comments.anonymous")} size="sm" />
         <textarea
           value={body}
           onChange={(event) => setBody(event.target.value)}
           placeholder={t("posts.placeholder")}
+          aria-label={t("posts.placeholder")}
           rows={parentId ? 2 : 3}
           maxLength={POST_BODY_LIMIT + 40}
           autoFocus={autoFocus}
@@ -149,6 +151,7 @@ export function PostComposer({ parentId = null, beats, loggedIn = true, myUserna
           <button
             type="button"
             onClick={() => setBeatId(null)}
+            aria-pressed={beatId === null}
             className={cn(
               "tab border px-3 py-1.5 transition-colors",
               beatId === null ? "border-signal bg-signal text-ink" : "border-line text-mute hover:text-paper",
@@ -161,6 +164,7 @@ export function PostComposer({ parentId = null, beats, loggedIn = true, myUserna
               key={beat.id}
               type="button"
               onClick={() => setBeatId(beat.id === beatId ? null : beat.id)}
+              aria-pressed={beatId === beat.id}
               className={cn(
                 "tab max-w-52 truncate border px-3 py-1.5 transition-colors",
                 beatId === beat.id ? "border-signal bg-signal text-ink" : "border-line text-mute hover:text-paper",

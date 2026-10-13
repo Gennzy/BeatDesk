@@ -48,7 +48,7 @@ function GenreChips({ current, onPick }: { current: string; onPick: (genre: stri
         className={cn(
           "h-8 rounded-pill border px-3 text-[13px] transition-colors",
           current === ""
-            ? "border-accent/40 bg-accent/12 text-paper"
+            ? "border-signal/40 bg-signal/12 text-paper"
             : "border-line text-mute hover:border-line-2 hover:text-paper",
         )}
       >
@@ -64,7 +64,7 @@ function GenreChips({ current, onPick }: { current: string; onPick: (genre: stri
           className={cn(
             "h-8 rounded-pill border px-3 text-[13px] transition-colors",
             current === slug
-              ? "border-accent/40 bg-accent/12 text-paper"
+              ? "border-signal/40 bg-signal/12 text-paper"
               : "border-line text-mute hover:border-line-2 hover:text-paper",
           )}
         >
@@ -160,8 +160,9 @@ function FiltersBar({ search, resultCount, loggedIn }: { search: string; resultC
             aria-label={t("feed.sort")}
             className="control-sm label w-auto shrink-0 text-mute"
           >
-            <option value="new">{t("feed.new")}</option>
-            <option value="popular">{t("feed.popular")}</option>
+            <option value="top">{t("feed.sortTop")}</option>
+            <option value="new">{t("feed.sortNew")}</option>
+            <option value="popular">{t("feed.sortPopular")}</option>
           </Select>
         </div>
 
@@ -181,7 +182,7 @@ function FiltersBar({ search, resultCount, loggedIn }: { search: string; resultC
             )}
           >
             {t("feed.filters")}
-            {active ? <span className="text-signal"> ·</span> : null}
+            {active ? <span aria-hidden className="text-signal"> ·</span> : null}
           </button>
         </div>
 
