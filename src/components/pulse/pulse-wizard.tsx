@@ -203,6 +203,7 @@ export function PulseWizard({
             <li key={item.id}>
               <button
                 type="button"
+                aria-pressed={beatId === item.id}
                 onClick={() => {
                   setBeatId(item.id);
                   setTitle("");
@@ -242,6 +243,7 @@ export function PulseWizard({
             <button
               key={id}
               type="button"
+              aria-pressed={template === id}
               onClick={() => {
                 setTemplate(id);
               }}
@@ -336,6 +338,7 @@ export function PulseWizard({
               <button
                 key={id}
                 type="button"
+                aria-pressed={privacy === id}
                 onClick={() => setPrivacy(id)}
                 className={`chip ${privacy === id ? "border-signal text-signal" : "chip-hover"}`}
               >

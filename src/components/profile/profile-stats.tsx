@@ -49,11 +49,16 @@ export function ProfileStats({ username, avatarUrl, bio, beats, followers, posts
         </div>
       </div>
 
+      {/*
+       * Подпись идёт раньше цифры: в <dl> сначала идёт <dt>, потом <dd>,
+       * и тогда скринридер читает «битов: 12». Наоборот он читает
+       * «12: битов», то есть главное число оказывается подписью.
+       */}
       <dl className="flex flex-wrap items-center gap-x-8 gap-y-4">
         {stats.map((item) => (
           <div key={item.label} className="flex flex-col gap-1">
-            <dd className="font-display text-2xl leading-none text-paper">{item.value}</dd>
             <dt className="label text-mute">{item.label}</dt>
+            <dd className="font-display text-2xl leading-none text-paper">{item.value}</dd>
           </div>
         ))}
       </dl>

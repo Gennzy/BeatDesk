@@ -263,9 +263,21 @@ async function queryBeats(supabase: SupabaseServerClient, columns: string, optio
   /*
    * Вкладка скидок. Фильтр на саму колонку, а не на prices_before: прежние
    * цены есть и у битов, снятых с продажи, а показывать их незачем.
+   *
+   * Если колонки со скидкой в базе нет, вкладка обязана быть пустой, а не
+   * общей лентой: заголовок «Скидки» над битами без скидки — это враньё,
+   * и человек уходит, решив, что фильтр сломан. Раньше условие молча не
+   * выполнялось, и вкладка показывала все биты подряд. Когда есть только
+   * prices_before, отсекаем по нему: скидку там видно и по старой цене.
    */
-  if (options.discountedOnly && columns.includes("discount_percent")) {
-    query = query.gt("discount_percent", 0).order("discount_percent", { ascending: false });
+  if (options.discountedOnly) {
+    if (columns.includes("discount_percent")) {
+      query = query.gt("discount_percent", 0).order("discount_percent", { ascending: false });
+    } else if (columns.includes("prices_before")) {
+      query = query.not("prices_before", "is", null);
+    } else {
+      return { data: [], error: null };
+    }
   }
 
   /*

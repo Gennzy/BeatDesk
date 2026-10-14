@@ -65,8 +65,20 @@ export async function resolve(code: string): Promise<{ path: string } | { error:
   const path = (data as { target_path?: string } | null)?.target_path;
   if (!path || !isSafeTarget(path)) return { error: "notFound" };
 
-  // Инкремент на стороне базы: иначе гонка двух переходов теряла бы клик.
-  void supabase.rpc("bump_short_link", { link_code: code });
+  /*
+   * Инкремент на стороне базы: иначе гонка двух переходов теряла бы клик.
+   *
+   * Ждём ответа, а не запускаем «и забыли». Обработчик живёт в serverless:
+   * возвращённый ответ — это сигнал «вызывай можешь замораживаться», и
+   * неотправленный запрос счётчика вместе с вкладкой умирает тихо. Клик
+   * человек совершил, а в статистике его нет, и это не заметить.
+   *
+   * Ошибка счётчика не должна ломать переход: ссылка рабочая, человек
+   * пришёл по ней, и ронять его из-за статистики незачем.
+   */
+  const { error: bumpError } = await supabase.rpc("bump_short_link", { link_code: code });
+
+  if (bumpError) console.error("short link bump failed", code, bumpError.code);
 
   return { path };
 }

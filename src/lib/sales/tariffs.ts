@@ -9,6 +9,8 @@
  * нигде: превседний код читает их отсюда.
  */
 
+import { MAX_ASSET_BYTES } from "@/lib/beats";
+
 export type TariffId = "start" | "pro" | "label";
 
 export type Tariff = {
@@ -34,7 +36,21 @@ export type Tariff = {
 };
 
 const GB = 1024 * 1024 * 1024;
-const MB = 1024 * 1024;
+
+/*
+ * Потолок файла — одна константа на всех, а не число в каждом тарифе.
+ *
+ * Загрузка проверяет размер по MAX_ASSET_BYTES, и тарифы этого пока не
+ * меняют: подписки нет, баке�� один, правило одно. Своё число в тарифе
+ * было бы правдой на бумаге и ложью в коде — реализовать проверку по
+ * maxFileBytes, дойти до «Лейбла» и упереться в отказ хранилища на
+ * файле, который тариф обещал принять.
+ *
+ * Когда тарифы заработают по-настоящему, здесь появится своё число, и
+ * MAX_ASSET_BYTES станет нижней границей для всех: выше потолка хранилища
+ * пропустить файл нельзя ни на каком тарифе.
+ */
+const maxFileBytes = MAX_ASSET_BYTES;
 
 export const TARIFFS: Tariff[] = [
   {
@@ -47,7 +63,7 @@ export const TARIFFS: Tariff[] = [
     // Бакет на бесплатном тарифе Supabase — 1 ГБ, и держать в нём файлы
     // битов бессмысленно: два мастера по 500 МБ съедают всё место.
     storageBytes: GB,
-    maxFileBytes: 500 * MB,
+    maxFileBytes,
     maxBeatsOnSale: 10,
     autoPayouts: false,
   },
@@ -57,7 +73,7 @@ export const TARIFFS: Tariff[] = [
     priceMonthly: 990,
     commissionBps: 1000,
     storageBytes: 20 * GB,
-    maxFileBytes: GB,
+    maxFileBytes,
     maxBeatsOnSale: 100,
     autoPayouts: false,
   },
@@ -67,7 +83,7 @@ export const TARIFFS: Tariff[] = [
     priceMonthly: 2990,
     commissionBps: 1000,
     storageBytes: 100 * GB,
-    maxFileBytes: 2 * GB,
+    maxFileBytes,
     maxBeatsOnSale: 1000,
     autoPayouts: false,
   },

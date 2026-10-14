@@ -260,11 +260,18 @@ export function ConnectionsBoard({ connected, platforms, groups, oauthReturn }: 
                               </Button>
                             </>
                           ) : platform.level === "oauth" ? (
-                            <a href={platform.oauthPath ?? `/api/platforms/${platform.id}/authorize`}>
-                              <Button type="button" variant="signal" size="sm">
-                                {t("connections.connect")}
-                              </Button>
-                            </a>
+                            /*
+                             * Кнопка со ссылкой, а не ссылка с кнопкой внутри.
+                             *
+                             * Внутри <a> лежал <button>: вложенные интерактивные
+                             * элементы браузер читает по-разному — и нажатие
+                             * Enter на ссылке, и нажатие пробела на кнопке
+                             * вели себя не так, как нарисовано. Button умеет
+                             * быть ссылкой сам и рисует теми же классами.
+                             */
+                            <Button href={platform.oauthPath ?? `/api/platforms/${platform.id}/authorize`} variant="signal" size="sm">
+                              {t("connections.connect")}
+                            </Button>
                           ) : (
                             <Button
                               type="button"

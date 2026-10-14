@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { SellerOrderRow } from "@/components/sales/seller-order-row";
 import { Container } from "@/components/ui/container";
 import { Icon } from "@/components/ui/icon";
-import { formatMoneyByCurrency } from "@/lib/currency";
+import { DEFAULT_CURRENCY, formatMoney, formatMoneyByCurrency } from "@/lib/currency";
 import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -28,6 +28,41 @@ const PERIODS = [
   { key: "month", days: 30, label: "cabinet.periodMonth" },
   { key: "week", days: 7, label: "cabinet.periodWeek" },
 ] as const;
+
+/** Сколько заказов показываем в списке. Сводка считается базой и не зависит от этого числа. */
+const ORDERS_LISTED = 100;
+
+/**
+ * Сколько идентификаторов уходит в один запрос.
+ *
+ * Идентификаторы едут в адресе запроса, а не в теле, и длинный адрес
+ * обрезается на сервере: страница падает с ошибкой, а не с «показать ещё».
+ * Сорок штук — около полутора килобайт, что переживает любой адрес.
+ */
+const ID_CHUNK = 40;
+
+type PeriodTotals = {
+  currencies: { currency: string; amount_minor: number; items: number }[];
+  pending_orders: number;
+};
+
+type OrderRow = {
+  id: string;
+  status: string;
+  buyer_email: string;
+  created_at: string;
+  paid_at: string | null;
+  currency: string;
+};
+
+type ItemRow = {
+  order_id: string;
+  beat_id: string;
+  beat_title: string;
+  tier: string;
+  seller_net_minor: number;
+  currency: string;
+};
 
 export default async function CabinetOrdersPage({
   searchParams,
@@ -52,67 +87,76 @@ export default async function CabinetOrdersPage({
 
   const period = PERIODS.find((item) => item.key === params.period) ?? PERIODS[0];
 
-  const { data: items } = await supabase
-    .from("order_items")
-    .select("order_id, beat_id, beat_title, tier, seller_net_minor, currency")
-    .eq("beat_owner_id", user.id);
+  /*
+   * Сводка приходит из базы, а не собирается из строк ниже.
+   *
+   * Собирать её на странице было нельзя: чтобы посчитать заработок, нужно
+   * было выкачать каждую позицию, проделанную продавцом, и дотянуть статусы
+   * всех её заказов. Список заказов уезжает в адрес запроса и обрезается на
+   * сервере примерно после сотни заказов — страница переставала открываться
+   * именно у продавца, у которого дела идут.
+   */
+  const { data: totals } = await supabase.rpc("seller_period_totals", { p_days: period.days ?? null });
+  const summary = (totals ?? null) as PeriodTotals | null;
 
-  const rows = (items ?? []) as {
-    order_id: string;
-    beat_id: string;
-    beat_title: string;
-    tier: string;
-    seller_net_minor: number;
-    currency: string;
-  }[];
-
-  const orderIds = [...new Set(rows.map((row) => row.order_id))];
-
-  const { data: orders } = orderIds.length
-    ? await supabase
-        .from("orders")
-        .select("id, status, buyer_email, created_at, paid_at, currency")
-        .in("id", orderIds)
-        .order("created_at", { ascending: false })
-    : { data: [] as { id: string; status: string; buyer_email: string; created_at: string; paid_at: string | null; currency: string }[] };
-
-  const allOrders = (orders ?? []) as {
-    id: string;
-    status: string;
-    buyer_email: string;
-    created_at: string;
-    paid_at: string | null;
-    currency: string;
-  }[];
-
-  const statusById = new Map(allOrders.map((order) => [order.id, order.status]));
-
-  // Деньги считаем по позициям: в заказе может быть несколько битов от разных
-  // продавцов, и вся сумма заказа продавцу не принадлежит.
-  const paidRows = rows.filter((row) => ["paid", "delivered"].includes(statusById.get(row.order_id) ?? ""));
-
-  const cutoff = period.days
-    ? // eslint-disable-next-line react-hooks/purity -- серверный рендер раз в запрос, а не подписка
-      Date.now() - period.days * 86_400_000
-    : null;
-  const paidAtById = new Map(allOrders.map((order) => [order.id, order.paid_at ?? order.created_at]));
-  const inPeriod = paidRows.filter((row) => {
-    if (cutoff === null) return true;
-    const at = paidAtById.get(row.order_id);
-    return at ? new Date(at).getTime() >= cutoff : false;
-  });
-
-  const earnedByCurrency = inPeriod.map((row) => ({
-    amount: Number(row.seller_net_minor) / 100,
+  const earnedByCurrency = (summary?.currencies ?? []).map((row) => ({
+    amount: Number(row.amount_minor) / 100,
     currency: row.currency,
   }));
-  const pendingCount = allOrders.filter((order) => order.status === "pending").length;
+  const paidItems = (summary?.currencies ?? []).reduce((sum, row) => sum + Number(row.items), 0);
+  const pendingCount = Number(summary?.pending_orders ?? 0);
 
-  // Заказы, к которым относится хоть одна позиция продавца.
-  const mine = allOrders.map((order) => ({
-    ...order,
-    items: rows.filter((row) => row.order_id === order.id),
-  }));
+  const { data: orders } = await supabase
+    .from("orders")
+    .select("id, status, buyer_email, created_at, paid_at, currency")
+    .order("created_at", { ascending: false })
+    .limit(ORDERS_LISTED);
+
+  const allOrders = (orders ?? []) as OrderRow[];
+
+  /*
+   * Позиции достаются по частям: все идентификаторы разом не влезают в адрес
+   * запроса. Порциями по сорок, зато страница не падает целиком.
+   */
+  const ids = allOrders.map((order) => order.id);
+
+  const batches: string[][] = [];
+
+  for (let start = 0; start < ids.length; start += ID_CHUNK) {
+    batches.push(ids.slice(start, start + ID_CHUNK));
+  }
+
+  const rows = (
+    await Promise.all(
+      batches.map(async (batch) => {
+        const { data } = await supabase
+          .from("order_items")
+          .select("order_id, beat_id, beat_title, tier, seller_net_minor, currency")
+          .eq("beat_owner_id", user.id)
+          .in("order_id", batch);
+
+        return (data ?? []) as ItemRow[];
+      }),
+    )
+  ).flat();
+
+  const itemsByOrder = new Map<string, ItemRow[]>();
+
+  for (const row of rows) {
+    const bucket = itemsByOrder.get(row.order_id);
+
+    if (bucket) bucket.push(row);
+    else itemsByOrder.set(row.order_id, [row]);
+  }
+
+  /*
+   * Чужие покупки отсеиваются. Политика базы показывает человеку и заказы, где
+   * он покупатель, а не продавец; без этой проверки такие заказы попадали в
+   * список пустыми строками без единой позиции — выглядело как сбой.
+   */
+  const mine = allOrders
+    .map((order) => ({ ...order, items: itemsByOrder.get(order.id) ?? [] }))
+    .filter((order) => order.items.length > 0);
 
   return (
     <section className="py-10 lg:py-14">
@@ -148,10 +192,10 @@ export default async function CabinetOrdersPage({
           <div className="panel flex flex-col gap-2 p-5 sm:col-span-2">
             <span className="label text-mute">{t("cabinet.earnedFor", { period: t(period.label as "cabinet.periodAll") })}</span>
             <span className="font-mono text-4xl leading-none text-paper tabular-nums">
-              {formatMoneyByCurrency(earnedByCurrency)}
+              {formatMoneyByCurrency(earnedByCurrency) || formatMoney(0, DEFAULT_CURRENCY)}
             </span>
             <span className="text-xs text-mute">
-              {t("cabinet.ordersPaid", { count: String(inPeriod.length) })}
+              {t("cabinet.ordersPaid", { count: String(paidItems) })}
             </span>
           </div>
 
