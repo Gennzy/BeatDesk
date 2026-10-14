@@ -1,4 +1,5 @@
 import { TAG_LIMITS, TIERS, type TierId } from "./delivery-rules";
+import { keyDistance, parseKey } from "./metadata";
 
 /**
  * «Выходной контроль», слой гигиены пакета.
@@ -244,12 +245,26 @@ export function checkPackage(tiers: TierId[], pack: PackageFacts): HygieneFindin
     }
 
     if (embedded.key !== undefined && pack.key !== undefined) {
-      const normalize = (text: string) => text.toLowerCase().replace("maj", "").replace("min", "").trim();
+      /*
+       * Тональности сравниваются разбором, а не правкой строки.
+       *
+       * Раньше лад и знак просто вырезались из текста: `C major` и
+       * `C minor` превращались в одно и то же «c», а `C#` и `C` — в одно
+       * и то же «c». Проверка молчала там, где должна была кричать: файл
+       * в до минор, а карточка обещает ля мажор, и покупатель получает
+       * чужую тональность с лёгким «заметил?». Ровно то, ради чего эта
+       * проверка и написана.
+       *
+       * parseKey приводит и до-бемоли, и энгармоники к одной ноте, так что
+       * `F# major` и `Gb major` расхождением не считаются, а `C major` и
+       * `C minor` — считаются.
+       *
+       * null означает, что ключ не разобрался вовсе: мусор в тегах файла
+       * мы покупателю всё равно отдаём, и молчать о нём хуже, чем сказать.
+       */
+      const distance = keyDistance(parseKey(embedded.key), parseKey(pack.key));
 
-      if (
-        normalize(embedded.key) !== normalize(pack.key) &&
-        normalize(embedded.key).replace("#", "") !== normalize(pack.key).replace("#", "")
-      ) {
+      if (distance === null || distance !== 0) {
         findings.push({
           id: "embedded.keyDiffers",
           severity: "warn",

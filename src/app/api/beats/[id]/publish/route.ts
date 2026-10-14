@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 import { decryptSecret } from "@/lib/crypto";
 import { normalizePrices } from "@/lib/prices";
@@ -7,16 +7,33 @@ import { isPlatformId } from "@/lib/platforms/registry";
 import { notifySelf } from "@/lib/notifications/self";
 import { loadConnections, publishBeat, recordPost } from "@/lib/platforms/publish";
 import { getBotToken } from "@/lib/platforms/telegram-client";
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { getSiteUrl } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
 
 type Body = { platforms?: string[] };
 
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const body = (await request.json()) as Body;
 
-  const platforms = (body.platforms ?? []).filter((item): item is string => typeof item === "string");
+  /*
+   * Лимит стоит до разбора тела и до похода в базу: каждый вызов этой
+   * маршрутизации ходит в Telegram или в другой внешний канал от имени
+   * битмейкера, и квоту площадки расходует впустую. Простое «нажать ещё
+   * раз» не должно превращаться в серию постов у людей в ленте.
+   */
+  const gate = rateLimit(clientKey(request, `beat-publish:${id}`), 10, 60_000);
+
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "Слишком много публикаций, подожди минуту" },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
+    );
+  }
+
+  const body = (await request.json().catch(() => null)) as Body | null;
+
+  const platforms = (body?.platforms ?? []).filter((item): item is string => typeof item === "string");
   if (platforms.length === 0) {
     return NextResponse.json({ error: "Выбери канал" }, { status: 400 });
   }
@@ -97,14 +114,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   /*
-   * Публикация на витрину — событие площадки, а не внешнего канала: о ней
+   * Публикация на витрину — событие площадки, а не внешнего канала: о нём
    * полезно знать и тогда, когда внешние площадки отказали. Отдельным
    * уведомлением, а не в общем списке результатов, потому что человек
    * вернулся с вкладки и хочет понять, появился ли бит в ленте.
+   *
+   * Уведомление шлём только при успехе. Раньше оно уходило всегда, и в том
+   * числе когда все каналы отказали: человек возвращался с вкладки, видел
+   * «бит опубликован» и искал его в ленте, которой он туда не попал.
    */
   const published = results.some((item) => "ok" in item && item.ok);
 
-  await notifySelf(user.id, "beat_published", beat.id);
+  if (published) {
+    await notifySelf(user.id, "beat_published", beat.id);
+  }
 
   return NextResponse.json({ results, published });
 }

@@ -49,41 +49,46 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
   }
 
-  // Свой бит реагировать нельзя: проверку делает триггер, чтобы правило не
-  // разъехалось между клиентом и базой.
-  const { data: existing } = await supabase
+  /*
+   * Реакция переключается одной вставкой, без «прочитал — потом записал».
+   *
+   * Прежде здесь сначала выбиралась строка, и если её не было — вставлялась
+   * новая. Между этими двумя запросами реакцию мог поставить второй вызов
+   * того же человека: двойной клик, два открытых таба, кнопка лайка под
+   * пальцем на медленной сети. Оба увидели «реакции нет» и оба вставили,
+   * а второй получил ошибку уникальности — и человек, который просто
+   * поставил лайк, видел «не удалось поставить реакцию».
+   *
+   * Теперь порядок обратный: сначала вставка. Если строка уже есть —
+   * значит, реакция на месте, и это не ошибка, а нужное состояние, поэтому
+   * переключаем её снятием и отвечаем как снятую.
+   */
+  const { error: insertError } = await supabase
     .from("beat_reactions")
-    .select("beat_id")
-    .eq("beat_id", beatId)
-    .eq("user_id", user.id)
-    .eq("kind", kind)
-    .maybeSingle();
+    .insert({ beat_id: beatId, user_id: user.id, kind });
 
-  if (existing) {
-    const { error } = await supabase
-      .from("beat_reactions")
-      .delete()
-      .eq("beat_id", beatId)
-      .eq("user_id", user.id)
-      .eq("kind", kind);
+  if (!insertError) return NextResponse.json({ active: true }, { status: 201 });
 
-    if (error) {
-      console.error("beat reaction delete failed", error.code);
-      return NextResponse.json({ error: "Не удалось убрать реакцию" }, { status: 400 });
-    }
-    return NextResponse.json({ active: false });
-  }
-
-  const { error } = await supabase.from("beat_reactions").insert({ beat_id: beatId, user_id: user.id, kind });
-
-  if (error) {
+  if (insertError.code !== "23505") {
     // Свой бит: сообщение из триггера объясняет причину, гостю она не нужна.
-    if (error.message.includes("Свой бит")) {
+    if (insertError.message.includes("Свой бит")) {
       return NextResponse.json({ error: "Свой бит реагировать нельзя" }, { status: 400 });
     }
-    console.error("beat reaction failed", error.code);
+    console.error("beat reaction failed", insertError.code);
     return NextResponse.json({ error: "Не удалось поставить реакцию" }, { status: 400 });
   }
 
-  return NextResponse.json({ active: true }, { status: 201 });
+  const { error: deleteError } = await supabase
+    .from("beat_reactions")
+    .delete()
+    .eq("beat_id", beatId)
+    .eq("user_id", user.id)
+    .eq("kind", kind);
+
+  if (deleteError) {
+    console.error("beat reaction delete failed", deleteError.code);
+    return NextResponse.json({ error: "Не удалось убрать реакцию" }, { status: 400 });
+  }
+
+  return NextResponse.json({ active: false });
 }

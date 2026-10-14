@@ -190,6 +190,25 @@ describe("теги внутри файла против карточки", () =>
     expect(ids(ALL, { embedded: { key: "major" } })).toContain("embedded.keyDiffers");
   });
 
+  it("минор в тегах при мажоре в карточке — расхождение", () => {
+    // Лад вырезался из строки, и оба ключа сводились к «c»: покупатель
+    // получал до минор вместо обещанного ля мажора, и проверка молчала.
+    expect(ids(ALL, { key: "C major", embedded: { key: "C minor" } })).toContain("embedded.keyDiffers");
+    expect(ids(ALL, { key: "Am", embedded: { key: "A" } })).toContain("embedded.keyDiffers");
+  });
+
+  it("одна тональность с разным знаком — не расхождение", () => {
+    expect(ids(ALL, { key: "F# major", embedded: { key: "Gb major" } })).not.toContain("embedded.keyDiffers");
+  });
+
+  it("один знак не равен отсутствию знака", () => {
+    expect(ids(ALL, { key: "C major", embedded: { key: "C# major" } })).toContain("embedded.keyDiffers");
+  });
+
+  it("совпадающий ключ молчит", () => {
+    expect(ids(ALL, { key: "F# major", embedded: { key: "F# major" } })).not.toContain("embedded.keyDiffers");
+  });
+
   it("если в файле тегов нет, молчим", () => {
     expect(ids(ALL, { embedded: undefined })).toEqual([]);
   });
