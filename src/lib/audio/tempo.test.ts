@@ -140,6 +140,26 @@ describe("detectTempo на клике с известным темпом", () =>
 
     expect(tempo.bpm).toBe(0);
   });
+
+  it("на бесформенном звуке не выдумывает темп", () => {
+    /*
+     * Шум: ударов нет, значит нет и периода. Раньше на таком материале
+     * детектор выбирал случайный лаг и выдавал его как темп с уверенностью
+     * ноль — число выглядело замеренным, хотя период не выделялся вовсе.
+     * Настоящий случай: мастер с перегрузом, вся огибающая выпрямлена, и
+     * на странице бита показывается темп, которого анализатор не видел.
+     */
+    const noise = new Float32Array(SAMPLE_RATE * 12);
+    let seed = 42;
+
+    for (let i = 0; i < noise.length; i += 1) {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      noise[i] = (seed / 2147483648) * 2 - 1;
+    }
+
+    const { tempo } = analyze(noise);
+
+    expect({ bpm: Math.round(tempo.bpm), confidence: Number(tempo.confidence.toFixed(4)) }).toEqual({ bpm: 0, confidence: 0 });  });
 });
 
 describe("detectSwing", () => {
