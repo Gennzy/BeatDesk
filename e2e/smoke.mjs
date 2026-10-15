@@ -720,7 +720,7 @@ async function main() {
               { beatId: target.id, email: e2eEmail },
             );
 
-            check("заказ создаётся", created.status === 201 && Boolean(created.body?.id), `статус ${created.status}`);
+            check("заказ создаётся", created.status === 201 && Boolean(created.body?.id), `статус ${created.status} ${JSON.stringify(created.body)}`);
             orderId = created.body?.id ?? null;
           }
 
@@ -1428,6 +1428,42 @@ async function cleanupCreatedUsers() {
   }
 
   const headers = { apikey: key, Authorization: `Bearer ${key}` };
+
+  /*
+   * Придержание с битов снимаем до всего остального.
+   *
+   * Заказ удаляется вместе с покупателем, а reservation на бите остаётся:
+   * бит остаётся reserved навсегда, и его нельзя купить. Так и вышло —
+   * прерванный прогон оставил «Get Money» непригодным для следующего, и
+   * тесты покупки и корзины падали на живом бите. Придержание — это
+   * состояние, а не данные: чинить его надо даже когда чистить больше
+   * нечего, поэтому шаг стоит до раннего выхода ниже.
+   *
+   * Снимаем только висячие: у заказа, который жив и ждёт подтверждения,
+   * придержание законное. Список живых спрашиваем у базы, а не считаем
+   * по созданным в этом прогоне — чинится чужая поломка, не только наша.
+   */
+  const pending = await fetch(`${url}/rest/v1/orders?select=id&status=eq.pending`, { headers })
+    .then((r) => r.json())
+    .catch(() => []);
+  const live = new Set((Array.isArray(pending) ? pending : []).map((row) => row.id));
+
+  const held = await fetch(`${url}/rest/v1/beats?select=id,reserved_by_order&sale_state=eq.reserved`, {
+    headers,
+  })
+    .then((r) => r.json())
+    .catch(() => []);
+
+  for (const beat of Array.isArray(held) ? held : []) {
+    if (beat.reserved_by_order && !live.has(beat.reserved_by_order)) {
+      await fetch(`${url}/rest/v1/beats?id=eq.${beat.id}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ sale_state: "on_sale", reserved_until: null, reserved_by_order: null }),
+      }).catch(() => null);
+    }
+  }
+
   const names = createdUsernames.join(",");
 
   // Ответ — массив, а не объект с полем data. Деструкрация `const { data }`
@@ -1443,14 +1479,33 @@ async function cleanupCreatedUsers() {
   const idList = ids.join(",");
 
   /*
+   * Лицензии лежат за позициями заказа, а не за продавцом: колонки
+   * beat_owner_id у них нет, и удаление по ней отвечало 400. Владельца
+   * лицензия получает через свою позицию, поэтому сначала спрашиваем
+   * позиции продавца, и только потом удаляем лицензии по ним.
+   */
+  const items = await fetch(`${url}/rest/v1/order_items?select=id&beat_owner_id=in.(${idList})`, {
+    headers,
+  })
+    .then((r) => r.json())
+    .catch(() => []);
+
+  const itemIds = (Array.isArray(items) ? items : []).map((row) => row.id);
+
+  /*
    * Удаляем по частям, а не каскадом: ограничения `restrict` всё равно
    * не пропустят профиль, пока на него ссылаются покупки, а порядок
    * таблиц всё равно известен только здесь.
+   *
+   * Порядок по связям, а не по алфавиту: лицензия держит бит (restrict),
+   * позиция держит бит (restrict), поэтому сначала лицензии по позициям,
+   * потом позиции, и только потом биты. Иначе удаление доходит до битов и
+   * останавливается, оставляя покупку в базе.
    */
   const steps = [
     ["reviews", "author_id"],
-    ["licenses", "beat_owner_id"],
-    ["order_items", "buyer_id"],
+    ["order_downloads", "buyer_id"],
+    ["order_items", "beat_owner_id"],
     ["orders", "buyer_id"],
     ["notifications", "user_id"],
     ["notifications", "actor_id"],
@@ -1476,6 +1531,17 @@ async function cleanupCreatedUsers() {
     // Молчаливый catch прятал неуборку под видом «убрано»: шаг, который
     // не прошёл, виден в логе, а не в тишине.
     if (failed) console.warn(`  уборка: ${table} по ${column} не удалилась`);
+  }
+
+  if (itemIds.length > 0) {
+    const failed = await fetch(`${url}/rest/v1/licenses?order_item_id=in.(${itemIds.join(",")})`, {
+      method: "DELETE",
+      headers,
+    })
+      .then((response) => !response.ok)
+      .catch(() => true);
+
+    if (failed) console.warn("  уборка: лицензии по позициям заказа не удалились");
   }
 
   /*
