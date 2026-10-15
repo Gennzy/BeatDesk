@@ -69,13 +69,13 @@ export function BeatComments({
       });
 
       if (response.status === 409) {
-        toast.show({ icon: "close", title: t("comments.alreadyAnswered") });
+        toast.show({ tone: "error", icon: "close", title: t("comments.alreadyAnswered") });
         return;
       }
 
       if (!response.ok) {
         const data = (await response.json().catch(() => null)) as { error?: string } | null;
-        toast.show({ icon: "close", title: data?.error ?? t("comments.failed") });
+        toast.show({ tone: "error", icon: "close", title: data?.error ?? t("comments.failed") });
         return;
       }
 
@@ -126,7 +126,7 @@ export function BeatComments({
       return;
     }
 
-    toast.show({ icon: "close", title: t("comments.deleteFailed") });
+    toast.show({ tone: "error", icon: "close", title: t("comments.deleteFailed") });
   }
 
   return (

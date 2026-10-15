@@ -93,7 +93,7 @@ export function BeatReactions({
         setSaves((count) => Math.max(0, count - delta));
       }
 
-      if (message) toast.show({ icon: "close", title: message });
+      if (message) toast.show({ tone: "error", icon: "close", title: message });
     } catch {
       if (kind === "like") {
         setLiked(wasActive);

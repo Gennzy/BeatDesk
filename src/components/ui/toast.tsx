@@ -23,9 +23,22 @@ type Toast = {
   href?: string;
   icon: IconName;
   avatar?: string | null;
+  /**
+   * Смысл сообщения, а не его цвет.
+   *
+   * Раньше тон был один на все случаи, и «ссылка скопирована» выглядело
+   * ровно так же, как «свой бит реагировать нельзя». Человек успевал
+   * прочитать и не понять, что произошло: успех и отказ требуют разного
+   * внимания.
+   */
+  tone: ToastTone;
+  /** Сколько лежит. Отказ держим дольше успеха: его надо успеть прочесть. */
+  duration: number;
 };
 
-type ToastInput = Omit<Toast, "id">;
+type ToastTone = "info" | "success" | "error";
+
+type ToastInput = Omit<Toast, "id" | "tone" | "duration"> & { tone?: ToastTone; duration?: number };
 
 type ToastApi = {
   show: (toast: ToastInput) => void;
@@ -35,7 +48,28 @@ type ToastApi = {
 const ToastContext = createContext<ToastApi | null>(null);
 
 const VISIBLE_MS = 5_000;
+/** Отказ не прячется через пять секунд: к этому времени его уже прочитали. */
+const ERROR_MS = 9_000;
 const EXIT_MS = 220;
+
+const TONE_DURATION: Record<ToastTone, number> = {
+  info: VISIBLE_MS,
+  success: VISIBLE_MS,
+  error: ERROR_MS,
+};
+
+/**
+ * Оформление по смыслу.
+ *
+ * Цвет идёт на рамку, иконку и значок закрытия — то есть на всё, что видно
+ * боковым зрением. Заливка остаётся тёмной: светлая плашка поверх чёрной
+ * страницы выглядит как чужое окно и спорит с карточками битов.
+ */
+const TONE_STYLE: Record<ToastTone, { border: string; badge: string; accent: string }> = {
+  info: { border: "border-line-2", badge: "border-line-2", accent: "text-paper" },
+  success: { border: "border-signal/45", badge: "border-signal/70 bg-signal/10", accent: "text-signal" },
+  error: { border: "border-danger/50", badge: "border-danger/70 bg-danger/10", accent: "text-danger" },
+};
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -54,8 +88,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const show = useCallback(
     (input: ToastInput) => {
       const id = nextId.current++;
-      setToasts((prev) => [...prev.slice(-2), { ...input, id }]);
-      const timer = window.setTimeout(() => dismiss(id), VISIBLE_MS);
+      const tone = input.tone ?? "info";
+
+      setToasts((prev) => [
+        ...prev.slice(-2),
+        { ...input, id, tone, duration: input.duration ?? TONE_DURATION[tone] },
+      ]);
+
+      const timer = window.setTimeout(() => dismiss(id), input.duration ?? TONE_DURATION[tone]);
       timers.current.set(id, timer);
     },
     [dismiss],
@@ -95,28 +135,57 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         )}
       >
         {toasts.map((toast) => {
+          const tone = TONE_STYLE[toast.tone];
+
           const inner = (
             <>
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-line bg-ink text-paper">
+              {/*
+                Иконка в круге с рамкой по смыслу: успех и отказ читаются
+                боковым зрением, не вчитываясь в текст.
+              */}
+              <span
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-full border bg-ink",
+                  tone.badge,
+                  tone.accent,
+                )}
+              >
                 {toast.avatar ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={toast.avatar} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
                 ) : (
-                  <Icon name={toast.icon} className="size-4" />
+                  <Icon name={toast.icon} className="size-[1.15rem]" />
                 )}
               </span>
 
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="truncate text-sm font-semibold text-paper">{toast.title}</span>
+                {/*
+                  Две строки, а не одна: отказ почти всегда длиннее
+                  заголовка, а обрезанное посередине сообщение не читается
+                  вообще — человек гадает, что же произошло.
+                */}
+                <span className="line-clamp-2 text-sm font-semibold text-paper">{toast.title}</span>
                 {toast.body ? <span className="line-clamp-2 text-xs text-mute">{toast.body}</span> : null}
               </span>
 
-              {toast.href ? <Icon name="chevronRight" className="size-4 text-mute" /> : null}
+              {toast.href ? (
+                <Icon name="chevronRight" className="size-4 shrink-0 text-mute" />
+              ) : (
+                <Icon name="close" className={cn("size-4 shrink-0", tone.accent)} />
+              )}
             </>
           );
 
           const className = cn(
-            "pointer-events-auto flex w-full max-w-sm items-center gap-3 border border-line bg-ink-2 px-3 py-2.5 text-left shadow-lg shadow-black/40",
+            /*
+             * Плашка поднята над страницей: светлее фона, с размытием
+             * подложки, рамкой и настоящей тенью. Раньше это был тёмный
+             * прямоугольник без углов на почти чёрном фоне — уведомление
+             * было видно только потому, что человек знал, что оно там.
+             */
+            "pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-panel border bg-ink-3/95 px-3.5 py-3 text-left backdrop-blur-sm",
+            "shadow-[var(--shadow-3)]",
+            tone.border,
             "transition duration-base ease-out motion-safe:transition-transform",
             leaving.includes(toast.id) ? "opacity-0 -translate-y-2" : "opacity-100 translate-y-0",
           );

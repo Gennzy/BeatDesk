@@ -52,7 +52,7 @@ export function ModeSwitch({ mode }: { mode: Mode }) {
 
       if (!response.ok) {
         setCurrent(previous);
-        toast.show({ icon: "close", title: t("mode.failed") });
+        toast.show({ tone: "error", icon: "close", title: t("mode.failed") });
         return;
       }
 

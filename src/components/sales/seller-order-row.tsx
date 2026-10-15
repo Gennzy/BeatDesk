@@ -70,12 +70,12 @@ export function SellerOrderRow({
 
       if (!response.ok) {
         const data = (await response.json().catch(() => null)) as { error?: string } | null;
-        toast.show({ icon: "close", title: data?.error ?? t("order.error") });
+        toast.show({ tone: "error", icon: "close", title: data?.error ?? t("order.error") });
         return;
       }
 
       setCurrent("cancelled");
-      toast.show({ icon: "check", title: t("order.cancelledDone") });
+      toast.show({ tone: "success", icon: "check", title: t("order.cancelledDone") });
     } finally {
       setBusy(false);
     }
@@ -93,12 +93,12 @@ export function SellerOrderRow({
 
       if (!response.ok) {
         const data = (await response.json().catch(() => null)) as { error?: string } | null;
-        toast.show({ icon: "close", title: data?.error ?? t("order.error") });
+        toast.show({ tone: "error", icon: "close", title: data?.error ?? t("order.error") });
         return;
       }
 
       setCurrent("paid");
-      toast.show({ icon: "check", title: t("cabinet.orderConfirmed") });
+      toast.show({ tone: "success", icon: "check", title: t("cabinet.orderConfirmed") });
     } finally {
       setBusy(false);
     }

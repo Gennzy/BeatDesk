@@ -51,10 +51,10 @@ export function BeatShare({ beatId, title }: { beatId: string; title: string }) 
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      toast.show({ icon: "check", title: t("share.copied") });
+      toast.show({ tone: "success", icon: "check", title: t("share.copied") });
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.show({ icon: "close", title: t("share.copyFailed") });
+      toast.show({ tone: "error", icon: "close", title: t("share.copyFailed") });
     }
   }
 
