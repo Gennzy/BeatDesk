@@ -942,6 +942,89 @@ async function main() {
       }
     }
 
+    /*
+     * Свой бит в ленте узнаётся на клиенте.
+     *
+     * Признак «свой» в ленту не передавался, поэтому карточка считала любой
+     * бит чужим: нажатие уходило на сервер, тот отбивал его через несколько
+     * секунд, сердце откатывалось, и только потом приходило уведомление.
+     * На своём бите кнопки должны быть погашены сразу, без круга по сети.
+     *
+     * Бит создаётся служебным ключом прямо здесь: студия в этом прогоне
+     * разбирает чужой файл, а не выкладывает свой, и ждать его появления
+     * в ленте было бы ожиданием, которого не будет. Сортировка «новые»
+     * ставит только что созданный бит в начало.
+     */
+    {
+      const env = loadEnvFile();
+      const base = env.NEXT_PUBLIC_SUPABASE_URL;
+      const service = env.SUPABASE_SERVICE_ROLE_KEY;
+      const headers = { apikey: service, Authorization: `Bearer ${service}`, "Content-Type": "application/json" };
+
+      const name = createdUsernames.at(-1) ?? "";
+      const me = base && service ? await fetch(`${base}/rest/v1/profiles?select=id&username=eq.${name}`, { headers }).then((r) => r.json()) : [];
+      const ownerId = Array.isArray(me) ? me[0]?.id : null;
+
+      check("профиль тестового пользователя найден", Boolean(ownerId), "профиль не найден");
+
+      if (ownerId) {
+        const created = await fetch(`${base}/rest/v1/beats`, {
+          method: "POST",
+          headers: { ...headers, Prefer: "return=representation" },
+          body: JSON.stringify({
+            owner_id: ownerId,
+            title: "E2E свой бит",
+            bpm: 140,
+            key: "F minor",
+            is_public: true,
+            prices: { mp3: 500 },
+            currency: "RUB",
+          }),
+        }).then((r) => (r.ok ? r.json() : null));
+
+        const beatId = Array.isArray(created) ? created[0]?.id : null;
+
+        check("свой бит для проверки создан", Boolean(beatId), "вставка не прошла");
+
+        if (beatId) {
+          await user.goto(`${BASE}/?sort=new`, { waitUntil: "networkidle2", timeout: 60_000 });
+          await wait(1500);
+
+          const card = await user.evaluate((id) => {
+            const node = [...document.querySelectorAll("article")].find((item) =>
+              item.querySelector(`a[href="/beats/${id}"]`),
+            );
+
+            if (!node) return { found: false, disabled: 0, total: 0 };
+
+            const buttons = [...node.querySelectorAll("button[aria-pressed]")];
+            return { found: true, disabled: buttons.filter((b) => b.disabled).length, total: buttons.length };
+          }, beatId);
+
+          check("в ленте виден свой бит", card.found, "карточка не отрисовалась");
+
+          check(
+            "на своём бите реакции погашены сразу",
+            card.found && card.total > 0 && card.disabled === card.total,
+            `погашено ${card.disabled} из ${card.total}`,
+          );
+
+          /*
+           * Бит убирается сразу, а не в общей уборке.
+           *
+           * Дальше по прогону лента читается как обычно: сверяется одинаковая
+           * ширина кнопок реакции на всех карточках и подбирается аудио для
+           * разбора темпа. Оставленный в ленте бит без файла ломал оба
+           * пункта — и падал не он, а прогон.
+           */
+          await fetch(`${base}/rest/v1/beats?id=eq.${beatId}`, { method: "DELETE", headers });
+
+          await user.goto(`${BASE}/`, { waitUntil: "networkidle2", timeout: 60_000 });
+          await wait(1200);
+        }
+      }
+    }
+
     // --- корзина -------------------------------------------------------
     /*
      * Корзина проверяется целиком: положить бит, увидеть позицию, сменить

@@ -15,10 +15,12 @@ type Props = {
   initialNextOffset: number | null;
   filters: FeedFilterState;
   signedIn: boolean;
+  /** Ник того, кто смотрит ленту: по нему карточка узнаёт свой бит. */
+  myUsername?: string | null;
 };
 
 /** Лента с бесконечной прокруткой: догружаем, когда докрутили до конца. */
-export function FeedList({ initial, initialNextOffset, filters, signedIn }: Props) {
+export function FeedList({ initial, initialNextOffset, filters, signedIn, myUsername }: Props) {
   const { t } = useI18n();
   const [beats, setBeats] = useState(initial);
   const [nextOffset, setNextOffset] = useState(initialNextOffset);
@@ -98,7 +100,16 @@ export function FeedList({ initial, initialNextOffset, filters, signedIn }: Prop
           // на догруженных страницах он не растёт до сотни, и задержка не
           // превращается в минуту ожидания.
           <div key={beat.id} className="rise" style={{ "--rise-index": index % 12 } as React.CSSProperties}>
-            <BeatCard beat={beat} signedIn={signedIn} />
+            {/*
+              Свой бит карточка узнаёт сама, по нику.
+              Без этого признака клиент считал каждый бит в ленте чужим и
+              отправлял запрос, который сервер отбивал: сердце сначала
+              заливалось, через несколько секунд откатывалось, и только
+              потом приходило уведомление. Теперь на своём бите кнопки
+              просто гаснут, как в кабинете, и сразу — без круга по сети.
+              Ники сравниваются точно: оба приходят из одного столбца.
+            */}
+            <BeatCard beat={beat} signedIn={signedIn} isOwn={Boolean(myUsername) && beat.username === myUsername} />
           </div>
         ))}
       </div>
