@@ -24,13 +24,23 @@ export const metadata: Metadata = {
  * «что у меня есть».
  */
 
-type ToolLabel = "cabinet.beats" | "cabinet.channels" | "cabinet.studio";
+type ToolLabel = "cabinet.beats" | "cabinet.channels" | "cabinet.pulse" | "cabinet.studio";
 
 type Tool = { href: string; icon: IconName; label: ToolLabel; hint: `${ToolLabel}Hint` };
 
 const TOOLS: Tool[] = [
   { href: "/cabinet/beats", icon: "heart", label: "cabinet.beats", hint: "cabinet.beatsHint" },
   { href: "/cabinet/channels", icon: "broadcast", label: "cabinet.channels", hint: "cabinet.channelsHint" },
+  /*
+   * Pulse стоит здесь, а не в подвале и не по прямой ссылке.
+   *
+   * Страница публикации на YouTube существовала и работала, но на неё не
+   * вёл ни один адрес: единственное упоминание `/pulse` в проекте было в
+   * robots.txt, где он запрещён к индексации. Человек, который подключил
+   * YouTube в «Каналах», видел подключённый канал и не находил, куда им
+   * публиковать, — и решал, что площадка не умеет.
+   */
+  { href: "/pulse", icon: "upload", label: "cabinet.pulse", hint: "cabinet.pulseHint" },
   { href: "/cabinet/studio", icon: "waveform", label: "cabinet.studio", hint: "cabinet.studioHint" },
 ];
 

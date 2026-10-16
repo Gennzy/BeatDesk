@@ -1345,6 +1345,39 @@ const guestOrder = await guestContext.newPage();
     const studioText = await studio.evaluate(() => document.body.innerText);
     check("вкладка студии открывается гостю", /РАЗБОР БИТА/i.test(studioText));
     check("студия обещает разбор на устройстве", /НЕ ЗАГРУЖАЕТСЯ НА СЕРВЕР/i.test(studioText));
+
+    /*
+     * Pulse доступен из кабинета.
+     *
+     * Страница публикации на YouTube была написана и работала, но на неё не
+     * вёл ни один адрес: единственное упоминание /pulse в проекте было в
+     * robots.txt. Подключил YouTube в «Каналах» — и некуда было им
+     * публиковать. Проверка на адрес в кабинете, а не на саму страницу:
+     * не найти Pulse можно было именно так.
+     */
+    const pulsePage = await browser.newPage();
+    await pulsePage.setViewport({ width: 1440, height: 1000 });
+    pulsePage.on("pageerror", (error) => errors.push(`pulse: ${error}`));
+
+    await pulsePage.goto(`${BASE}/cabinet`, { waitUntil: "networkidle2", timeout: 60_000 });
+    await wait(1200);
+
+    const pulseLink = await pulsePage.evaluate(() =>
+      [...document.querySelectorAll('a[href="/pulse"]')].map((node) => node.textContent?.trim() ?? ""),
+    );
+
+    check("в кабинете есть ссылка на публикацию в YouTube", pulseLink.length > 0, "ссылки нет в инструментах");
+
+    if (pulseLink.length > 0) {
+      await pulsePage.goto(`${BASE}/pulse`, { waitUntil: "networkidle2", timeout: 60_000 });
+      await wait(1500);
+
+      const pulseText = await pulsePage.evaluate(() => document.body.innerText);
+      check("публикация на YouTube открывается", /PULSE/i.test(pulseText));
+      check("в мастере есть выбор бита", !/Ошибка загрузки/i.test(pulseText));
+    }
+
+    await pulsePage.close();
     /*
      * Инструменты битмейкера убраны из общей навигации: гостю они не нужны,
      * а «Студия» вела в личный инструмент. Проверяем новое правило — в шапке
