@@ -4,6 +4,16 @@ import type { Prices } from "@/lib/prices";
 
 export const FEED_PAGE_SIZE = 12;
 
+/**
+ * Сколько подписок или лайков берём для личной вкладки.
+ *
+ * Идентификаторы едут в адрес запроса: сто сотая подписка — это уже семь
+ * с половиной килобайт адреса, а дальше сервер начинает его обрезать и вкладка
+ * перестаёт открываться. Граница одна на оба списка и держится с запасом:
+ * у человека с двумястами подписок показывается двести, а не ошибка.
+ */
+const SCOPE_LIMIT = 200;
+
 /*
  * Сортировки ленты.
  *
@@ -205,7 +215,21 @@ async function resolveScope(
   if (!viewerId) return { unavailable: true };
 
   if (scope === "following") {
-    const { data } = await supabase.from("follows").select("following_id").eq("follower_id", viewerId);
+    /*
+     * Подписки ограничены, как и лайки выше.
+     *
+     * Список идентификаторов уходит в адрес запроса, а не в тело, и длинный
+     * адрес сервер обрезает: вкладка «Подписки» переставала открываться у
+     * человека, который подписан на несколько сотен авторов. Лайки были
+     * ограничены давно, а подписки остались без границы — и у лент это
+     * единственные два места, где список растёт вместе с активностью.
+     */
+    const { data } = await supabase
+      .from("follows")
+      .select("following_id")
+      .eq("follower_id", viewerId)
+      .limit(SCOPE_LIMIT);
+
     return { options: { ownerIds: [...new Set((data ?? []).map((row) => row.following_id as string))] } };
   }
 
@@ -215,7 +239,7 @@ async function resolveScope(
     .eq("user_id", viewerId)
     .eq("kind", "like")
     .order("created_at", { ascending: false })
-    .limit(200);
+    .limit(SCOPE_LIMIT);
 
   return { options: { beatIds: (data ?? []).map((row) => row.beat_id as string) } };
 }

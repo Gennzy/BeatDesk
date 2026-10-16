@@ -45,8 +45,13 @@ export default async function CabinetPage() {
   // выглядит как поломка.
   if (!user) redirect("/login?next=/cabinet");
 
+  /*
+   * Профиль читается один раз и целиком: раньше он спрашивался дважды —
+   * сначала за датой регистрации, потом за флагом оператора, — и каждое
+   * чтение стояло отдельным кругом ожидания. Теперь он в общей пачке.
+   */
   const [{ data: profile }, { data: items }, { data: ledgerRows }] = await Promise.all([
-    supabase.from("profiles").select("created_at").eq("id", user.id).maybeSingle(),
+    supabase.from("profiles").select("created_at, is_operator").eq("id", user.id).maybeSingle(),
     supabase
       .from("order_items")
       .select("order_id, beat_id, beat_title, tier, seller_net_minor, currency")
@@ -101,13 +106,7 @@ export default async function CabinetPage() {
     currency: row.currency,
   }));
 
-  const { data: me } = await supabase
-    .from("profiles")
-    .select("is_operator")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const isOperator = me?.is_operator === true;
+  const isOperator = profile?.is_operator === true;
 
   const achievements = computeAchievements(stats);
   const weekly = computeWeekly(stats);
