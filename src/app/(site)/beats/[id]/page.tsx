@@ -271,6 +271,22 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
                     целостность.
                   */}
                   {isOwner ? <ShareToTelegram beatId={beat.id} /> : null}
+
+                  {/*
+                    Правка — только владельцу, и раньше с бита на неё было
+                    не откуда пойти: страница правки жила, а адрес на неё не
+                    стоял нигде. Человек видел «Бит сейчас не продаётся» и
+                    «Черновик» на своём бите и не имел чем это исправить —
+                    ровно то, о чём он и спросил.
+                  */}
+                  {isOwner ? (
+                    <Link
+                      href={`/beats/${beat.id}/edit`}
+                      className="chip chip-hover transition-colors hover:border-line-2"
+                    >
+                      {t("beat.edit")}
+                    </Link>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -360,6 +376,27 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
                   <span className="label text-paper">{SALE_STATE_LABELS[saleState]}</span>
                 </p>
               </div>
+
+              {/*
+                Черновик у владельца — это не «витрина пустая», а его рабочий
+                бит, который ждёт одного нажатия. Раньше страница говорила
+                только «Бит сейчас не продаётся», и человек, у которого это
+                его собственный бит, оставался с этим по ту сторону экрана:
+                почему — непонятно, что делать — тоже. Здесь и причина, и
+                дорога.
+              */}
+              {isOwner && saleState === "draft" ? (
+                <div className="flex flex-col gap-3 rounded-panel border border-signal/35 bg-signal/5 px-5 py-5">
+                  <span className="label text-signal">{t("beat.draftOwnerTitle")}</span>
+                  <p className="max-w-[46ch] text-sm leading-relaxed text-paper">{t("beat.draftOwnerNote")}</p>
+                  <Link
+                    href={`/beats/${beat.id}/edit`}
+                    className="label w-fit text-signal underline underline-offset-4 transition-opacity hover:opacity-75 focusable"
+                  >
+                    {t("beat.draftOwnerLink")}
+                  </Link>
+                </div>
+              ) : null}
 
               {owner ? (
                 <SellerCard

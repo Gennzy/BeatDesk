@@ -648,6 +648,11 @@ const ru = {
   "beat.fromPrice": "за лицензию, от",
   "beat.from": "от",
   "beat.notForSale": "Бит сейчас не продаётся",
+  "beat.edit": "Изменить бит",
+  "beat.draftOwnerTitle": "Бит в черновике",
+  "beat.draftOwnerNote":
+    "Ты загрузил его, но не выставил в продажу. Пока галочка «В продаже» не включена, бит не попадёт ни в корзину, ни в ленту, ни в счётчик на профиле.",
+  "beat.draftOwnerLink": "Выставить в продажу",
   "license.title": "Условия лицензии",
   "license.type": "Тип лицензии",
   "license.typeRegular": "Лизинг (неисключительная)",
@@ -1457,6 +1462,11 @@ const en: Record<keyof typeof ru, string> = {
   "beat.fromPrice": "per license, from",
   "beat.from": "from",
   "beat.notForSale": "This beat is not for sale",
+  "beat.edit": "Edit beat",
+  "beat.draftOwnerTitle": "Beat is a draft",
+  "beat.draftOwnerNote":
+    "You uploaded it but never put it on sale. Until “On sale” is on, the beat stays out of the cart, the feed and your profile count.",
+  "beat.draftOwnerLink": "Put it on sale",
   "license.title": "License terms",
   "license.type": "License type",
   "license.typeRegular": "Leasing (non-exclusive)",

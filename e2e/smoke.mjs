@@ -1011,6 +1011,29 @@ async function main() {
           );
 
           /*
+           * Владелец на странице бита должен видеть, что это его черновик и
+           * что с этим делать. Раньше страница говорила только «Бит сейчас
+           * не продаётся», и на своём бите это было тупиком: ни причины, ни
+           * кнопки. Проверяется до переключения — пока бит в черновике.
+           */
+          await user.goto(`${BASE}/beats/${beatId}`, { waitUntil: "networkidle2", timeout: 60_000 });
+          await wait(1200);
+
+          const ownerPanel = await user.evaluate(() => {
+            const text = document.body.innerText;
+            return {
+              draft: /Бит в черновике/i.test(text),
+              note: /не попадёт ни в корзину/i.test(text),
+              edit: [...document.querySelectorAll('a[href$="/edit"]')].length > 0,
+              link: /Выставить в продажу/i.test(text),
+            };
+          });
+
+          check("владелец видит на странице бита, что это черновик", ownerPanel.draft, "блока нет");
+          check("владельцу объяснено, что делать с черновиком", ownerPanel.note && ownerPanel.link, "нет причины или ссылки");
+          check("со страницы бита есть путь на правку", ownerPanel.edit, "ссылки на правку нет");
+
+          /*
            * Переключатель «В продаже».
            *
            * Его не было вовсе: состояние меняли только заказы, и бит, который
