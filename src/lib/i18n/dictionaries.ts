@@ -355,7 +355,9 @@ const ru = {
   "genre.other": "Другое",
   "upload.priceExclusive": "Эксклюзив",
   "upload.publish": "Показать в ленте",
-  "upload.publishHint": "Выключено по умолчанию. Биты можно продавать и не показывая в ленте.",
+  "upload.publishHint": "Бит виден в ленте и в профиле.",
+  "upload.onSale": "В продаже",
+  "upload.onSaleHint": "С ценой хотя бы на MP3 и показанный в ленте бит можно купить. Сними эту галочку — и бит перестанет продаваться, останется просто в ленте.",
   "upload.submit": "Загрузить",
 
   "profile.statBeats": "битов",
@@ -1160,7 +1162,9 @@ const en: Record<keyof typeof ru, string> = {
   "genre.other": "Other",
   "upload.priceExclusive": "Exclusive",
   "upload.publish": "Publish to the feed",
-  "upload.publishHint": "Off by default. You can switch it on later.",
+  "upload.publishHint": "The beat shows up in the feed and on your profile.",
+  "upload.onSale": "On sale",
+  "upload.onSaleHint": "A beat with at least an MP3 price, published to the feed, can be bought. Turn this off and it stays in the feed but stops being sellable.",
   "upload.submit": "Upload",
 
   "profile.statBeats": "beats",

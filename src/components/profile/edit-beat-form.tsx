@@ -21,6 +21,7 @@ import { normalizeGenre } from "@/lib/beat-validation";
 import { applyDiscount, emptyPrices, parsePrice as toPrice, normalizeDiscount } from "@/lib/prices";
 import { parseTags } from "@/lib/tags";
 import { useI18n } from "@/lib/i18n/provider";
+import { canPutOnSale, canTakeOffSale, type SaleState } from "@/lib/sales/state";
 
 type Props = {
   beat: {
@@ -32,6 +33,8 @@ type Props = {
     tags: string[];
     prices: FeedBeat["prices"];
     isPublic: boolean;
+    /** Состояние продажи: черновик, в продаже, оплачивается или продан. */
+    saleState: SaleState;
     coverUrl: string | null;
     /** Есть ли стемы и WAV: подсказка упоминает их в описании. */
     hasStems: boolean;
@@ -147,6 +150,7 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
     payload.set("tags", tags);
     payload.set("genre", String(form.get("genre") ?? ""));
     payload.set("isPublic", form.get("isPublic") === "on" ? "true" : "false");
+    payload.set("onSale", form.get("onSale") === "on" ? "true" : "false");
     payload.set("currency", String(form.get("currency") ?? "RUB"));
     payload.set(
       "prices",
@@ -369,7 +373,20 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
         })}
       />
 
+      {/*
+         * Публикация и продажа — разные вещи, и раньше был только первый
+         * переключатель. Бит со всеми ценами можно было держать в ленте и
+         * при этом остаться непригодным для покупки: корзина требует и
+         * публикации, и состояния «в продаже», а менять второе было нечем.
+         */}
       <Switch label={t("upload.publish")} hint={t("upload.publishHint")} name="isPublic" defaultChecked={beat.isPublic} />
+      <Switch
+        label={t("upload.onSale")}
+        hint={t("upload.onSaleHint")}
+        name="onSale"
+        defaultChecked={beat.saleState === "on_sale"}
+        disabled={!canPutOnSale(beat.saleState) && !canTakeOffSale(beat.saleState)}
+      />
 
       {message ? <p className={state === "error" ? "label text-amber" : "label text-paper"}>{message}</p> : null}
 

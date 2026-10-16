@@ -9,18 +9,22 @@ type SwitchProps = {
   hint?: string;
 } & Omit<ComponentPropsWithoutRef<"input">, "type">;
 
-export function Switch({ label, hint, className, ...rest }: SwitchProps) {
+export function Switch({ label, hint, className, disabled, ...rest }: SwitchProps) {
   return (
     <label
       className={cn(
-        "flex cursor-pointer items-start gap-4 rounded-lg border border-line-2 bg-ink-2 bg-ink-2 p-4 transition-colors hover:border-line-2",
+        "flex items-start gap-4 rounded-lg border border-line-2 bg-ink-2 p-4 transition-colors",
+        // Погашенный переключатель должен выглядеть погашенным: раньше
+        // disabled доходил только до input, а рамка и подпись оставались
+        // живыми, и человек нажимал на то, что нельзя.
+        disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:border-line-2",
         className,
       )}
     >
       <span className="relative mt-0.5 inline-flex h-5 w-9 shrink-0">
-        <input type="checkbox" className="peer sr-only" {...rest} />
+        <input type="checkbox" className="peer sr-only" disabled={disabled} {...rest} />
         <span className="absolute inset-0 rounded-lg border border-line-2 bg-ink transition-colors peer-checked:border-signal peer-checked:bg-signal/15" />
-        <span className="absolute top-1/2 left-1 size-3 -translate-y-1/2 bg-mute transition-all peer-checked:left-5 peer-checked:bg-signal" />
+        <span className="absolute top-1/2 left-0 size-3 -translate-y-1/2 bg-mute transition-all peer-checked:left-5 peer-checked:bg-signal" />
       </span>
       <span className="flex flex-col gap-1">
         <span className="label text-paper">{label}</span>

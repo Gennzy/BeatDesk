@@ -976,6 +976,7 @@ async function main() {
             title: "E2E свой бит",
             bpm: 140,
             key: "F minor",
+            genre: "other",
             is_public: true,
             prices: { mp3: 500 },
             currency: "RUB",
@@ -1007,6 +1008,58 @@ async function main() {
             "на своём бите реакции погашены сразу",
             card.found && card.total > 0 && card.disabled === card.total,
             `погашено ${card.disabled} из ${card.total}`,
+          );
+
+          /*
+           * Переключатель «В продаже».
+           *
+           * Его не было вовсе: состояние меняли только заказы, и бит, который
+           * никто не купил, оставался черновиком навсегда — без цены в корзине,
+           * без бита в индексе продавцов и без единой кнопки, чтобы это
+           * исправить. Здесь бит создаётся черновиком, переключатель
+           * поднимает его в продажу, и база обязана это увидеть.
+           */
+          await user.goto(`${BASE}/beats/${beatId}/edit`, { waitUntil: "networkidle2", timeout: 60_000 });
+          await wait(1200);
+
+          const state = await user.evaluate(async (id) => {
+            const box = document.querySelector('input[name="onSale"]');
+
+            if (!box) return { found: false };
+
+            // Запрос идёт напрямую, а не через отправку всей формы: у формы
+            // есть собственные обязательные поля, и пустой чекбокс не даёт
+            // браузеру её отправить. Проверяется ровно то, что сломано, —
+            // принимает ли маршрут состояние продажи.
+            const body = new FormData();
+            body.set("onSale", "true");
+
+            const response = await fetch(`/api/beats/${id}`, { method: "PATCH", body });
+
+            if (!response.ok) return { found: true, error: (await response.json().catch(() => null))?.error };
+
+            for (let i = 0; i < 15; i += 1) {
+              await new Promise((resolve) => setTimeout(resolve, 300));
+
+              // sort=new обязателен: по умолчанию лента отсортирована по
+              // скору, а у только что созданного бита он нулевой, и на
+              // первой странице его просто нет.
+              const feed = await fetch(`/api/feed?offset=0&sort=new`);
+              const { beats } = await feed.json();
+              const beat = (beats ?? []).find((item) => item.id === id);
+
+              if (beat?.saleState === "on_sale") return { found: true, saleState: beat.saleState };
+            }
+
+            return { found: true, saleState: null };
+          }, beatId);
+
+          check("в форме есть переключатель продажи", state.found, "переключателя нет");
+
+          check(
+            "переключатель выставляет бит в продажу",
+            state.saleState === "on_sale",
+            state.error ? String(state.error) : `состояние ${state.saleState ?? "не прочитано"}`,
           );
 
           /*
