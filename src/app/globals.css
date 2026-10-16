@@ -118,6 +118,15 @@
    */
   --radius-panel: var(--radius-lg);
   --radius-control: var(--radius-md);
+  /*
+   * Всплывающее уведомление.
+   *
+   * Угол в 20 у карточек и в 22 у уведомления — не украшение: уведомление
+   * висит поверх всего и держится дольше, чем карточка, и круглый угол рядом
+   * с круглыми аватарами читался как «плашка на кнопке». Ровно тот, что в
+   * системных уведомлениях, поэтому взгляд не спотыкается о новую форму.
+   */
+  --radius-toast: 22px;
 
   --text-hero: clamp(2.5rem, 6.4vw, 6rem);
   --text-hero--line-height: 0.9;
@@ -153,6 +162,16 @@
    */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  /*
+   * Пружина для вещей, которые прилетают из-за края экрана.
+   *
+   * Ease-out заканчивает движение быстро и садится мгновенно: предмет
+   * появляется и стоит. Уведомление должно слегка перелететь и успокоиться,
+   * как системное в iOS, поэтому у него своя кривая — с длинным хвостом и
+   * минимальным перелётом назад. Разница в одну строку, а ощущается как
+   * другой класс вещей.
+   */
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
   --duration-fast: 140ms;
   --duration-base: 220ms;
   --duration-slow: 380ms;
@@ -554,6 +573,74 @@
   .liquid-glass-strong {
     background: color-mix(in oklab, var(--color-ink) 94%, transparent);
   }
+}
+
+/*
+ * Всплывающее уведомление: материал и появление.
+ *
+ * Дорогая плашка от дешёвой отличается не цветом, а тремя вещами: подложка
+ * размывает то, что под ней, верхняя кромка ловит свет, а тень мягкая и
+ * широкая вместо чёрного обвода. Раньше здесь стоял тёмный прямоугольник
+ * с рамкой в один пиксель — по нему было видно, что это просто div.
+ *
+ * Размытие взято сильнее, чем у шапки (24 против 10): под уведомлением
+ * картинка обложки, а шапка лежит на однотонном поле. Насыщенность поднята,
+ * чтобы лайм и красный в значке не мылись на подложке.
+ */
+@layer components {
+  .toast-material {
+    position: relative;
+    background: color-mix(in oklab, var(--color-ink-3) 82%, transparent);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.07),
+      0 1px 2px rgb(0 0 0 / 0.45),
+      0 20px 50px -20px rgb(0 0 0 / 0.9);
+  }
+
+  /* Отказ и успех подкрашивают материал, а не обводят его рамкой. */
+  .toast-material[data-tone="success"] {
+    background: color-mix(in oklab, var(--color-signal) 7%, color-mix(in oklab, var(--color-ink-3) 82%, transparent));
+  }
+
+  .toast-material[data-tone="error"] {
+    background: color-mix(in oklab, var(--color-danger) 9%, color-mix(in oklab, var(--color-ink-3) 82%, transparent));
+  }
+}
+
+/*
+ * Появление и уход.
+ *
+ * Без появления уведомление просто возникает, и это самая заметная дешёвая
+ * черта: мозг читает мгновенное появление как системное сообщение браузера,
+ * а с подлётом и лёгким масштабом — как живое. Уход короче и уходит вверх,
+ * потому что внимание к уведомлению уже ушло.
+ */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+}
+
+.toast-in {
+  animation: toast-in 420ms var(--ease-spring) both;
+}
+
+.toast-out {
+  animation: toast-out 200ms var(--ease-out) both;
 }
 
 /*

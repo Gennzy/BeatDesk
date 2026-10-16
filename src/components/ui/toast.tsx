@@ -61,14 +61,14 @@ const TONE_DURATION: Record<ToastTone, number> = {
 /**
  * Оформление по смыслу.
  *
- * Цвет идёт на рамку, иконку и значок закрытия — то есть на всё, что видно
- * боковым зрением. Заливка остаётся тёмной: светлая плашка поверх чёрной
- * страницы выглядит как чужое окно и спорит с карточками битов.
+ * Цвет идёт на материал, иконку и значок — то есть на всё, что видно боковым
+ * зрением. Заливка остаётся тёмной: светлая плашка поверх чёрной страницы
+ * выглядит как чужое окно и спорит с карточками битов.
  */
-const TONE_STYLE: Record<ToastTone, { border: string; badge: string; accent: string }> = {
-  info: { border: "border-line-2", badge: "border-line-2", accent: "text-paper" },
-  success: { border: "border-signal/45", badge: "border-signal/70 bg-signal/10", accent: "text-signal" },
-  error: { border: "border-danger/50", badge: "border-danger/70 bg-danger/10", accent: "text-danger" },
+const TONE_STYLE: Record<ToastTone, { accent: string; tile: string }> = {
+  info: { accent: "text-paper", tile: "border-line-2 bg-white/6" },
+  success: { accent: "text-signal", tile: "border-signal/30 bg-signal/12" },
+  error: { accent: "text-danger", tile: "border-danger/35 bg-danger/14" },
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -128,10 +128,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         className={cn(
           // Отступ сверху равен высоте шапки: уведомление выезжало из-под самой
           // шапки и накрывало переключатель языка.
-          "pointer-events-none fixed inset-x-0 top-[4.5rem] z-100 flex flex-col items-center gap-2 px-4",
+          "pointer-events-none fixed inset-x-0 top-[5.25rem] z-100 flex flex-col items-center gap-2.5 px-4",
           // На телефоне во всю ширину, на широком экране — колонкой у края,
-          // чтобы не закрывать центр страницы.
-          "sm:items-end sm:pr-6",
+          // чтобы не закрывать центр страницы. Отступ от края шире, чем у
+          // системных: уведомление висит несколько секунд, и прилипшее к
+          // рамке выглядит как часть интерфейса, а не как всплывшее.
+          "sm:items-end sm:pr-8",
         )}
       >
         {toasts.map((toast) => {
@@ -140,13 +142,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           const inner = (
             <>
               {/*
-                Иконка в круге с рамкой по смыслу: успех и отказ читаются
-                боковым зрением, не вчитываясь в текст.
+                Плитка как значок приложения: скруглённый квадрат, а не круг.
+                Круг рядом с круглыми аватарами в шапке читался как ещё один
+                аватар, и уведомление выглядело подписью к картинке.
               */}
               <span
                 className={cn(
-                  "flex size-10 shrink-0 items-center justify-center rounded-full border bg-ink",
-                  tone.badge,
+                  "flex size-9 shrink-0 items-center justify-center rounded-[11px] border",
+                  tone.tile,
                   tone.accent,
                 )}
               >
@@ -154,7 +157,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={toast.avatar} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
                 ) : (
-                  <Icon name={toast.icon} className="size-[1.15rem]" />
+                  <Icon name={toast.icon} className="size-[1.05rem]" />
                 )}
               </span>
 
@@ -163,39 +166,57 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                   Две строки, а не одна: отказ почти всегда длиннее
                   заголовка, а обрезанное посередине сообщение не читается
                   вообще — человек гадает, что же произошло.
+
+                  Кегль и начертание — как в системных уведомлениях: 15,
+                  средний вес, плотный интерлиньяж. Полужирный на чёрном
+                  выглядел бы плашкой, а не сообщением.
                 */}
-                <span className="line-clamp-2 text-sm font-semibold text-paper">{toast.title}</span>
-                {toast.body ? <span className="line-clamp-2 text-xs text-mute">{toast.body}</span> : null}
+                <span className="line-clamp-2 text-[0.9375rem] font-medium leading-snug tracking-[-0.01em] text-paper">
+                  {toast.title}
+                </span>
+                {toast.body ? (
+                  <span className="line-clamp-2 text-[0.8125rem] leading-snug text-mute">{toast.body}</span>
+                ) : null}
               </span>
 
-              {toast.href ? (
-                <Icon name="chevronRight" className="size-4 shrink-0 text-mute" />
-              ) : (
-                <Icon name="close" className={cn("size-4 shrink-0", tone.accent)} />
-              )}
+              {/*
+                Стрелка только у ссылки: она говорит «нажми и уйдёшь».
+                Крестика у обычного сообщения нет намеренно — в системных
+                уведомлениях его тоже нет, и его вид сбивал с мысли, что
+                плашку закрывают крестиком.
+              */}
+              {toast.href ? <Icon name="chevronRight" className="size-4 shrink-0 text-mute/70" /> : null}
             </>
           );
 
           const className = cn(
             /*
-             * Плашка поднята над страницей: светлее фона, с размытием
-             * подложки, рамкой и настоящей тенью. Раньше это был тёмный
-             * прямоугольник без углов на почти чёрном фоне — уведомление
-             * было видно только потому, что человек знал, что оно там.
+             * Материал и появление — в теме: размытие подложки, верхняя
+             * кромка на свету, широкая мягкая тень и пружина. Здесь только
+             * форма и раскладка.
              */
-            "pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-panel border bg-ink-3/95 px-3.5 py-3 text-left backdrop-blur-sm",
-            "shadow-[var(--shadow-3)]",
-            tone.border,
-            "transition duration-base ease-out motion-safe:transition-transform",
-            leaving.includes(toast.id) ? "opacity-0 -translate-y-2" : "opacity-100 translate-y-0",
+            "toast-material pointer-events-auto flex w-full max-w-[22rem] items-center gap-3 rounded-toast px-3.5 py-3 text-left",
+            leaving.includes(toast.id) ? "toast-out" : "toast-in",
           );
 
           return toast.href ? (
-            <Link key={toast.id} href={toast.href} className={className} onClick={() => dismiss(toast.id)}>
+            <Link
+              key={toast.id}
+              href={toast.href}
+              data-tone={toast.tone}
+              className={className}
+              onClick={() => dismiss(toast.id)}
+            >
               {inner}
             </Link>
           ) : (
-            <button key={toast.id} type="button" className={className} onClick={() => dismiss(toast.id)}>
+            <button
+              key={toast.id}
+              type="button"
+              data-tone={toast.tone}
+              className={className}
+              onClick={() => dismiss(toast.id)}
+            >
               {inner}
             </button>
           );
