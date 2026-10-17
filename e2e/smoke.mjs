@@ -1370,6 +1370,39 @@ const guestOrder = await guestContext.newPage();
     check("студия обещает разбор на устройстве", /НЕ ЗАГРУЖАЕТСЯ НА СЕРВЕР/i.test(studioText));
 
     /*
+     * Кабинет отвечает на один вопрос и не занимает его игрой.
+     *
+     * Раньше первый экран битмейкера был пультом из девяти панелей, где
+     * двадцать виджетов прогресса стояли выше его денег: на экране с
+     * достижениями человек не видит ни баланса, ни того, что мешает продать.
+     * Проверяются три вещи: деньги на месте, игра ушла, и есть ровно одно
+     * главное действие, когда его есть что делать.
+     */
+    const cabinetPage = await browser.newPage();
+    await cabinetPage.setViewport({ width: 1440, height: 1100 });
+    cabinetPage.on("pageerror", (error) => errors.push(`cabinet: ${error}`));
+
+    await cabinetPage.goto(`${BASE}/cabinet`, { waitUntil: "networkidle2", timeout: 60_000 });
+    await wait(1500);
+
+    const cabinet = await cabinetPage.evaluate(() => {
+      const text = document.body.innerText;
+
+      return {
+        money: /ЗАРАБОТАНО/i.test(text) && /БАЛАНС/i.test(text),
+        game: /ДОСТИЖЕНИЯ|ЗАДАНИЯ НЕДЕЛИ/i.test(text),
+        steps: [...document.querySelectorAll('a[href="/cabinet/orders"], a[href="/cabinet/beats"], a[href="/cabinet/upload"]')]
+          .filter((node) => /Подтверди|Выставь|Загрузи первый/i.test(node.textContent ?? "")).length,
+      };
+    });
+
+    check("в кабинете видны деньги", cabinet.money, "баланса или заработанного нет");
+    check("игра убрана с первого экрана кабинета", !cabinet.game, "достижения или задания всё ещё на главном экране");
+    check("в кабинете одно главное действие, а не список", cabinet.steps <= 1, `действий: ${cabinet.steps}`);
+
+    await cabinetPage.close();
+
+    /*
      * Pulse доступен из кабинета.
      *
      * Страница публикации на YouTube была написана и работала, но на неё не

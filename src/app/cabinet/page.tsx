@@ -5,9 +5,7 @@ import { Container } from "@/components/ui/container";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { formatMoney, formatMoneyByCurrency } from "@/lib/currency";
 import { getT } from "@/lib/i18n/server";
-import { collectBeatmakerStats, computeAchievements } from "@/lib/sales/achievements";
-import { computeWeekly } from "@/lib/sales/weekly";
-import { WeeklyMissions } from "@/components/sales/weekly-missions";
+import { collectBeatmakerStats } from "@/lib/sales/achievements";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -18,10 +16,20 @@ export const metadata: Metadata = {
 /**
  * Кабинет битмейкера.
  *
- * Это пульт, а не витрина: сверху деньги и то, что требует действия, слева
- * работа (заказы и продажи), справа ритм (задания недели, инструменты,
- * следующая цель). Порядок отвечает на вопрос «что делать сейчас», а не
- * «что у меня есть».
+ * Раньше это был пульт из девяти панелей: четыре плитки чисел, заказы, продажи
+ * и три блока с достижениями и заданиями недели. Двадцать виджетов прогресса
+ * на первом экране битмейкера — это та игра, которую мы построили вместо
+ * инструмента, и она же делала главное невозможно увидеть: на экране с
+ * достижениями человек не видит ни своего баланса, ни того, что мешает
+ * продать.
+ *
+ * Теперь экран отвечает на один вопрос — «что делать сейчас, чтобы
+ * заработать» — и отвечает одной кнопкой. Деньги видны всегда, работа
+ * (заказы и продажи) — рядом, инструменты — списком. Игра уехала на профиль,
+ * где у неё правильный смысл: там достижения и видимы, и уместны.
+ *
+ * Порядок шагов выведен из денег: неоплаченный заказ дороже черновика,
+ * черновик дороже пустого кабинета. Первым показывается то, что стоит денег.
  */
 
 type ToolLabel = "cabinet.beats" | "cabinet.channels" | "cabinet.pulse" | "cabinet.studio";
@@ -118,9 +126,31 @@ export default async function CabinetPage() {
 
   const isOperator = profile?.is_operator === true;
 
-  const achievements = computeAchievements(stats);
-  const weekly = computeWeekly(stats);
-  const unlocked = achievements.filter((achievement) => achievement.unlocked);
+  /*
+   * Одно действие, которое стоит денег.
+   *
+   * Порядок не украшение: неоплаченный заказ — это деньги, которые уже
+   * пришли и лежат без движения; черновик — деньги, которые ещё не могут
+   * прийти; пустой кабинет — только вход в профессию. Сначала то, что
+   * дороже всего, и одна кнопка: экран с двумя просьбами не отвечает ни на
+   * одну.
+   */
+  const drafts = Math.max(0, stats.beatsTotal - stats.beatsOnSale);
+  const step = (() => {
+    if (stats.beatsTotal === 0) {
+      return { href: "/cabinet/upload", icon: "upload" as IconName, title: "cabinet.stepFirst", note: "cabinet.stepFirstNote" };
+    }
+
+    if (pendingOrders.length > 0) {
+      return { href: "/cabinet/orders", icon: "sale" as IconName, title: "cabinet.stepPending", note: "cabinet.stepPendingNote" };
+    }
+
+    if (drafts > 0) {
+      return { href: "/cabinet/beats", icon: "upload" as IconName, title: "cabinet.stepDraft", note: "cabinet.stepDraftNote" };
+    }
+
+    return null;
+  })();
 
   return (
     <section className="py-10 lg:py-14">
@@ -135,23 +165,41 @@ export default async function CabinetPage() {
             ) : null}
           </div>
 
-          {/* Одно главное действие на экран: загрузить бит. Остальное — ниже. */}
           <Link
             href="/cabinet/upload"
-            className="flex h-10 items-center gap-2 bg-signal px-5 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
+            className="flex h-10 items-center gap-2 border border-line-2 px-5 text-sm font-semibold text-paper transition-colors hover:border-line-2 hover:bg-ink-2"
           >
             <Icon name="upload" className="size-4" />
             {t("cabinet.upload")}
           </Link>
         </div>
 
+        {step ? (
+          <Link
+            href={step.href}
+            className="mt-6 flex flex-wrap items-center gap-4 rounded-panel border border-signal/40 bg-signal/5 px-5 py-5 transition-colors hover:bg-signal/10"
+          >
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-full border border-signal/40 bg-signal/10 text-signal">
+              <Icon name={step.icon} className="size-5" />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="label text-signal">{t(step.title as "cabinet.stepPending")}</span>
+              <span className="max-w-[62ch] text-sm leading-relaxed text-paper">
+                {t(step.note as "cabinet.stepPendingNote")}
+              </span>
+            </span>
+            <Icon name="chevronRight" className="size-5 shrink-0 text-signal" />
+          </Link>
+        ) : null}
+
         {/*
-          Деньги и действия — единственные крупные числа. Баланс первый: это
-          то, что можно вывести сейчас. Заработано — оборот за всё время,
-          а не дубликат баланса: одно без другого вводит в заблуждение.
+          Деньги — два числа и ничего больше. Баланс можно вывести сейчас,
+          заработано — оборот за всё время; одно без другого вводит в
+          заблуждение, а третье и четвёртое число про заказы и биты раньше
+          просто занимали место денег.
         */}
-        <dl className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="panel flex flex-col gap-2 p-5 sm:col-span-2 lg:col-span-1">
+        <dl className="mt-6 grid gap-3 sm:grid-cols-2">
+          <div className="panel flex flex-col gap-2 p-5">
             <dd className="font-mono text-4xl leading-none text-paper tabular-nums">
               {formatMoneyByCurrency(balanceMinor)}
             </dd>
@@ -167,26 +215,6 @@ export default async function CabinetPage() {
             </dd>
             <dt className="label text-mute">{t("cabinet.statEarned")}</dt>
           </div>
-
-          <a
-            href="#pending"
-            className="panel flex flex-col gap-2 p-5 transition-colors hover:border-line-2"
-            aria-label={t("cabinet.pendingTitle")}
-          >
-            <dd
-              className={`font-display text-2xl leading-none tabular-nums ${
-                pendingOrders.length > 0 ? "text-amber" : "text-paper/85"
-              }`}
-            >
-              {pendingOrders.length}
-            </dd>
-            <dt className="label text-mute">{t("cabinet.statPending")}</dt>
-          </a>
-
-          <div className="panel flex flex-col gap-2 p-5">
-            <dd className="font-display text-2xl leading-none text-paper/85 tabular-nums">{stats.beatsOnSale}</dd>
-            <dt className="label text-mute">{t("cabinet.statOnSale")}</dt>
-          </div>
         </dl>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -194,17 +222,17 @@ export default async function CabinetPage() {
             {/*
               Заказы на подтверждение идут первыми и без сворачивания: пока деньги
               не подтверждены, сделка не завершена, и забытый заказ — потерянные
-              деньги и недовольный покупатель.
+              деньги и недовольный покупатель. Блок пуст — его не показываем:
+              рамка с текстом «необработанных заказов нет» занимает место
+              дороже, чем сообщает.
             */}
-            <div id="pending" className="panel scroll-mt-24 p-5">
-              <div className="mb-4 flex items-baseline justify-between gap-4">
-                <h2 className="label text-paper">{t("cabinet.pendingTitle")}</h2>
-                {pendingOrders.length > 0 ? <span className="font-mono text-sm text-signal">{pendingOrders.length}</span> : null}
-              </div>
+            {pending.length > 0 ? (
+              <div id="pending" className="panel scroll-mt-24 p-5">
+                <div className="mb-4 flex items-baseline justify-between gap-4">
+                  <h2 className="label text-paper">{t("cabinet.pendingTitle")}</h2>
+                  <span className="font-mono text-sm text-signal">{pendingOrders.length}</span>
+                </div>
 
-              {pending.length === 0 ? (
-                <p className="text-sm text-mute">{t("cabinet.pendingEmpty")}</p>
-              ) : (
                 <ul className="flex flex-col">
                   {pending.map((row) => (
                     <li key={row.order_id}>
@@ -228,8 +256,8 @@ export default async function CabinetPage() {
                     </li>
                   ))}
                 </ul>
-              )}
-            </div>
+              </div>
+            ) : null}
 
             {recent.length > 0 ? (
               <div className="panel p-5">
@@ -257,11 +285,9 @@ export default async function CabinetPage() {
           </div>
 
           <aside className="flex min-w-0 flex-col gap-6">
-            <div className="panel p-5">
-              <WeeklyMissions missions={weekly} />
-            </div>
-
-            {/* Инструменты — ссылки списком, а не плитки: это ссылки, а не содержимое. */}
+            {/*
+              Инструменты — ссылки списком, а не плитки: это ссылки, а не содержимое.
+            */}
             <nav className="panel p-5">
               <h2 className="label mb-4 text-mute">{t("cabinet.tools")}</h2>
               <ul className="flex flex-col gap-1">
@@ -283,31 +309,6 @@ export default async function CabinetPage() {
                 ))}
               </ul>
             </nav>
-
-            {unlocked.length > 0 ? (
-              <div className="panel p-5">
-                <div className="mb-4 flex items-baseline justify-between gap-4">
-                  <h2 className="label text-mute">{t("ach.title")}</h2>
-                  <span className="label text-paper tabular-nums">
-                    {unlocked.length} / {achievements.length}
-                  </span>
-                </div>
-                <ul className="flex flex-wrap gap-2">
-                  {unlocked.map((achievement) => (
-                    <li
-                      key={achievement.id}
-                      title={t(achievement.titleKey as "ach.firstBeat.title")}
-                      className="chip px-3 py-2"
-                    >
-                      <span className="label text-paper">{t(achievement.titleKey as "ach.firstBeat.title")}</span>
-                    </li>
-                  ))}
-                </ul>
-                {nextAchievementLine(achievements, t) ? (
-                  <p className="mt-4 text-xs text-mute">{nextAchievementLine(achievements, t)}</p>
-                ) : null}
-              </div>
-            ) : null}
           </aside>
         </div>
       </Container>
@@ -315,25 +316,10 @@ export default async function CabinetPage() {
   );
 }
 
-/** Тип функции перевода: получаем от getT, чтобы не повторять union вручную. */
-type T = Awaited<ReturnType<typeof getT>>;
-
 /**
  * Уровень покупки. Подписи совпадают в обоих языках: это названия тарифов,
  * а не фразы интерфейса, и «MP3 + WAV» переводить нечего.
  */
 function tierLabel(tier: string): string {
   return tier === "mp3" ? "MP3" : tier === "wav" ? "MP3 + WAV" : tier === "trackout" ? "Track Out" : "Эксклюзив";
-}
-
-/** Следующая цель: без неё список достижений выглядит как список медалей. */
-function nextAchievementLine(
-  achievements: ReturnType<typeof computeAchievements>,
-  t: T,
-): string | null {
-  const next = achievements.find((achievement) => !achievement.unlocked);
-
-  if (!next) return null;
-
-  return `${t("ach.next")}: ${t(next.titleKey as "ach.firstBeat.title")} · ${next.current} / ${next.threshold}`;
 }
