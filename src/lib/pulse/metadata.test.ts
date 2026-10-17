@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildPulseMetadata,
   pulseMetadataProblem,
+  DESCRIPTION_LIMIT,
   TAGS_LIMIT,
+  TAG_LENGTH_LIMIT,
   TITLE_LIMIT,
   type BeatMeta,
 } from "./metadata";
@@ -61,10 +63,22 @@ describe("метаданные Pulse", () => {
     expect(meta.description).not.toContain("только для некоммерческого использования");
   });
 
-  it("кредит артиста стоит в описании", () => {
+  it("кредит указывает битмейкера, а не артистов", () => {
     const meta = buildPulseMetadata(beat, "nonProfit");
 
-    expect(meta.description).toContain("must credit: prod.dy");
+    /*
+     * «must credit» — это «укажи меня, если используешь бит». Артисты
+     * (prod.dy) тут бесполезны: их имена и так в названии, а вот имя
+     * битмейкера нужно, чтобы трафик и репутация шли к нему.
+     */
+    expect(meta.description).toContain("must credit: Gennzy");
+    expect(meta.description).not.toContain("must credit: prod.dy");
+  });
+
+  it("без битмейкера строка кредита не остаётся висячей", () => {
+    const meta = buildPulseMetadata({ ...beat, producer: "" }, "nonProfit");
+
+    expect(meta.description).not.toContain("must credit:");
   });
 
   it("техническая строка склеена — так её пишут в продакшене", () => {
@@ -193,15 +207,56 @@ describe("метаданные Pulse", () => {
     const tags = meta.tags;
 
     /*
-     * Один артист — минимум четыре разных запроса: сам, с годом, бесплатный
-     * и «free for profit». Без этого длинного хвоста не существует: один тег
-     * на артиста находит тех, кто уже знает имя, а остальные ищут по
-     * описанию.
+     * Один артист — минимум четыре разных запроса: сам, с годом, свободный и
+     * кириллический. Без этого длинного хвоста не существует: один тег на
+     * артиста находит тех, кто уже знает имя, а остальные ищут по описанию.
      */
     expect(tags).toContain("prod.dy type beat");
     expect(tags.some((tag) => /^prod\.dy type beat \d{4}$/.test(tag))).toBe(true);
-    expect(tags).toContain("prod.dy type beat free for profit");
-    expect(tags).toContain("free for profit prod.dy type beat");
+    expect(tags).toContain("free prod.dy type beat");
+    expect(tags).toContain("prod.dy тайп біт");
+  });
+
+  it("ни один тег не длиннее тридцати символов", () => {
+    const long = {
+      ...beat,
+      artists: ["villian production", "madk1d official"],
+      tags: ["очень длинный тег автора"],
+    };
+
+    const meta = buildPulseMetadata(long, "nonProfit");
+
+    /*
+     * YouTube отбрасывает слишком длинный тег целиком. Обрезать нельзя:
+     * «prod.dy type beat free for» — обрывок, который не находит никто.
+     * Поэтому длинные формы уходят в описание, а не сюда.
+     */
+    for (const tag of meta.tags) expect(tag.length).toBeLessThanOrEqual(TAG_LENGTH_LIMIT);
+  });
+
+  it("длинные формы не теряются, а уходят в описание", () => {
+    const meta = buildPulseMetadata(beat, "nonProfit");
+
+    // То, что не влезает в тридцать символов, обязано найтись в описании.
+    expect(meta.description).toContain("free for profit prod.dy type beat");
+    expect(meta.description).toContain("бесплатный prod.dy тайп біт");
+  });
+
+  it("объединённая форма артистов повторяет название", () => {
+    const two = {
+      ...beat,
+      artists: ["madk1d", "villian"],
+    };
+
+    const meta = buildPulseMetadata(two, "nonProfit");
+
+    // Название: «madk1d, villian type beat - …». Ищут ровно эту строку, и
+    // YouTube тем сильнее считает бит своим, чем ближе теги к названию.
+    expect(meta.title).toContain("madk1d, villian type beat");
+    expect(meta.tags).toContain("madk1d villian type beat");
+    // И отдельный кластер на каждого: это два разных человека.
+    expect(meta.tags).toContain("madk1d type beat");
+    expect(meta.tags).toContain("villian type beat");
   });
 
   it("бесплатное намерение выражено, а не подменено одной формой", () => {
@@ -266,6 +321,92 @@ describe("метаданные Pulse", () => {
 
     // В поле артистов лежит продюсер, а настоящие артисты — в тегах.
     expect(meta.tags).toContain("slayr type beat");
+  });
+
+  it("мажорный бит не получает тег «минус»", () => {
+    const major = buildPulseMetadata({ ...beat, musicalKey: "F# major" }, "paid");
+
+    /*
+     * На бите F# major выходило «bright минус»: YouTube получал утверждение,
+     * что бит минорный. «Минус» добавляется только минорам.
+     */
+    expect(major.tags.some((tag) => tag.includes("минус"))).toBe(false);
+    expect(major.description).not.toContain("минус");
+  });
+
+  it("минорный бит получает «минус» — его ищут вместо нот", () => {
+    const minor = buildPulseMetadata({ ...beat, musicalKey: "C minor" }, "paid");
+
+    // Ноты не ищет никто: «C minor» бесполезно, а «dark минус» — запрос.
+    expect(minor.tags).toContain("type beat минус");
+    expect(minor.tags).toContain("dark минус");
+  });
+
+  it("жанр не спорит сам с собой в паре с настроением", () => {
+    const dark = buildPulseMetadata({ ...beat, genre: "dark" }, "paid");
+
+    // На жанре «dark» выходило «dark type beat bright» — бит, который
+    // одновременно тёмный и светлый. Противоречие хуже отсутствия тега.
+    for (const tag of dark.tags) {
+      expect(tag).not.toMatch(/^dark type beat dark/);
+    }
+
+    expect(dark.tags).toContain("dark type beat melodic");
+  });
+
+  it("хештеги — артисты, а не продюсер и не жанр", () => {
+    const two = { ...beat, artists: ["madk1d", "villian"], tags: [] };
+    const meta = buildPulseMetadata(two, "nonProfit");
+    // Решётка внутри «F#minor» из технической строки хештегом не является.
+    const hashtags = (meta.description.match(/(?:^|\s)#[^\s]+/g) ?? []).map((tag) => tag.trim());
+
+    /*
+     * Три хештега показываются над заголовком — единственное место, где тег
+     * видит человек. По счёту первыми шли продюсер и жанр: «#Gennzytypebeat
+     * #darktypebeat» — ровно то, что не ищет никто конкретный.
+     */
+    expect(hashtags).toEqual(["#madk1dtypebeat", "#villiantypebeat", "#madk1dvilliantypebeat"]);
+    expect(hashtags.join(" ")).not.toContain("Gennzy");
+  });
+
+  it("смешанного хештега латиница с кириллицей не бывает", () => {
+    const two = { ...beat, artists: ["madk1d", "villian"], tags: [] };
+    const meta = buildPulseMetadata(two, "nonProfit");
+
+    // «#madk1dvillianтайпбіт» — не запрос, а склейка. Кириллица в тегах
+    // остаётся, но в хештег не идёт.
+    for (const tag of meta.description.match(/(?:^|\s)#[^\s]+/g) ?? []) {
+      expect(tag).not.toMatch(/#[a-zA-Z]+[а-яА-Я]/);
+    }
+  });
+
+  it("длинный хвост ключевых слов помещается в описание", () => {
+    const meta = buildPulseMetadata(beat, "nonProfit");
+    const block = meta.description.match(/Ключевые слова:\n(.+)/)?.[1] ?? "";
+
+    // Теги упираются в 500 символов, описание — в 5000. Хвост живёт здесь.
+    expect(block.length).toBeGreaterThan(500);
+    expect(meta.description.length).toBeLessThanOrEqual(DESCRIPTION_LIMIT);
+    expect(meta.tags.join(",").length).toBeLessThanOrEqual(TAGS_LIMIT);
+  });
+
+  it("авторские теги публикуются, даже когда лимит тесный", () => {
+    const fat = {
+      ...beat,
+      artists: ["madk1d", "villian", "slayr", "pittkiid"],
+      tags: ["slayr", "pittkiid", "mayot", "prod.dy", "a very long author tag here"],
+    };
+
+    const meta = buildPulseMetadata(fat, "nonProfit");
+
+    /*
+     * Автор вписал их руками, их не больше восьми, и хвост списка отрезается
+     * лимитом. Раньше они уезжали за кластерами и молча пропадали, а человек
+     * видел, что группа «твои теги» исчезла, и не понимал, куда дел то, что
+     * сам вписал.
+     */
+    for (const tag of fat.tags) expect(meta.tags).toContain(tag);
+    expect(meta.ownTags).toEqual(fat.tags);
   });
 
   it("бесплатные теги не появляются у платного бита", () => {

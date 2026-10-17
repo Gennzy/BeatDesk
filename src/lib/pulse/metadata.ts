@@ -7,7 +7,7 @@ import {
   TYPE_BEAT_CYRILLIC,
   atomsOf,
   genreWords,
-  moodFromKey,
+  moodsFromKey,
 } from "./tag-vocabulary";
 
 /**
@@ -30,6 +30,14 @@ export const DESCRIPTION_LIMIT = 5000;
 
 /** Суммарный лимит тегов, а не длина одного тега. */
 export const TAGS_LIMIT = 500;
+
+/**
+ * Лимит одного тега.
+ *
+ * Отдельный от суммарного: YouTube отбрасывает слишком длинный тег целиком, а
+ * не укорачивает, поэтому переполнение одного съедает место сразу у всех.
+ */
+export const TAG_LENGTH_LIMIT = 30;
 
 /**
  * Шаблон публикации.
@@ -118,6 +126,128 @@ function titleOf(beat: BeatMeta, template: PulseTemplate): string {
 }
 
 /**
+ * Ключевые слова для описания: полный длинный хвост, без обрезки.
+ *
+ * Теги у YouTube ограничены пятьюстами символами — это примерно пятнадцать
+ * строк, и всё, что в них не влезло, не существует. Описание же принимает
+ * пять тысяч, и это единственное место, где помещается настоящий хвост.
+ *
+ * Поэтому здесь не «пятнадцать самых важных», а все варианты, которые имеют
+ * смысл: на каждого артиста по шесть форм, плюс настроения и жанр. YouTube
+ * разбирает описание на слова и сопоставляет их с запросами, поэтому
+ * «madk1d type beat 2026» и «free for profit villian type beat» работают
+ * даже тогда, когда в теги они не влезли.
+ *
+ * Список упорядочен и без повторов: повторённое слово в описании съедает
+ * место, но не добавляет веса.
+ */
+function keywordsOf(beat: BeatMeta, template: PulseTemplate): string[] {
+  const out: string[] = [];
+  const free = template === "nonProfit";
+  const [year, lastYear] = TAG_YEARS;
+  const genres = beat.genre ? genreWords(beat.genre) : [];
+  const { moods: keyMoods, minor } = moodsFromKey(beat.musicalKey);
+
+  const push = (value: string) => {
+    const clean = value.replace(/\s+/g, " ").trim();
+
+    if (clean && !out.includes(clean)) out.push(clean);
+  };
+
+  /*
+   * Имена артистов идут первыми и получают по шесть форм. Именно на этом
+   * строится поиск: «madk1d type beat» и «villian type beat» — два разных
+   * человека, которые ищут два разных бита, хотя называют их одинаково.
+   */
+  const names = [...beat.artists];
+
+  if (beat.artists.length > 1) {
+    const combo = beat.artists.join(" ");
+
+    push(`${combo} type beat`);
+    push(`${combo} type beat ${year}`);
+
+    if (free) push(`free for profit ${combo} type beat`);
+  }
+
+  for (const name of names) {
+    push(`${name} type beat`);
+    push(`${name} type beat ${year}`);
+    push(`${name} ${TYPE_BEAT_CYRILLIC}`);
+    push(`${name} beats`);
+    push(`beats by ${name}`);
+
+    if (free) {
+      push(`free ${name} type beat`);
+      push(`${name} type beat free for profit`);
+      push(`free for profit ${name} type beat`);
+      push(`бесплатный ${name} ${TYPE_BEAT_CYRILLIC}`);
+    } else {
+      push(`${name} type beat for sale`);
+      push(`${name} beat for sale`);
+    }
+  }
+
+  const maker = beat.producer.trim();
+
+  if (maker) {
+    push(`${maker} type beat`);
+    push(`beats by ${maker}`);
+    push(`prod. ${maker} type beat`);
+    push(`${maker} beats`);
+  }
+
+  // Жанр с настроением: «trap type beat dark» — узкий, но самый точный запрос.
+  // Настроение пропускается, если жанр уже про него говорит, — иначе выходит
+  // «dark type beat bright», то есть бит одновременно тёмный и светлый.
+  const mood = keyMoods.find((item) => !genres.some((word) => word.includes(item)));
+
+  for (const word of genres) {
+    push(`${word} type beat`);
+    push(`${word} type beat ${year}`);
+    push(`${word} instrumental`);
+
+    if (mood) push(`${word} type beat ${mood}`);
+
+    // Минор добавляется только минорам: «dark минус» ищут, «bright минус» —
+    // это опечатка, а не запрос.
+    if (minor) {
+      push(`${word} минус`);
+      push(`${word} type beat минус`);
+    }
+  }
+
+  push(`type beat ${year}`);
+  push(`type beat ${lastYear}`);
+  push(`${beat.bpm} bpm`);
+  push(`${beat.bpm}bpm`);
+
+  if (free) {
+    push("free type beat");
+    push("free beat");
+    push("free for profit type beat");
+  } else {
+    push("type beat for sale");
+    push("beats for sale");
+    push("buy type beat");
+  }
+
+  for (const mood of [...keyMoods, ...MOODS]) {
+    push(`${mood} type beat`);
+    push(`${mood} ${TYPE_BEAT_CYRILLIC}`);
+  }
+
+  if (minor) {
+    push("минус type beat");
+    push(`${MINOR_CYRILLIC} type beat`);
+
+    for (const mood of keyMoods) push(`${mood} ${MINOR_CYRILLIC}`);
+  }
+
+  return out;
+}
+
+/**
  * Описание.
  *
  * Первыми идут права: что можно с видео и что нельзя. Дальше — техника и
@@ -135,7 +265,17 @@ function descriptionOf(beat: BeatMeta, template: PulseTemplate, hashtags: string
           `Бит доступен по лицензии. Купить и скачать файлы: ${beat.beatUrl}`,
         ];
 
-  const credit = beat.artists.length > 0 ? `must credit: ${beat.artists.join(", ")}` : "";
+  /*
+   * Кредит — битмейкеру, а не артистам.
+   *
+   * Раньше сюда попадали артисты, для которых бит сделан: «must credit:
+   * madk1d, villian». Смысл строки — «укажи меня, если используешь бит», и
+   * артисты тут бесполезны: их имена и так стоят в названии, а вот имя
+   * битмейкера нужно, чтобы трафик и репутация шли к нему, а не к тем, кто
+   * бит уже купил.
+   */
+  const maker = beat.producer.trim();
+  const credit = maker ? `must credit: ${maker}` : "";
 
   /*
    * Пустые строки в списке — это разделители абзацев, и они нужны. Но
@@ -154,6 +294,24 @@ function descriptionOf(beat: BeatMeta, template: PulseTemplate, hashtags: string
   parts.push("", techLineOf(beat));
 
   if (beat.genreLabel) parts.push(`Жанр: ${beat.genreLabel}`);
+
+  /*
+   * Длинный хвост — в описание, а не в теги.
+   *
+   * Теги ограничены пятьюстами символами, описание — пятью тысячами. Хвост
+   * из тридцати-шестидесяти вариантов «madk1d type beat ...» физически не
+   * помещается в теги, но целиком помещается здесь, и YouTube разбирает его
+   * так же, как теги.
+   *
+   * Блок подписан и не спрятан: он честно выглядит как ключевые слова, а не
+   * как мусор в конце описания. Человек, который читает описание, должен
+   * понимать, что видит.
+   */
+  const keywords = keywordsOf(beat, template);
+
+  if (keywords.length > 0) {
+    parts.push("", "Ключевые слова:", keywords.join(" · "));
+  }
 
   parts.push("", hashtags.join(" "));
 
@@ -189,13 +347,27 @@ function tagsOf(
 ): { all: string[]; core: string[]; own: string[] } {
   const out: string[] = [];
 
+  /*
+   * Тег укладывается в тридцать символов или не попадает вовсе.
+   *
+   * Обрезать нельзя: «prod.dy type beat free for profit» превращается в
+   * «prod.dy type beat free for» — обрывок, который не находит никто и
+   * выглядит как опечатка. Длинные формы уходят в описание, где лимит
+   * пять тысяч, а короткие — сюда.
+   *
+   * Из-за этого «free for profit <имя> type beat» (32 символа даже на
+   * коротком имени) в тегах не бывает никогда — и у Echo тоже: их длинный
+   * список «теги (ignore)» не является тегами YouTube, это их собственная
+   * индексация. Настоящие теги у них — это восемнадцать коротких.
+   */
   const push = (value: string | null | undefined) => {
     const clean = value?.trim();
-    if (clean && !out.includes(clean)) out.push(clean);
+
+    if (clean && clean.length <= TAG_LENGTH_LIMIT && !out.includes(clean)) out.push(clean);
   };
 
   const genres = beat.genre ? genreWords(beat.genre) : [];
-  const keyMoods = moodFromKey(beat.musicalKey);
+  const { moods: keyMoods, minor } = moodsFromKey(beat.musicalKey);
 
   // Основа: как биты ищут.
   push("type beat");
@@ -255,15 +427,34 @@ function tagsOf(
   }
 
   /*
+   * Авторские теги — до кластеров, и это не перестраховка.
+   *
+   * Автор вписал их руками, и их не больше восьми: держать их в хвосте нельзя,
+   * потому что хвост отрезается лимитом. Раньше они уезжали за кластерами и
+   * молча пропадали из публикации — человек видел, что группа «твои теги»
+   * исчезла, и не понимал, куда дел то, что сам вписал.
+   *
+   * Их кластеры («slayr type beat») при этом остаются: одно другому не мешает.
+   */
+  for (const tag of beat.tags) push(tag);
+
+  /*
    * Тональность как настроение — раньше кластеров и после намерения купить.
    *
    * «C minor» в тегах не ищет никто: ноты знают единицы. Ищут «минус» и
    * «dark». Тегов тут два-три, стоят они дёшево, а приводят тех, кто уже
    * выбрал настроение и ищет под него бит.
+   *
+   * «минус» добавляется только минорам. Для мажора он не просто лишний, а
+   * вредный: на бите F# major выходило «bright минус», и YouTube получал
+   * утверждение, что бит минорный, в то время как он мажорный.
    */
-  for (const mood of keyMoods) {
-    push(`${mood} ${MINOR_CYRILLIC}`);
-    push(`${mood} type beat`);
+  for (const mood of keyMoods) push(`${mood} type beat`);
+
+  if (minor) {
+    push(`type beat ${MINOR_CYRILLIC}`);
+
+    for (const mood of keyMoods) push(`${mood} ${MINOR_CYRILLIC}`);
   }
 
   /*
@@ -308,24 +499,48 @@ function tagsOf(
   const free = template === "nonProfit";
   const [year, lastYear] = TAG_YEARS;
 
+  /*
+   * Объединённая форма — первой.
+   *
+   * Название видео: «madk1d, villian type beat - Night Vision». Человек ищет
+   * ровно эту строку, и YouTube тем сильнее считает бит своим, чем ближе
+   * теги к названию. Отдельные кластера ниже дают запросы «madk1d type beat»
+   * по каждому, но именно пара имён в названии ищут те, кто уже видел
+   * артистов вместе.
+   */
+  if (beat.artists.length > 1) {
+    const combo = beat.artists.join(" ");
+
+    push(`${combo} type beat`);
+    push(`${combo} ${TYPE_BEAT_CYRILLIC}`);
+
+    if (free) {
+      push(`${combo} type beat free`);
+      push(`free ${combo} type beat`);
+    }
+  }
+
   for (const atom of atoms) {
-    const name = atom.slice(0, 30);
+    /*
+     * Имя режется заранее: «villian production type beat» должно стать
+     * «villian type beat», а не отброшено целиком из-за длины.
+     */
+    const name = atom.slice(0, 16);
 
     push(`${name} type beat`);
     push(`${name} type beat ${year}`);
-
-    if (free) {
-      push(`${name} type beat free for profit`);
-      push(`free for profit ${name} type beat`);
-    }
+    push(`${name} ${TYPE_BEAT_CYRILLIC}`);
 
     /*
-     * «тайп біт» — самый дорогой тег кластера после «free for profit»: так
-     * ищут русскоязычные, а латинское «type beat» их не находит.
+     * Бесплатные формы — только бесплатному биту, по той же причине, по
+     * которой «beats for sale» не ставится бесплатному: тег обещает то, чего
+     * нет. На платном бите «free prod.dy type beat» приводит зрителя,
+     * который ничего не купит.
      */
-    push(`${name} ${TYPE_BEAT_CYRILLIC}`.slice(0, 30));
-
-    if (free) push(`бесплатный ${name} ${TYPE_BEAT_CYRILLIC}`.slice(0, 30));
+    if (free) {
+      push(`free ${name} type beat`);
+      push(`бесплатный ${name} ${TYPE_BEAT_CYRILLIC}`);
+    }
   }
 
   /*
@@ -335,11 +550,14 @@ function tagsOf(
    * осталось уточнить настроение. Таких пар десятки, и в лимит входит ровно
    * одна. Полное произведение занимало бы место, отданное артистам.
    *
-   * Настроение берётся из тональности, а не из первого тега: тег может быть
-   * именем артиста, а «минус» — это и правда настроение, и оно всегда есть.
+   * Настроение пропускается, если жанр уже сам про него говорит: на жанре
+   * «dark» выходило «dark type beat bright» — бит, который одновременно тёмный
+   * и светлый. Противоречие в тегах хуже, чем простое отсутствие тега.
    */
+  const mood = keyMoods.find((item) => !genres.some((word) => word.includes(item)));
+
   for (const word of genres) {
-    push(`${word} type beat ${keyMoods[0]}`);
+    if (mood) push(`${word} type beat ${mood}`);
     push(`${word} instrumental`);
   }
 
@@ -357,17 +575,16 @@ function tagsOf(
    * Инструментал — последний: редкий запрос от того, кто уже знает, что
    * ищет, и конверсия у него самая высокая.
    */
-  const core = out.slice();
-  const own: string[] = [];
-
-  for (const tag of beat.tags) {
-    const clean = tag?.trim();
-
-    if (clean && !out.includes(clean)) {
-      out.push(clean);
-      own.push(clean);
-    }
-  }
+  /*
+   * Группы делятся по принадлежности, а не по порядку добавления.
+   *
+   * Авторские теги стоят в начале списка — иначе их срезает лимит, — поэтому
+   * «всё до последнего» больше не работает как «основные». Если оставить
+   * core = out целиком, тег «slayr» показывается в обеих группах сразу.
+   */
+  const authored = new Set(beat.tags.map((tag) => tag?.trim() ?? "").filter(Boolean));
+  const core = out.filter((tag) => !authored.has(tag));
+  const own = out.filter((tag) => authored.has(tag));
 
   return { all: out, core, own };
 }
@@ -379,12 +596,53 @@ function tagsOf(
  * а остальные прячет в описание, где они превращаются в стену из двадцати
  * слов под текстом о лицензии. Три главных тега — и есть те, по которым
  * видео находят.
+ *
+ * Вот тут порядок решает всё. YouTube показывает три хештега над заголовком
+ * — это единственное место, где тег видит человек, а не машина.
+ *
+ * Раньше туда попадали первые три тега по счёту: «#type beat», «#trap beat»,
+ * «#beat trap». Это три запроса, по которым бит находит ровно тот, кто ищет
+ * «что угодно подряд», и конкурирует с миллионом таких же. Теперь берутся
+ * имена: «#madk1dtypebeat», «#villiantypebeat», «#madk1dvilliantypebeat» —
+ * их ищут те, кто знает артиста и хочет именно его бит.
  */
-function hashtagsFrom(tags: string[]): string[] {
-  return tags
-    .slice(0, 3)
-    .map((tag) => tag.replace(/[^\p{L}\p{N}]/gu, ""))
+function hashtagsFrom(artists: string[], producer: string, genres: string[]): string[] {
+  const clean = (value: string) => value.replace(/[^\p{L}\p{N}]/gu, "").trim();
+  const names = artists.map((name) => name.trim()).filter(Boolean);
+
+  /*
+   * Порядок задан явно, а не «первые три тега по счёту». По счёту первыми
+   * оказывались продюсер и жанр — «#Gennzytypebeat #darktypebeat», — то
+   * есть ровно то, что не ищет никто конкретный.
+   *
+   * Сначала артисты по одному: «madk1d» и «villian» ищут два разных человека,
+   * и это два разных бита. Потом пара целиком, потому что она стоит в
+   * названии. И только потом продюсер и жанр — если артистов не хватило на
+   * три хештега.
+   */
+  const wanted = names.map((name) => `${name} type beat`);
+
+  if (names.length > 1) wanted.push(`${names.join(" ")} type beat`);
+
+  /*
+   * Жанр — только базовый: псевдонимы в трёх хештегах не помещаются, а «trap»
+   * и «rap beat» в одном списке выглядят как два хештега про одно и то же.
+   */
+  for (const genre of genres.slice(0, 1)) wanted.push(`${genre} type beat`);
+
+  const maker = producer.trim();
+
+  if (maker) wanted.push(`${maker} type beat`);
+
+  wanted.push("type beat");
+
+  // Смешанное «madk1d villian тайп біт» в один хештег не ищут: это не запрос,
+  // а склейка. Кириллица здесь не нужна — в тегах она уже есть.
+  return wanted
+    .map(clean)
     .filter(Boolean)
+    .filter((tag, i, all) => all.indexOf(tag) === i)
+    .slice(0, 3)
     .map((tag) => `#${tag}`);
 }
 
@@ -461,7 +719,7 @@ export function buildPulseMetadata(
   // Описание строится по полному списку: хештеги в нём не ограничены
   // лимитом тегов, и обрезать их заранее значило бы выбросить то, что
   // в описание ещё влезло.
-  const hashtags = hashtagsFrom(allTags);
+  const hashtags = hashtagsFrom(beat.artists, beat.producer, beat.genre ? genreWords(beat.genre) : []);
 
   const rawDescription = descriptionOf(beat, template, hashtags);
 

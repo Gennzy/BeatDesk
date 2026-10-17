@@ -89,9 +89,16 @@ export const MINOR_CYRILLIC = "минус";
  * Минус звучит мрачно, и человек, который не знает нот, ищет бит не по
  * «F minor», а по «dark» или «минус». Слово «minor» в тегах бесполезно:
  * так не ищет никто.
+ *
+ * Мажор намеренно не даёт «bright»: это не поисковый запрос в этой нише, а
+ * вдобавок он противоречит жанру — «dark type beat bright» выглядит так,
+ * будто бит одновременно тёмный и светлый. Для мажора остаётся «melodic»,
+ * а «минус» не добавляется вовсе.
  */
-export function moodFromKey(key: string): string[] {
-  return /minor|минор/i.test(key) ? ["dark", "melodic"] : ["bright", "melodic"];
+export function moodsFromKey(key: string): { moods: string[]; minor: boolean } {
+  const minor = /minor|минор/i.test(key);
+
+  return { moods: minor ? ["dark", "melodic"] : ["melodic"], minor };
 }
 
 /**
