@@ -1086,6 +1086,62 @@ async function main() {
           );
 
           /*
+           * Цена и продажа прямо в строке «Моих битов».
+           *
+           * Отдельная страница правки нужна для обложки, тегов и файлов, но
+           * уходить на неё ради одной галочки — это тот тупик, из-за которого
+           * бит с готовыми ценами висел в черновике. Проверяется то, что
+           * человек может выставить бит и поменять цену, не покидая списка.
+           */
+          await user.goto(`${BASE}/cabinet/beats`, { waitUntil: "networkidle2", timeout: 60_000 });
+          await wait(1500);
+
+          const row = await user.evaluate(async (id) => {
+            const card = [...document.querySelectorAll("li")].find((node) =>
+              node.querySelector(`a[href="/beats/${id}"]`),
+            );
+
+            if (!card) return { found: false };
+
+            const toggle = [...card.querySelectorAll("button")].find((node) =>
+              /В продажу|Снять с продажи/i.test(node.textContent ?? ""),
+            );
+            const box = card.querySelector('input[type="number"]');
+
+            if (!toggle || !box) return { found: true, controls: false };
+
+            // Цена уходит по blur: проверяется, что значение доехало до базы,
+            // а не осталось в поле.
+            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+            setter.call(box, "750");
+            box.dispatchEvent(new Event("input", { bubbles: true }));
+            box.dispatchEvent(new Event("change", { bubbles: true }));
+            box.blur();
+
+            await new Promise((resolve) => setTimeout(resolve, 2500));
+
+            // Бит уже в продаже после проверки переключателя, так что кнопка
+            // сейчас снимает его с продажи — и этим тоже проверяется, что
+            // действие читает состояние, а не повторяет одну и ту же операцию.
+            toggle.click();
+            await new Promise((resolve) => setTimeout(resolve, 2500));
+
+            return { found: true, controls: true };
+          }, beatId);
+
+          check("в строке бита есть цена и продажа", row.found && row.controls, "управления в строке нет");
+
+          const afterRow = await fetch(
+            `${base}/rest/v1/beats?select=title,sale_state,prices&owner_id=eq.${ownerId}`,
+            { headers },
+          ).then((r) => r.json());
+
+          const touched = (afterRow ?? []).find((item) => item.title === "E2E свой бит");
+
+          check("цена из строки сохранилась", Number(touched?.prices?.mp3) === 750, `цена ${touched?.prices?.mp3}`);
+          check("продажа из строки переключилась", touched?.sale_state === "draft", `состояние ${touched?.sale_state}`);
+
+          /*
            * Бит убирается сразу, а не в общей уборке.
            *
            * Дальше по прогону лента читается как обычно: сверяется одинаковая

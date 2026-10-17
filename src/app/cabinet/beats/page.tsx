@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { BeatRowActions } from "@/components/profile/beat-row-actions";
 import { Container } from "@/components/ui/container";
 import { Icon } from "@/components/ui/icon";
 import { fetchBeatsByOwner } from "@/lib/feed";
@@ -98,7 +99,13 @@ export default async function CabinetBeatsPage() {
                     {SALE_STATE_LABELS[beat.saleState]}
                   </span>
 
-                  <span className="ml-auto flex gap-2">
+                  {/*
+                    Ссылки на правку и публикацию остаются: упрощать здесь
+                    нечем, а вот снять их — значит снова оставить страницу без
+                    входа. Просто они теперь не единственные: цену и продажу
+                    можно сделать прямо в строке, не уходя со списка.
+                  */}
+                  <span className="ml-auto flex gap-3">
                     <Link href={`/beats/${beat.id}/edit`} className="label text-mute hover:text-paper">
                       {t("cabinet.edit")}
                     </Link>
@@ -107,6 +114,20 @@ export default async function CabinetBeatsPage() {
                     </Link>
                   </span>
                 </div>
+
+                {/*
+                  Цена и продажа — прямо здесь. Отдельная страница правки
+                  осталась для обложки, тегов и файлов, но заходить на неё ради
+                  одной галочки было тем тупиком, из-за которого бит с
+                  готовыми ценами висел в черновике.
+                */}
+                <BeatRowActions
+                  beatId={beat.id}
+                  saleState={beat.saleState}
+                  isPublic={beat.isPublic}
+                  prices={beat.prices}
+                  currency={beat.currency}
+                />
               </li>
             ))}
           </ul>
