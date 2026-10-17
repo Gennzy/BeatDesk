@@ -133,8 +133,10 @@ describe("метаданные Pulse", () => {
 
     // «trap beat» — как ищут; «trap» сам по себе почти ничего не находит.
     expect(meta.tags).toContain("trap beat");
-    expect(meta.tags).toContain("beat trap");
     expect(meta.tags).toContain("trap");
+    // Обратный порядок не строим: YouTube не различает порядок слов в тегах,
+    // а 9 символов лимита лучше отдать настроению.
+    expect(meta.tags).not.toContain("beat trap");
   });
 
   it("темп идёт с пробелом и без — так его ищут и так пишут", () => {
@@ -184,6 +186,129 @@ describe("метаданные Pulse", () => {
 
     // YouTube выносит первые три над заголовком, остальное — просто шум.
     expect(hashtags).toHaveLength(3);
+  });
+
+  it("на каждый атом — несколько форм, как у сервисов публикации", () => {
+    const meta = buildPulseMetadata(beat, "nonProfit");
+    const tags = meta.tags;
+
+    /*
+     * Один артист — минимум четыре разных запроса: сам, с годом, бесплатный
+     * и «free for profit». Без этого длинного хвоста не существует: один тег
+     * на артиста находит тех, кто уже знает имя, а остальные ищут по
+     * описанию.
+     */
+    expect(tags).toContain("prod.dy type beat");
+    expect(tags.some((tag) => /^prod\.dy type beat \d{4}$/.test(tag))).toBe(true);
+    expect(tags).toContain("prod.dy type beat free for profit");
+    expect(tags).toContain("free for profit prod.dy type beat");
+  });
+
+  it("бесплатное намерение выражено, а не подменено одной формой", () => {
+    const free = buildPulseMetadata(beat, "nonProfit");
+
+    /*
+     * Формы «free …» разные, и держать их все нельзя: лимит 500 символов, и
+     * каждая лишняя съедает настроение. Проверяем поэтому намерение целиком —
+     * чтобы его нельзя было потерять, убрав все формы разом.
+     */
+    expect(free.tags).toContain("free for profit");
+    expect(free.tags.some((tag) => /free for profit/.test(tag))).toBe(true);
+  });
+
+  it("бесплатный бит не обещает продажу", () => {
+    const free = buildPulseMetadata(beat, "nonProfit");
+
+    // На бите с некоммерческой лицензией купить нельзя: клик приведёт в
+    // тупик, а «beats for sale» — самый дорогой тег из всех.
+    expect(free.tags).not.toContain("beats for sale");
+    expect(buildPulseMetadata(beat, "paid").tags).toContain("beats for sale");
+  });
+
+  it("кириллическое «тайп бит» ставится рядом с латинским", () => {
+    const meta = buildPulseMetadata(beat, "nonProfit");
+
+    // «type beat» и «тайп біт» — разные запросы, и русскоязычный покупатель
+    // находит бит только по второму.
+    expect(meta.tags).toContain("prod.dy type beat");
+    expect(meta.tags).toContain("prod.dy тайп біт");
+    expect(meta.tags).toContain("бесплатный prod.dy тайп біт");
+  });
+
+  it("настроение попадает и в жанр, и в отдельный тег", () => {
+    const meta = buildPulseMetadata({ ...beat, musicalKey: "C minor" }, "paid");
+
+    // «dark» берётся из минора: тег может быть именем артиста, а тональность
+    // — это единственный источник настроения, который есть всегда.
+    expect(meta.tags.some((tag) => /trap type beat dark/.test(tag))).toBe(true);
+    expect(meta.tags).toContain("dark type beat");
+  });
+
+  it("минус из тональности доезжает до тегов", () => {
+    const meta = buildPulseMetadata({ ...beat, musicalKey: "C minor" }, "paid");
+
+    // «minor» в тегах бесполезно: так не ищет никто. Ищут «минус» и «dark».
+    expect(meta.tags).toContain("dark минус");
+    expect(meta.tags).toContain("melodic минус");
+  });
+
+  it("жанр не получает «beat» дважды", () => {
+    const meta = buildPulseMetadata({ ...beat, genre: "trap" }, "paid");
+
+    // Псевдоним «rap beat» уже заканчивается на «beat»: без проверки выходило
+    // «rap beat beat» — мусор, который съедал лимит.
+    expect(meta.tags).not.toContain("rap beat beat");
+    expect(meta.tags).toContain("rap beat");
+  });
+
+  it("артисты из тегов тоже получают кластер", () => {
+    const meta = buildPulseMetadata({ ...beat, tags: ["slayr"] }, "nonProfit");
+
+    // В поле артистов лежит продюсер, а настоящие артисты — в тегах.
+    expect(meta.tags).toContain("slayr type beat");
+  });
+
+  it("бесплатные теги не появляются у платного бита", () => {
+    const paid = buildPulseMetadata(beat, "paid");
+
+    expect(paid.tags).not.toContain("free prod.dy type beat");
+    expect(paid.tags).not.toContain("бесплатный prod.dy тайп біт");
+  });
+
+  it("лимит YouTube соблюдается и с длинными артистами", () => {
+    const many = {
+      ...beat,
+      artists: ["prod.one", "prod.two", "prod.three", "villian"],
+      tags: ["dark", "melodic", "emotional", "chill"],
+    };
+
+    const meta = buildPulseMetadata(many, "nonProfit");
+
+    expect(meta.tags.join(",").length).toBeLessThanOrEqual(TAGS_LIMIT);
+    // Список не может выродиться в два тега: кластеры должны что-то влезть.
+    expect(meta.tags.length).toBeGreaterThan(8);
+  });
+
+  it("чипы показывают ровно то, что уйдёт в YouTube", () => {
+    const fat = {
+      ...beat,
+      artists: ["prod.one", "prod.two", "prod.three"],
+      tags: ["slayr", "pittkiid", "mayot"],
+    };
+
+    const meta = buildPulseMetadata(fat, "nonProfit");
+
+    /*
+     * Список рассчитан длиннее лимита, и отброшенные теги не должны выглядеть
+     * как опубликованные: человек не может отличить одно от другого в чипах и
+     * решит, что бит плохо оптимизирован.
+     */
+    const shown = [...meta.coreTags, ...meta.ownTags];
+
+    expect(meta.trimmed.tags.length).toBeGreaterThan(0);
+    for (const tag of shown) expect(meta.tags).toContain(tag);
+    // Обрезанное не показывается, но честно считается.
+    expect(new Set(shown).size).toBe(meta.tags.length);
   });
 
   it("название и описание без пустых строк подряд", () => {

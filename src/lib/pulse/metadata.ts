@@ -1,5 +1,14 @@
 import { type GenreSlug } from "@/lib/beat-validation";
-import { translit } from "@/lib/beat-promo";
+
+import {
+  MINOR_CYRILLIC,
+  MOODS,
+  TAG_YEARS,
+  TYPE_BEAT_CYRILLIC,
+  atomsOf,
+  genreWords,
+  moodFromKey,
+} from "./tag-vocabulary";
 
 /**
  * Метаданные видео для Pulse.
@@ -185,38 +194,51 @@ function tagsOf(
     if (clean && !out.includes(clean)) out.push(clean);
   };
 
-  const genre = beat.genre?.trim();
+  const genres = beat.genre ? genreWords(beat.genre) : [];
+  const keyMoods = moodFromKey(beat.musicalKey);
 
   // Основа: как биты ищут.
   push("type beat");
 
-  if (genre) {
-    // «boom-bap» со слэшем или дефисом не находится: жанр пишут словами.
-    const words = genre.replace(/[-_]+/g, " ").trim();
+  for (const words of genres) {
+    /*
+     * «beat» добавляем только если его ещё нет. Псевдоним «rap beat» уже
+     * заканчивается на «beat», и без проверки получалось «rap beat beat» —
+     * мусор, который не находит никто, но съедает лимит.
+     *
+     * Обратный порядок («beat trap») не строим: так не ищет никто, а места
+     * в лимите не хватает.
+     */
+    push(/\bbeat$/.test(words) ? words : `${words} beat`);
+  }
 
-    push(`${words} beat`);
-    push(`beat ${words}`);
+  if (beat.genre) {
     // Слаг тоже: часть людей ищет по нему, и он ничего не стоит.
-    push(genre);
+    push(beat.genre);
   }
 
   // Темп: с пробелом — как в запросе, без — как в тегах битмейкеров.
   push(`${beat.bpm} bpm`);
   push(`${beat.bpm}bpm`);
 
-  // Намерение купить — ради этих тегов всё и затевается.
-  push("beats for sale");
-  push("beat for sale");
+  /*
+   * Намерение купить.
+   *
+   * Тег «beats for sale» — самый дорогой из всех, но ставится только платному
+   * биту. На бите с бесплатной некоммерческой лицензией он неправдив: клик
+   * приведёт на страницу, где купить нельзя, и зритель уходит. Бесплатному
+   * биту вместо этого достаётся «free for profit» — там он ищется по той же
+   * самой причине, просто другим намерением.
+   */
+  if (template === "paid") {
+    push("beats for sale");
+    push("beat for sale");
+  }
 
   if (template === "nonProfit") {
     push("free for profit");
     push("free beat");
   }
-
-  push("beatmaking");
-  push("beat making");
-  push("instrumental");
-  push("rap beat");
 
   const key = beat.musicalKey.replace(/\s+/g, "");
 
@@ -232,15 +254,108 @@ function tagsOf(
     push(`beats by ${who}`.slice(0, 30));
   }
 
-  for (const artist of beat.artists) {
-    push(`${artist} type beat`.slice(0, 30));
-    push(translit(artist));
+  /*
+   * Тональность как настроение — раньше кластеров и после намерения купить.
+   *
+   * «C minor» в тегах не ищет никто: ноты знают единицы. Ищут «минус» и
+   * «dark». Тегов тут два-три, стоят они дёшево, а приводят тех, кто уже
+   * выбрал настроение и ищет под него бит.
+   */
+  for (const mood of keyMoods) {
+    push(`${mood} ${MINOR_CYRILLIC}`);
+    push(`${mood} type beat`);
   }
 
   /*
-   * Авторские теги — в конце. Раньше они шли первыми и съедали лимит, из-за
-   * чего «type beat» не дотягивал до публикации: ровно тот случай, ради
-   * которого модуль писался.
+   * Кластеры.
+   *
+   * Дальше список растёт не тегами по одному, а кластерами: на каждый атом —
+   * артиста или настроение — сразу несколько форм. «prod.dy type beat»,
+   * «free prod.dy type beat», «prod.dy type beat free for profit» — это один
+   * атом и три разных запроса, которые иначе не нашлись бы никогда.
+   *
+   * Именно так устроены теги у сервисов публикации битов, и именно поэтому у
+   * них по пятнадцать тегов, а у нас было семь.
+   *
+   * Пять форм, а не девять, — сознательно. Лимит YouTube — 500 символов на
+   * весь список, и лишние формы вытесняли настроения: в прошлой версии на
+   * бит с одним артистом кластер занимал четверть лимита, и половина тегов
+   * про минор просто не публиковалась.
+   *
+   * Порядок атомов: артисты первыми — по имени приходят самые целевые
+   * зрители, — потом настроения.
+   */
+  /*
+   * Атомы по убыванию ценности, а не по количеству.
+   *
+   * Порядок важнее, чем кажется: лимит 500 символов, список обрезается с
+   * конца, и кто стоит в хвосте — не публикуется никогда.
+   *
+   *   1. артисты — по имени приходят самые целевые зрители;
+   *   2. настроения автора — автор знает про бит больше любого словаря;
+   *   3. авторские теги — часто именно здесь лежат настоящие имена артистов,
+   *      а в поле «артисты» стоит продюсер: «slayr» ценнее словарного «hard».
+   *
+   * Продюсера здесь нет намеренно: он уже получил «Gennzy type beat» и
+   * «beats by Gennzy» в шапке. Второй кластер из пяти тегов стоил 126
+   * символов и вытеснял имена артистов — «slayr type beat» не доезжал до
+   * публикации вообще.
+   */
+  const atoms = [
+    ...atomsOf(beat.artists, "", []),
+    ...atomsOf([], "", beat.tags),
+  ];
+  const free = template === "nonProfit";
+  const [year, lastYear] = TAG_YEARS;
+
+  for (const atom of atoms) {
+    const name = atom.slice(0, 30);
+
+    push(`${name} type beat`);
+    push(`${name} type beat ${year}`);
+
+    if (free) {
+      push(`${name} type beat free for profit`);
+      push(`free for profit ${name} type beat`);
+    }
+
+    /*
+     * «тайп біт» — самый дорогой тег кластера после «free for profit»: так
+     * ищут русскоязычные, а латинское «type beat» их не находит.
+     */
+    push(`${name} ${TYPE_BEAT_CYRILLIC}`.slice(0, 30));
+
+    if (free) push(`бесплатный ${name} ${TYPE_BEAT_CYRILLIC}`.slice(0, 30));
+  }
+
+  /*
+   * Жанр с настроением — одна форма, а не всё произведение.
+   *
+   * «trap type beat dark» — узкий запрос: ищут, когда жанр уже известен и
+   * осталось уточнить настроение. Таких пар десятки, и в лимит входит ровно
+   * одна. Полное произведение занимало бы место, отданное артистам.
+   *
+   * Настроение берётся из тональности, а не из первого тега: тег может быть
+   * именем артиста, а «минус» — это и правда настроение, и оно всегда есть.
+   */
+  for (const word of genres) {
+    push(`${word} type beat ${keyMoods[0]}`);
+    push(`${word} instrumental`);
+  }
+
+  // Словарь — последним: он заполняет остаток и выкидывается первым.
+  for (const mood of MOODS) {
+    push(`${mood} type beat`);
+    push(`${mood} type beat ${year}`);
+
+    push(`${mood} ${TYPE_BEAT_CYRILLIC}`.slice(0, 30));
+  }
+
+  push(`${lastYear} type beat`);
+
+  /*
+   * Инструментал — последний: редкий запрос от того, кто уже знает, что
+   * ищет, и конверсия у него самая высокая.
    */
   const core = out.slice();
   const own: string[] = [];
@@ -327,10 +442,21 @@ export function buildPulseMetadata(
   const grouped = tagsOf(beat, template);
 
   const allTags = grouped.all.filter((tag) => !blocked.has(tag));
-  const coreTags = grouped.core.filter((tag) => !blocked.has(tag));
-  const ownTags = grouped.own.filter((tag) => !blocked.has(tag));
 
   const { tags, dropped: clipped } = clipTags(allTags, TAGS_LIMIT);
+
+  /*
+   * Чипы показывают ровно то, что уйдёт в YouTube, а не весь рассчитанный
+   * список.
+   *
+   * Раньше группы собирались до обрезки, и человек видел тридцать тегов, из
+   * которых пятнадцать всё равно не публиковались: визуально невозможно
+   * отличить опубликованное от отброшенного, и кажется, что бит плохо
+   * оптимизирован. Отброшенные считаются отдельно в trimmed.tags.
+   */
+  const published = new Set(tags);
+  const coreTags = grouped.core.filter((tag) => published.has(tag));
+  const ownTags = grouped.own.filter((tag) => published.has(tag));
 
   // Описание строится по полному списку: хештеги в нём не ограничены
   // лимитом тегов, и обрезать их заранее значило бы выбросить то, что
