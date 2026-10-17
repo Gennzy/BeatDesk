@@ -58,7 +58,8 @@ export function PulseWizard({
   const [template, setTemplate] = useState<PulseTemplate>("nonProfit");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
+  /** Теги, которые человек убрал из сгенерированного списка. */
+  const [dropped, setDropped] = useState<string[]>([]);
 
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
@@ -72,9 +73,9 @@ export function PulseWizard({
   const beat = beats.find((item) => item.id === beatId) ?? null;
 
   /**
-   * Метаданные пересобираются при выборе бита и шаблона, но только пока
-   * человек не начал их править: иначе первое же нажатие затирало бы
-   * половину написанного.
+   * Метаданные пересобираются при выборе бита, шаблона и при убранных тегах,
+   * но не затирают то, что человек правил руками: иначе первое же нажатие
+   * стирало бы половину написанного.
    */
   const generated = useMemo(() => {
     if (!beat) return null;
@@ -92,14 +93,24 @@ export function PulseWizard({
         beatUrl: `${beatUrlBase}/beats/${beat.id}`,
       },
       template,
+      dropped,
     );
-  }, [beat, template, producer, beatUrlBase]);
+  }, [beat, template, producer, beatUrlBase, dropped]);
 
   const metadata = useMemo(() => {
     if (!generated) return null;
 
-    return { ...generated, title: title || generated.title, description: description || generated.description, tags: tags.length ? tags : generated.tags };
-  }, [generated, title, description, tags]);
+    return {
+      ...generated,
+      title: title || generated.title,
+      description: description || generated.description,
+    };
+  }, [generated, title, description]);
+
+  /** Убранный тег возвращается по тому же нажатию. */
+  const dropTag = (tag: string) => {
+    setDropped((prev) => (prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag]));
+  };
 
   const problem = metadata ? pulseMetadataProblem(metadata) : null;
 
@@ -190,7 +201,8 @@ export function PulseWizard({
   }
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+      <div className="flex min-w-0 flex-col gap-10">
       {/*
         Шаг первый. Показан списком, а не выпадающим списком: у человека
         десяток битов, и он узнаёт их по обложкам, а не по названиям.
@@ -208,7 +220,10 @@ export function PulseWizard({
                   setBeatId(item.id);
                   setTitle("");
                   setDescription("");
-                  setTags([]);
+                  // Убранные теги принадлежали прежнему биту и к нему не
+                  // относятся: оставлять их значило бы тащить чужие теги в
+                  // чужие места.
+                  setDropped([]);
                 }}
                 className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
                   beatId === item.id
@@ -288,23 +303,59 @@ export function PulseWizard({
               />
             </Field>
 
-            <Field
-              label={t("pulse.tags")}
-              hint={`${metadata.tags.join(",").length}/${TAGS_LIMIT}`}
-            >
-              <input
-                value={metadata.tags.join(", ")}
-                onChange={(event) => {
-                  setTags(
-                    event.target.value
-                      .split(",")
-                      .map((tag) => tag.trim())
-                      .filter(Boolean),
-                  );
-                }}
-                className="control h-12"
-              />
-            </Field>
+                        {/*
+              Теги показываются плитками, а не строкой через запятую.
+              В строке не видно, где обязательное, а где добавка от автора, и
+              невозможно понять, что именно не влезло в лимит YouTube. Нажатие
+              на плитку убирает тег, и это видно сразу — в списке, а не после
+              публикации на YouTube.
+            */}
+            <div className="flex flex-col gap-3">
+              <Field
+                label={t("pulse.tags")}
+                hint={`${metadata.tags.join(",").length}/${TAGS_LIMIT}`}
+              >
+                <div className="flex flex-col gap-3">
+                  {metadata.coreTags.length > 0 ? (
+                    <div className="flex flex-col gap-1.5">
+                      <span className="label text-mute">{t("pulse.tagsCore")}</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {metadata.coreTags.map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => dropTag(tag)}
+                            title={t("pulse.tagDrop")}
+                            className="chip border-signal/40 text-signal transition-colors hover:border-danger/60 hover:text-danger"
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {metadata.ownTags.length > 0 ? (
+                    <div className="flex flex-col gap-1.5">
+                      <span className="label text-mute">{t("pulse.tagsOwn")}</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {metadata.ownTags.map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => dropTag(tag)}
+                            title={t("pulse.tagDrop")}
+                            className="chip chip-hover transition-colors hover:border-danger/60 hover:text-danger"
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </Field>
+            </div>
 
             {metadata.trimmed.title ? (
               <Note>{t("pulse.titleTrimmed")}</Note>
@@ -395,6 +446,52 @@ export function PulseWizard({
 
         {error ? <Note>{error}</Note> : null}
       </section>
+      </div>
+
+      {/*
+        Предпросмотр липнет сбоку и не уезжает при прокрутке.
+        *
+        * Раньше человек собирал метаданные вслепую: заголовок, описание,
+        * теги — три поля, и как это будет выглядеть в ленте YouTube, он
+        * узнавал после публикации. Карточка повторяет то, что увидит
+        * зритель: обложка, заголовок, техника и первые строки описания.
+        */}
+      <aside className="lg:sticky lg:top-24">
+        <div className="flex flex-col gap-3">
+          <span className="label text-mute">{t("pulse.preview")}</span>
+
+          {beat ? (
+            <div className="flex flex-col gap-3 rounded-panel border border-line-2 bg-ink-2 p-4">
+              <div className="relative aspect-video overflow-hidden rounded-lg bg-ink-3">
+                {beat.coverUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={beat.coverUrl}
+                    alt=""
+                    className="size-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : null}
+
+                <span className="absolute bottom-2 right-2 rounded-md bg-ink/85 px-2 py-0.5 font-mono text-[11px] text-paper tabular-nums">
+                  {metadata ? `${metadata.techLine}` : ""}
+                </span>
+              </div>
+
+              {metadata ? (
+                <>
+                  <span className="line-clamp-2 text-sm font-semibold text-paper">{metadata.title}</span>
+                  <span className="label text-mute">{t("pulse.previewMeta", { producer })}</span>
+                  <p className="line-clamp-6 whitespace-pre-line border-t border-line pt-3 text-xs leading-relaxed text-mute">
+                    {metadata.description}
+                  </p>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </aside>
     </div>
   );
 }

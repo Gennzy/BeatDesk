@@ -1243,11 +1243,20 @@ async function main() {
      * при ненулевом числе, и от этого менялась ширина кнопки: две соседние
      * карточки выглядели по-разному, а цена на них стояла в разных местах.
      * Проверяется ширина: у карточки со счётчиком и без она должна совпасть.
+     *
+     * Берутся именно кнопки реакции, по их подписи. Кнопка воспроизведения
+     * тоже помечена aria-pressed и стоит в той же карточке первой, поэтому
+     * поиск «первой с aria-pressed» сравнивал ширину play с шириной реакции
+     * и проходил случайно — ровно до того дня, когда в карточке без play
+     * такой кнопки первым вставала реакция.
      */
     const reactionWidths = await user.evaluate(() =>
       [...document.querySelectorAll("article")].map((card) => {
-        const control = card.querySelector('button[aria-pressed]');
-        return control ? Math.round(control.getBoundingClientRect().width) : null;
+        const controls = [...card.querySelectorAll('button[aria-pressed]')].filter((node) =>
+          /Нравится|В закладки|Like|Save/.test(node.getAttribute("aria-label") ?? ""),
+        );
+
+        return controls.length > 0 ? Math.round(controls[0].getBoundingClientRect().width) : null;
       }),
     );
     const widths = reactionWidths.filter((width) => width !== null);
@@ -1478,6 +1487,47 @@ const guestOrder = await guestContext.newPage();
       [...document.querySelectorAll('a[href="/pulse"]')].map((node) => node.textContent?.trim() ?? ""),
     );
 
+    /*
+     * Мастер рисуется только когда у человека есть биты, а у временного
+     * пользователя их нет: студия разбирает чужой файл, а не выкладывает
+     * свой. Бит создаётся на время проверки и убирается сразу после неё —
+     * иначе он попадёт в ленту и сломает сравнение ширины кнопок.
+     */
+    const pulseEnv = loadEnvFile();
+    const pulseBase = pulseEnv.NEXT_PUBLIC_SUPABASE_URL;
+    const pulseService = pulseEnv.SUPABASE_SERVICE_ROLE_KEY;
+    const pulseHeaders = { apikey: pulseService, Authorization: `Bearer ${pulseService}`, "Content-Type": "application/json" };
+
+    const pulseOwner = pulseBase
+      ? await fetch(`${pulseBase}/rest/v1/profiles?select=id&username=eq.${createdUsernames.at(-1)}`, {
+          headers: pulseHeaders,
+        }).then((r) => r.json())
+      : [];
+
+    const pulseBeat = pulseOwner?.[0]?.id
+      ? await fetch(`${pulseBase}/rest/v1/beats`, {
+          method: "POST",
+          headers: { ...pulseHeaders, Prefer: "return=representation" },
+          body: JSON.stringify({
+            owner_id: pulseOwner[0].id,
+            title: "E2E Pulse бит",
+            bpm: 140,
+            key: "F# minor",
+            genre: "trap",
+            tags: ["dark", "night"],
+            type_beat_artists: ["prod.e2e"],
+            is_public: true,
+            sale_state: "on_sale",
+            prices: { mp3: 500, bundle: 800, trackout: 1500, exclusive: 3500 },
+            currency: "RUB",
+            files: {},
+          }),
+        }).then((r) => (r.ok ? r.json() : []))
+      : [];
+
+    const pulseBeatId = pulseBeat?.[0]?.id ?? null;
+    check("бит для проверки Pulse создан", Boolean(pulseBeatId), "вставка не прошла");
+
     check("в кабинете есть ссылка на публикацию в YouTube", pulseLink.length > 0, "ссылки нет в инструментах");
 
     if (pulseLink.length > 0) {
@@ -1485,11 +1535,62 @@ const guestOrder = await guestContext.newPage();
       await wait(1500);
 
       const pulseText = await pulsePage.evaluate(() => document.body.innerText);
-      check("публикация на YouTube открывается", /PULSE/i.test(pulseText));
-      check("в мастере есть выбор бита", !/Ошибка загрузки/i.test(pulseText));
-    }
+    check("публикация на YouTube открывается", /PULSE/i.test(pulseText));
+    check("в мастере есть выбор бита", !/Ошибка загрузки/i.test(pulseText));
+
+    /*
+     * Теги плитками и предпросмотр публикации.
+     *
+     * Теги были одной строкой через запятую: в ней не видно, где обязательное,
+     * а где добавка автора, и невозможно понять, что не влезло в лимит
+     * YouTube. Проверяется, что видны обе группы и есть предпросмотр — как он
+     * выглядит у зрителя, иначе человек узнаёт об этом только после
+     * публикации.
+     */
+    const pulseUi = await pulsePage.evaluate(() => {
+      const text = document.body.innerText;
+
+      /*
+       * Чипы ищутся внутри блока тегов, а не по всей странице: кнопки
+       * шаблона и видимости — тоже chip, и «первым чипом на странице будет
+       * type beat» проверяло бы их, а не теги.
+       */
+      const label = [...document.querySelectorAll("span")].find((node) =>
+        /ПО КОТОРЫМ НАХОДЯТ/i.test(node.textContent ?? ""),
+      );
+
+      const scope = label?.parentElement?.parentElement ?? null;
+      const tags = [...(scope?.querySelectorAll("button.chip") ?? [])].map((n) => n.textContent?.trim() ?? "");
+
+      return {
+        core: Boolean(label),
+        own: /ТВОИ ТЕГИ/i.test(text),
+        first: tags[0] === "type beat",
+        count: tags.length,
+        // Старое поле было одной строкой через запятую: «type beat, trap
+        // beat, …». Ищем именно такую строку, а не любое вхождение слова —
+        // оно есть и в заголовке, который собирается из тех же данных.
+        commaField: [...document.querySelectorAll("input")].some((node) =>
+          /type beat,\s*\S/.test(node.value ?? ""),
+        ),
+        preview: /ТАК ЭТО УВИДЯТ/i.test(text),
+      };
+    });
+
+    check("в предпросмотре показано, как увидят ролик", pulseUi.preview, "предпросмотра нет");
+    check("теги разделены на основные и авторские", pulseUi.core && pulseUi.own, "группы тегов нет");
+    check(
+      "первым тегом идёт «type beat»",
+      pulseUi.first,
+      `первый тег в блоке: ${pulseUi.count} шт.`,
+    );
+    check("теги не вернулись в строку через запятую", !pulseUi.commaField, "теги снова строкой в поле");    }
 
     await pulsePage.close();
+
+    if (pulseBeatId) {
+      await fetch(`${pulseBase}/rest/v1/beats?id=eq.${pulseBeatId}`, { method: "DELETE", headers: pulseHeaders });
+    }
     /*
      * Инструменты битмейкера убраны из общей навигации: гостю они не нужны,
      * а «Студия» вела в личный инструмент. Проверяем новое правило — в шапке

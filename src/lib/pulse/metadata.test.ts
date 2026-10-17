@@ -117,6 +117,75 @@ describe("метаданные Pulse", () => {
     expect(new Set(meta.tags).size).toBe(meta.tags.length);
   });
 
+  it("первым идёт «type beat» — по нему ищут сами биты", () => {
+    const meta = buildPulseMetadata(beat, "paid");
+
+    /*
+     * Авторские теги шли первыми и съедали лимит: на бите с длинными
+     * тегами до «type beat» очередь не доходила, и видео не находилось ни по
+     * одному запросу, ради которого его и выкладывали.
+     */
+    expect(meta.tags[0]).toBe("type beat");
+  });
+
+  it("жанр попадает в теги со словом «beat», а не голым слагом", () => {
+    const meta = buildPulseMetadata(beat, "paid");
+
+    // «trap beat» — как ищут; «trap» сам по себе почти ничего не находит.
+    expect(meta.tags).toContain("trap beat");
+    expect(meta.tags).toContain("beat trap");
+    expect(meta.tags).toContain("trap");
+  });
+
+  it("темп идёт с пробелом и без — так его ищут и так пишут", () => {
+    const meta = buildPulseMetadata(beat, "paid");
+
+    expect(meta.tags).toContain("130 bpm");
+    expect(meta.tags).toContain("130bpm");
+  });
+
+  it("есть теги о намерении купить", () => {
+    const paid = buildPulseMetadata(beat, "paid");
+    const free = buildPulseMetadata(beat, "nonProfit");
+
+    expect(paid.tags).toContain("beats for sale");
+    // Бесплатный бит должен находиться и по запросу про бесплатный.
+    expect(free.tags).toContain("free for profit");
+    expect(paid.tags).not.toContain("free for profit");
+  });
+
+  it("жанр через дефис разбирается на слова", () => {
+    const dashed = buildPulseMetadata({ ...beat, genre: "boom-bap" }, "paid");
+
+    expect(dashed.tags).toContain("boom bap beat");
+  });
+
+  it("авторские теги не вытесняют основные, даже когда их много", () => {
+    const fat = {
+      ...beat,
+      tags: Array.from({ length: 40 }, (_, i) => `длинный-авторский-тег-${i}`),
+    };
+
+    const meta = buildPulseMetadata(fat, "paid");
+
+    expect(meta.tags.slice(0, 8)).toContain("type beat");
+    expect(meta.tags.slice(0, 8).some((tag) => tag.includes("авторский"))).toBe(false);
+  });
+
+  it("в описании три хештега, а не стена", () => {
+    const meta = buildPulseMetadata(beat, "paid");
+
+    /*
+     * Хештег начинается с начала строки или после пробела. Решетка внутри
+     * «F#minor» из технической строки хештегом не является — и YouTube так
+     * же её не считает, поэтому и проверка требует границу.
+     */
+    const hashtags = meta.description.match(/(?:^|\s)#[^\s]+/g) ?? [];
+
+    // YouTube выносит первые три над заголовком, остальное — просто шум.
+    expect(hashtags).toHaveLength(3);
+  });
+
   it("название и описание без пустых строк подряд", () => {
     const meta = buildPulseMetadata({ ...beat, artists: [], genreLabel: null }, "paid");
 

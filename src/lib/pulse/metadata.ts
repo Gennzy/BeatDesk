@@ -51,6 +51,17 @@ export type PulseMetadata = {
   title: string;
   description: string;
   tags: string[];
+  /**
+   * Теги, по которым видео находят: жанр, темп, продажа, продюсер.
+   *
+   * Отделены от авторских, потому что человек должен видеть разницу: одни
+   * теги работают всегда, а вторые — добавка от него самого. Раньше всё лежало
+   * в одну строку, и непонятно было, что из обязательного он может убрать, а
+   * что нельзя.
+   */
+  coreTags: string[];
+  /** Теги самого бита: mood, исполнители, всё, что знает автор. */
+  ownTags: string[];
   /** Техническая строка, которую ставят в конце: BPM и тональность. */
   techLine: string;
   /** Есть ли в заголовке имя бита. Без него видео не найти по названию. */
@@ -141,14 +152,32 @@ function descriptionOf(beat: BeatMeta, template: PulseTemplate, hashtags: string
 }
 
 /**
- * Теги.
+ * Теги: так, как их собирают сервисы публикации битов.
  *
- * YouTube считает не число тегов, а их суммарную длину, и 500 символов —
- * это примерно 25 тегов. Лишнее срезается молча у того, кто превысил,
- * поэтому здесь лишнее тоже срезается молча: список всё равно полезен,
- * а обрезанные два тега в конце ничего не решают.
+ * Порядок здесь и есть смысл. YouTube обрезает теги по суммарной длине, и
+ * до обрезки доходит начало списка: первые теги работают, последние не
+ * работают никогда. Поэтому список начинается с того, по чему бит ищут, а не
+ * с того, что автор сам наобум накидал в поле «теги».
+ *
+ * Порядок групп:
+ *
+ *   1. «type beat» и жанр со словом «beat» — так пишут в поиске: «trap beat»,
+ *      а не «trap». Голый слаг жанра не находится никем.
+ *   2. темп с пробелом («150 bpm») — так его и набирают руками, плюс форма
+ *      без пробела для тех, кто пишет слитно.
+ *   3. «beats for sale» и «free for profit» — намерение покупателя. Это самые
+ *      дорогие теги из всех: по ним ищут люди, уже готовые заплатить.
+ *   4. продюсер и артисты: «X type beat», «beats by X».
+ *   5. авторские теги — mood и всё, что автор знает о бите и чего не знает
+ *      модуль. В конце, потому что это добавка, а не основа поиска.
+ *
+ * Лишнее срезается по-прежнему молча, но теперь молча срезается хвост, а не
+ * начало.
  */
-function tagsOf(beat: BeatMeta): string[] {
+function tagsOf(
+  beat: BeatMeta,
+  template: PulseTemplate,
+): { all: string[]; core: string[]; own: string[] } {
   const out: string[] = [];
 
   const push = (value: string | null | undefined) => {
@@ -156,34 +185,89 @@ function tagsOf(beat: BeatMeta): string[] {
     if (clean && !out.includes(clean)) out.push(clean);
   };
 
-  for (const tag of beat.tags) push(tag);
-  /*
-   * Тег жанра — по-английски, даже когда площадка на русском.
-   *
-   * Подпись «Трейп» пришла из словаря интерфейса, и в теги ушла вместе с
-   * ней. YouTube ищут по-английски почти всегда, и русский тег там не
-   * находит ровно того, кто его ищет. Слаг жанра уже английский — берём
-   * его, а русскую подпись оставляем в описании, где она для человека.
-   */
-  if (beat.genre) push(beat.genre);
+  const genre = beat.genre?.trim();
+
+  // Основа: как биты ищут.
   push("type beat");
+
+  if (genre) {
+    // «boom-bap» со слэшем или дефисом не находится: жанр пишут словами.
+    const words = genre.replace(/[-_]+/g, " ").trim();
+
+    push(`${words} beat`);
+    push(`beat ${words}`);
+    // Слаг тоже: часть людей ищет по нему, и он ничего не стоит.
+    push(genre);
+  }
+
+  // Темп: с пробелом — как в запросе, без — как в тегах битмейкеров.
+  push(`${beat.bpm} bpm`);
+  push(`${beat.bpm}bpm`);
+
+  // Намерение купить — ради этих тегов всё и затевается.
+  push("beats for sale");
+  push("beat for sale");
+
+  if (template === "nonProfit") {
+    push("free for profit");
+    push("free beat");
+  }
+
   push("beatmaking");
+  push("beat making");
   push("instrumental");
+  push("rap beat");
+
+  const key = beat.musicalKey.replace(/\s+/g, "");
+
+  if (key) {
+    push(key);
+    push(`${key} beat`);
+  }
+
+  const who = beat.producer.trim();
+
+  if (who) {
+    push(`${who} type beat`.slice(0, 30));
+    push(`beats by ${who}`.slice(0, 30));
+  }
 
   for (const artist of beat.artists) {
     push(`${artist} type beat`.slice(0, 30));
     push(translit(artist));
   }
 
-  push(`${beat.bpm}bpm`);
-  push(beat.musicalKey.replace(/\s+/g, ""));
+  /*
+   * Авторские теги — в конце. Раньше они шли первыми и съедали лимит, из-за
+   * чего «type beat» не дотягивал до публикации: ровно тот случай, ради
+   * которого модуль писался.
+   */
+  const core = out.slice();
+  const own: string[] = [];
 
-  return out;
+  for (const tag of beat.tags) {
+    const clean = tag?.trim();
+
+    if (clean && !out.includes(clean)) {
+      out.push(clean);
+      own.push(clean);
+    }
+  }
+
+  return { all: out, core, own };
 }
 
-/** Хештеги из тегов: YouTube показывает их в описании и по ним ищет. */
+/**
+ * Хештеги из тегов: YouTube показывает их в описании и по ним ищет.
+ *
+ * Только первые три. YouTube выносит первые три хештега над заголовком видео,
+ * а остальные прячет в описание, где они превращаются в стену из двадцати
+ * слов под текстом о лицензии. Три главных тега — и есть те, по которым
+ * видео находят.
+ */
 function hashtagsFrom(tags: string[]): string[] {
   return tags
+    .slice(0, 3)
     .map((tag) => tag.replace(/[^\p{L}\p{N}]/gu, ""))
     .filter(Boolean)
     .map((tag) => `#${tag}`);
@@ -227,10 +311,26 @@ function clipTags(tags: string[], limit: number): { tags: string[]; dropped: str
   return { tags: kept, dropped };
 }
 
-export function buildPulseMetadata(beat: BeatMeta, template: PulseTemplate): PulseMetadata {
-  const allTags = tagsOf(beat);
+export function buildPulseMetadata(
+  beat: BeatMeta,
+  template: PulseTemplate,
+  /**
+   * Теги, которые человек убрал руками.
+   *
+   * Убрать можно любой, включая обязательный: человек знает свой бит лучше
+   * модуля. Но всегда показывается, что именно исчезнет, — молча выкинутый
+   * тег обнаруживается только на YouTube, когда видео не находят.
+   */
+  dropped: string[] = [],
+): PulseMetadata {
+  const blocked = new Set(dropped.map((tag) => tag.trim()).filter(Boolean));
+  const grouped = tagsOf(beat, template);
 
-  const { tags, dropped } = clipTags(allTags, TAGS_LIMIT);
+  const allTags = grouped.all.filter((tag) => !blocked.has(tag));
+  const coreTags = grouped.core.filter((tag) => !blocked.has(tag));
+  const ownTags = grouped.own.filter((tag) => !blocked.has(tag));
+
+  const { tags, dropped: clipped } = clipTags(allTags, TAGS_LIMIT);
 
   // Описание строится по полному списку: хештеги в нём не ограничены
   // лимитом тегов, и обрезать их заранее значило бы выбросить то, что
@@ -246,12 +346,14 @@ export function buildPulseMetadata(beat: BeatMeta, template: PulseTemplate): Pul
     title: title.value,
     description: description.value,
     tags,
+    coreTags,
+    ownTags,
     techLine: techLineOf(beat),
     named: beat.title.trim().length > 0,
     trimmed: {
       title: title.trimmed,
       description: description.trimmed,
-      tags: dropped,
+      tags: [...blocked, ...clipped],
     },
   };
 }
