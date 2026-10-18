@@ -76,6 +76,8 @@ export const SYSTEM_PROMPT = [
 
 /** Сборка запроса. Отдельная функция, чтобы правила читались в тестах. */
 export function buildPackageMessages({ beat, template }: PackageInput): ChatMessage[] {
+  const now = new Date();
+
   const facts: string[] = [`название бита: «${beat.title}»`, `продюсер: ${beat.producer}`];
 
   if (beat.artists.length > 0) facts.push(`артисты: ${beat.artists.join(", ")}`);
@@ -83,6 +85,16 @@ export function buildPackageMessages({ beat, template }: PackageInput): ChatMess
   if (beat.musicalKey) facts.push(`тональность: ${beat.musicalKey}`);
   if (beat.genre) facts.push(`жанр: ${beat.genre}`);
   if (beat.tags.length > 0) facts.push(`теги автора: ${beat.tags.join(", ")}`);
+
+  /*
+   * Год говорится явно.
+   *
+   * Без него модель называет год по памяти и ошибается: в проверке на бите
+   * «Night Vision» вышел 2025 при реальном 2026. Ошибка выглядит правдой,
+   * и тег «type beat 2025» в описании просто не находится никем.
+   */
+  facts.push(`сейчас ${now.getFullYear()} год, прошлый — ${now.getFullYear() - 1}`);
+
   facts.push(
     template === "nonProfit"
       ? "лицензия: бесплатно, только некоммерческое использование"
@@ -217,7 +229,18 @@ export function mergeWithRules(
  * где ролик собирается двадцать минут, и обрыв из-за подсказки недопустим.
  */
 export async function suggestPackage(input: PackageInput): Promise<AiPackage | null> {
-  const result = await chat(buildPackageMessages(input), { maxTokens: 900 });
+  /*
+   * Бюджет токенов с запасом, и это не перестраховка.
+   *
+   * Часть бесплатных моделей сначала рассуждает, и на эту болтовню уходит
+   * несколько сотен токенов. При max_tokens в 900 рассуждения съедали весь
+   * бюджет, и модель возвращала пустой ответ: 200 без содержимого. Ответ на
+   * вопрос «почему ИИ ничего не подсказал» был именно в этом, а не в ключе.
+   *
+   * Рассуждение не вырезается насильно — у провайдера нет надёжного флага для
+   * этого, — поэтому бюджет просто рассчитан на оба.
+   */
+  const result = await chat(buildPackageMessages(input), { maxTokens: 3000 });
 
   if (!("text" in result)) return null;
 

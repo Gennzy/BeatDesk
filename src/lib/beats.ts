@@ -54,6 +54,44 @@ export type BeatAsset = {
   parts?: AssetPart[];
 };
 
+/**
+ * Все ли файлы записи лежат в папке владельца.
+ *
+ * Путь в баке — это и есть право на файл: покупателю отдаётся то, что записано
+ * в бите, а не то, что проверяется при выдаче. Поэтому запись проверяется
+ * здесь, а не при скачивании: подставить чужой путь и отдать его покупателю
+ * вместо своего мастера можно было бы ровно одним полем в форме.
+ *
+ * Пустое «../» проверяется тоже: база приведёт такой путь к корню баке�� и
+ * файл окажется вне папки автора, хотя строка начиналась с его идентификатора.
+ */
+export function assetsBelongTo(userId: string, assets: Record<string, unknown>): boolean {
+  const prefix = `${userId}/`;
+
+  const clean = (value: string) =>
+    !value.includes("..") && !value.includes("\\") && value.startsWith(prefix);
+
+  for (const asset of Object.values(assets)) {
+    if (typeof asset !== "object" || asset === null) continue;
+
+    const record = asset as { path?: unknown; parts?: unknown };
+
+    if (typeof record.path === "string" && !clean(record.path)) return false;
+
+    if (Array.isArray(record.parts)) {
+      for (const part of record.parts) {
+        if (typeof part !== "object" || part === null) continue;
+
+        const path = (part as { path?: unknown }).path;
+
+        if (typeof path === "string" && !clean(path)) return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 export const MASTERS_BUCKET = "masters";
 export const PREVIEWS_BUCKET = "beats";
 

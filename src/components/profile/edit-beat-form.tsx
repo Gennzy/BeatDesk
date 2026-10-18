@@ -17,10 +17,11 @@ import type { FeedBeat } from "@/lib/feed";
 import { compressImage } from "@/lib/image";
 import type { GenreSlug } from "@/lib/beat-validation";
 import type { TierId } from "@/lib/audio/delivery-rules";
-import { beatRoles } from "@/lib/beats";
+import { beatRoles, uploadAsset, validateBeatFile } from "@/lib/beats";
 import { normalizeGenre } from "@/lib/beat-validation";
 import { applyDiscount, emptyPrices, parsePrice as toPrice, normalizeDiscount } from "@/lib/prices";
 import { parseTags } from "@/lib/tags";
+import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/provider";
 import { canPutOnSale, canTakeOffSale, type SaleState } from "@/lib/sales/state";
 
@@ -42,6 +43,16 @@ type Props = {
     hasWav: boolean;
     /** Роли файлов в бите: "mp3", "wav", "stems", "artwork". */
     fileRoles: string[];
+    /**
+     * Что сейчас лежит в мастерах.
+     *
+     * Нужно, чтобы форма показала «уже загружено» и знала, что перезаписывает:
+     * без этого человек не отличил бы «файла нет» от «файл есть, но я его не
+     * вижу».
+     */
+    files: Record<string, { name?: string; size?: number }> | null;
+    /** Идентификатор владельца: без него файл не положить в свою же папку. */
+    userId: string;
     /** Жанр бита: null — без жанра. */
     genre: GenreSlug | null;
     /** Действующая скидка в процентах: ноль — скидки нет. */
@@ -58,6 +69,11 @@ export function EditBeatForm({ beat }: Props) {
   const [cover, setCover] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
 
+  /** Что лежит в мастерах сейчас: база плюс то, что положили в этом окне. */
+  const [files, setFiles] = useState<Record<string, { name?: string; size?: number }>>(beat.files ?? {});
+  /** Какой файл сейчас летит в бакет: null — никто не грузится. */
+  const [uploadingKind, setUploadingKind] = useState<"wav" | "zip" | null>(null);
+
   /*
    * Превью создаётся в обработчике выбора, а не в эффекте: новый objectURL
    * на каждый рендер тёк, а старый никто не освобождал. Здесь старый
@@ -69,6 +85,67 @@ export function EditBeatForm({ beat }: Props) {
       return file ? URL.createObjectURL(file) : null;
     });
     setCover(file);
+  }
+
+  /**
+   * Положить мастер в бакет и записать это в бит.
+   *
+   * Файл уходит сразу при выборе, а не по кнопке «сохранить»: архив весит
+   * сотни мегабайт и идёт долго, и человек, который уже ушёл со страницы,
+   * решил бы, что файл не загрузился, и залил бы его второй раз.
+   *
+   * Ошибка показывается тем же сообщением, что и сохранение: отдельное
+   * «что-то сломалось с файлом» заставляет человека гадать, куда смотреть.
+   */
+  async function uploadFile(kind: "wav" | "zip", file: File | null) {
+    if (!file) return;
+
+    const problem = validateBeatFile(kind, file);
+
+    if (problem) {
+      setState("error");
+      setMessage(problem);
+      return;
+    }
+
+    setUploadingKind(kind);
+    setState("saving");
+
+    try {
+      const supabase = createClient();
+      const asset = await uploadAsset(supabase, {
+        userId: beat.userId,
+        beatId: beat.id,
+        kind,
+        file,
+      });
+
+      const response = await fetch(`/api/beats/${beat.id}`, {
+        method: "PATCH",
+        body: (() => {
+          const data = new FormData();
+
+          data.set("files", JSON.stringify({ [kind]: asset }));
+          return data;
+        })(),
+      });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+
+        throw new Error(data?.error ?? t("edit.error"));
+      }
+
+      setFiles((prev) => ({ ...prev, [kind]: asset }));
+      setState("saved");
+      setMessage(t("edit.saved"));
+      router.refresh();
+    } catch (cause) {
+      setState("error");
+      setMessage(cause instanceof Error ? cause.message : t("edit.error"));
+    } finally {
+      setUploadingKind(null);
+    }
   }
   // Валюта приходит из базы, поэтому проверяем её, а не верим на слово:
   // неизвестный код оставил бы пикер без выбранной валюты и тихо записал бы
@@ -219,6 +296,36 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
             className="label h-9 w-full max-w-xs cursor-pointer rounded-xs border border-line bg-ink px-3 py-2 text-mute file:mr-3 file:border-0 file:bg-signal file:px-2 file:py-1 file:text-ink"
           />
         </div>
+      </div>
+
+      {/*
+       * Мастера: WAV и архив со стемами.
+       *
+       * Здесь их не было, и это делало бит неисправимым: проверка готовности
+       * требовала архив для Track Out и Эксклюзива, а положить его было не
+       * чем. Человек загружал бит без стемов — и дальше ни отправить уровень,
+       * ни убрать претензию: тупик без единого выхода.
+       *
+       * Файлы уходят в бакет сразу при выборе, а не при сохранении: архив на
+       * полгигабайта идёт долго, и ждать его после нажатия «сохранить» —
+       * значит держать человека у формы на минуту без объяснений.
+       */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {(["wav", "zip"] as const).map((kind) => (
+          <div key={kind} className="flex flex-col gap-2">
+            <span className="label text-paper">{kind === "wav" ? t("upload.wav") : t("upload.zip")}</span>
+            <span className="text-xs text-mute">
+              {files[kind] ? t("upload.filePresent") : t(kind === "wav" ? "upload.wavHint" : "upload.zipHint")}
+            </span>
+            <input
+              type="file"
+              accept={kind === "wav" ? "audio/wav,audio/x-wav,.wav" : ".zip,.rar,application/zip"}
+              disabled={uploadingKind !== null}
+              onChange={(event) => void uploadFile(kind, event.target.files?.[0] ?? null)}
+              className="label h-9 w-full max-w-xs cursor-pointer rounded-xs border border-line bg-ink px-3 py-2 text-mute file:mr-3 file:border-0 file:bg-signal file:px-2 file:py-1 file:text-ink disabled:opacity-50"
+            />
+          </div>
+        ))}
       </div>
 
       <div className="grid gap-6">

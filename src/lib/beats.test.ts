@@ -1,5 +1,56 @@
 import { describe, expect, it } from "vitest";
 
+import { assetsBelongTo } from "./beats";
+
+/**
+ * Чужие файлы в бите.
+ *
+ * Путь в баке — это право на файл: покупателю отдаётся то, что записано в
+ * бите. Одно поле в форме с чужим путём отдало бы чужой мастер вместо
+ * своего, поэтому проверка обязана быть здесь, а не при выдаче.
+ */
+describe("файлы мастера принадлежат биту", () => {
+  const owner = "user-1";
+  const other = "user-2";
+
+  it("свой файл принимается", () => {
+    expect(assetsBelongTo(owner, { zip: { path: `${owner}/beat-1/stems.zip` } })).toBe(true);
+  });
+
+  it("куски большого файла проверяются все, а не только первый", () => {
+    // Архив режется на части, и проверка одного пути оставила бы возможность
+    // подсунуть чужой кусок вторым: он скачался бы первым, а ошибки не было бы.
+    expect(
+      assetsBelongTo(owner, {
+        zip: {
+          parts: [
+            { path: `${owner}/beat-1/stems.part1`, size: 1 },
+            { path: `${other}/beat-2/stems.part2`, size: 1 },
+          ],
+        },
+      }),
+    ).toBe(false);
+  });
+
+  it("чужой путь не принимается", () => {
+    expect(assetsBelongTo(owner, { wav: { path: `${other}/beat-2/master.wav` } })).toBe(false);
+  });
+
+  it("выход вверх по каталогам не принимается", () => {
+    // База приведёт «user-1/../user-2/x» к user-2/x: строка начинается с
+    // своего идентификатора, а файл оказывается в чужой папке.
+    expect(assetsBelongTo(owner, { wav: { path: `${owner}/../${other}/x.wav` } })).toBe(false);
+  });
+
+  it("обратный слеш не принимается", () => {
+    expect(assetsBelongTo(owner, { wav: { path: `${owner}\\..\\${other}\\x.wav` } })).toBe(false);
+  });
+
+  it("пустой набор проходит", () => {
+    expect(assetsBelongTo(owner, {})).toBe(true);
+  });
+});
+
 import { beatRoles } from "./beats";
 
 const keys = (over: string[] = ["mp3", "wav"]) => over;

@@ -1,7 +1,7 @@
 import { isCurrency } from "@/lib/currency";
 import { NextResponse } from "next/server";
 
-import { MAX_COVER_BYTES, extensionOf, validateCoverFile } from "@/lib/beats";
+import { ASSET_KINDS, MAX_COVER_BYTES, assetsBelongTo, extensionOf, validateCoverFile } from "@/lib/beats";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeGenre } from "@/lib/beat-validation";
@@ -19,7 +19,7 @@ async function requireOwner(beatId: string) {
 
   const { data: beat } = await supabase
     .from("beats")
-    .select("id, owner_id, sale_state, is_public, prices, genre")
+    .select("id, owner_id, sale_state, is_public, prices, genre, files")
     .eq("id", beatId)
     .maybeSingle();
 
@@ -124,6 +124,43 @@ patch.genre = normalizeGenre(genre);
       .map((tag) => String(tag).replace(/^#/, "").trim())
       .filter(Boolean)
       .slice(0, 12);
+  }
+
+  /*
+   * Файлы мастеров.
+   *
+   * Приходят после успешной загрузки в бакет, поэтому проверяется не сам файл,
+   * а форма записи: путь должен лежать внутри папки автора, иначе можно было
+   * бы приписать чужой файл и отдать его покупателю вместо своего.
+   */
+  const files = parseJson<Record<string, unknown>>(form.get("files"));
+
+  if (files) {
+    const next: Record<string, unknown> = { ...(access.beat.files as Record<string, unknown> | null ?? {}) };
+
+    for (const kind of ASSET_KINDS) {
+      const asset = files[kind];
+
+      if (asset === null) {
+        delete next[kind];
+        continue;
+      }
+
+      if (typeof asset === "object" && asset !== null) {
+        next[kind] = asset;
+      }
+    }
+
+    /*
+     * Путь в баке — это и есть право на файл, поэтому запись проверяется до
+     * сохранения. Одно поле в форме с чужим путём отдало бы покупателю чужой
+     * мастер вместо мастера этого бита.
+     */
+    if (!assetsBelongTo(access.beat.owner_id, next)) {
+      return NextResponse.json({ error: "Файл не принадлежит этому биту" }, { status: 400 });
+    }
+
+    patch.files = next;
   }
 
   const prices = parseJson<Record<string, unknown>>(form.get("prices"));
