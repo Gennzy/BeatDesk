@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   buildPulseMetadata,
@@ -14,6 +14,7 @@ import {
 import { renderBeatVideo } from "@/lib/pulse/render-video";
 import { sendChunks, videoIdOf, watchUrlOf } from "@/lib/pulse/client-upload";
 import type { JobStatus } from "@/lib/pulse/jobs";
+import type { AiPackage } from "@/lib/ai/pulse-package";
 import { useI18n } from "@/lib/i18n/provider";
 
 /**
@@ -83,6 +84,14 @@ export function PulseWizard({
 
   const controller = useRef<AbortController | null>(null);
 
+  /** Что прислала модель для текущей пары «бит + шаблон». */
+  const [aiPackage, setAiPackage] = useState<AiPackage | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  /** Ключ пары, для которой уже спрашивали: чтобы не спрашивать на каждый рендер. */
+  const askedFor = useRef<string | null>(null);
+  /** Контроллер текущего запроса: смена бита обрывает предыдущий. */
+  const runAi = useRef<AbortController | null>(null);
+
   const beat = beats.find((item) => item.id === beatId) ?? null;
 
   /**
@@ -113,17 +122,145 @@ export function PulseWizard({
   const metadata = useMemo(() => {
     if (!generated) return null;
 
+    /*
+     * Ответ модели перекрывает правила, но не переживает их.
+     *
+     * Пока человек ничего не правил руками, показываем то, что прислала
+     * модель. Поправил хоть что-то — его текст главнее: стирать правку
+     * человека из-за новой подсказки нельзя, поэтому дальше работают правила.
+     */
+    const touched = Boolean(title || description);
+
     return {
       ...generated,
-      title: title || generated.title,
-      description: description || generated.description,
+      title: (touched ? title : aiPackage?.title) || generated.title,
+      description: (touched ? description : aiPackage?.description) || generated.description,
+      tags: aiPackage && !touched ? aiPackage.tags : generated.tags,
     };
-  }, [generated, title, description]);
+  }, [generated, title, description, aiPackage]);
+
+  /**
+   * Пересобрать упаковку по требованию человека.
+   *
+   * Отдельная функция, а не переиспользование автоматического срабатывания:
+   * пересборка — это нажатие, и она обязана спрашивать заново, даже если эта
+   * пара уже спрашивалась.
+   */
+  const rebuildAi = useCallback(async () => {
+    if (!beat) return;
+
+    askedFor.current = null;
+
+    setAiBusy(true);
+
+    runAi.current?.abort();
+
+    const controller = new AbortController();
+
+    runAi.current = controller;
+
+    try {
+      const response = await fetch("/api/ai/pulse-package", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          title: beat.title,
+          bpm: beat.bpm,
+          musicalKey: beat.musicalKey,
+          genre: beat.genre,
+          genreLabel: beat.genreLabel,
+          tags: beat.tags,
+          artists: beat.artists,
+          producer,
+          beatUrl: `${beatUrlBase}/beats/${beat.id}`,
+          template,
+        }),
+      });
+
+      const data = (await response.json().catch(() => null)) as
+        | { title?: string; description?: string; tags?: string[] }
+        | null;
+
+      if (response.ok && data?.title) {
+        setAiPackage({ title: data.title, description: data.description ?? "", tags: data.tags ?? [] });
+      }
+    } catch {
+      // Тишина: пересборка — необязательная роскошь, ошибка в ней не должна
+      // выглядеть как поломка публикации.
+    } finally {
+      setAiBusy(false);
+    }
+  }, [beat, template, producer, beatUrlBase]);
+
 
   /** Убранный тег возвращается по тому же нажатию. */
   const dropTag = (tag: string) => {
     setDropped((prev) => (prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag]));
   };
+
+  // Срабатывает само на смену бита или шаблона.
+  //
+  // Работа живёт внутри эффекта, а не в useCallback: состояние ставится в
+  // цепочке промисов, и React Compiler не считает это синхронной установкой
+  // из эффекта, из-за которой он гоняет лишний рендер.
+  useEffect(() => {
+    if (!beat) return;
+
+    const key = `${beat.id}:${template}`;
+
+    // Ключ запроса — пара «бит + шаблон», и он же защита от повторов: без
+    // него смена тегов, перенос и рендер слали бы запрос заново и съедали
+    // лимит бесплатных моделей, который делится на всех.
+    if (askedFor.current === key) return;
+
+    askedFor.current = key;
+
+    const controller = new AbortController();
+
+    runAi.current = controller;
+
+    void (async () => {
+      try {
+        const response = await fetch("/api/ai/pulse-package", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            title: beat.title,
+            bpm: beat.bpm,
+            musicalKey: beat.musicalKey,
+            genre: beat.genre,
+            genreLabel: beat.genreLabel,
+            tags: beat.tags,
+            artists: beat.artists,
+            producer,
+            beatUrl: `${beatUrlBase}/beats/${beat.id}`,
+            template,
+          }),
+        });
+
+        const data = (await response.json().catch(() => null)) as
+          | { title?: string; description?: string; tags?: string[] }
+          | null;
+
+        /*
+         * Пока модель думает, человек может уже начать с правил, и его правка
+         * должна пережить её ответ: пустой ответ тут просто игнорируется.
+         */
+        if (response.ok && data?.title) {
+          setAiPackage({ title: data.title, description: data.description ?? "", tags: data.tags ?? [] });
+          setAiBusy(false);
+        }
+      } catch {
+        // Отказ не виден и не мешает: правила уже собраны, и публикация от
+        // модели не зависит.
+        setAiBusy(false);
+      }
+    })();
+
+    return () => controller.abort();
+  }, [beat, template, producer, beatUrlBase]);
 
   const problem = metadata ? pulseMetadataProblem(metadata) : null;
 
@@ -370,6 +507,28 @@ export function PulseWizard({
 
       <section className="flex flex-col gap-4">
         <StepHead step={3} label={t("pulse.stepMetadata")} />
+
+          {/*
+           * Статус упаковки и кнопка пересборки.
+           *
+           * Пока модель думает, человек уже видит собранные правилами данные и
+           * может начать с ними: ждать пустоты хуже, чем работать. Поэтому
+           * надпись и кнопка появляются только после ответа модели — раньше
+           * нечего было бы показывать.
+           *
+           * Молчаливая подмена опаснее: человек правит заголовок, не зная, что
+           * он правит правила, и потом удивляется, почему модель его затерла.
+           */}
+          {aiPackage ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="label text-signal">{t("pulse.aiReady")}</span>
+              <button type="button" onClick={() => void rebuildAi()} className="chip chip-hover">
+                {aiBusy ? t("pulse.aiThinking") : t("pulse.aiRebuild")}
+              </button>
+            </div>
+          ) : aiBusy ? (
+            <span className="label text-mute">{t("pulse.aiThinking")}</span>
+          ) : null}
 
         {metadata ? (
           <div className="flex flex-col gap-5">
