@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import {
   buildPulseMetadata,
@@ -12,7 +12,8 @@ import {
   type PulseTemplate,
 } from "@/lib/pulse/metadata";
 import { renderBeatVideo } from "@/lib/pulse/render-video";
-import { sendChunks, watchUrlOf } from "@/lib/pulse/client-upload";
+import { sendChunks, videoIdOf, watchUrlOf } from "@/lib/pulse/client-upload";
+import type { JobStatus } from "@/lib/pulse/jobs";
 import { useI18n } from "@/lib/i18n/provider";
 
 /**
@@ -26,6 +27,18 @@ import { useI18n } from "@/lib/i18n/provider";
  * есть смысл дойти только с готовыми метаданными: если название не влезает
  * в лимит YouTube, человек узнает об этом здесь, а не через двадцать минут
  * рендера.
+ *
+ * ---------------------------------------------------------------------------
+ * ПОЧЕМУ ПУБЛИКАЦИЯ ИДЁТ ЧЕРЕЗ ЗАДАЧУ
+ *
+ * Раньше кнопка «опубликовать» делала всё сразу и нигде не оставляла след.
+ * Ролик мог уйти в YouTube, а человек остался без записи: что вышло, когда и
+ * под каким заголовком. Закрыл вкладку посреди рендера — и всё потеряно
+ * безвозвратно, переделать можно, но не узнать, что именно сломалось.
+ *
+ * Теперь публикация — это задача. Перед сборкой она создаётся, на каждом
+ * шаге отмечает, где находится, и в конце помнит номер ролика. Отсюда
+ * появляется история, повтор и будущая статистика.
  */
 
 type Beat = {
@@ -122,6 +135,31 @@ export function PulseWizard({
    * отдаёт одноразовый адрес, дальше куски летят из браузера прямо в
    * YouTube — токен при этом ни разу не покидает сервер.
    */
+  /**
+   * Отмечает шаг задачи.
+   *
+   * Ошибка здесь никогда не прерывает публикацию: если записать прогресс не
+   * вышло, ролик всё равно уйдёт, а потеря отметки — это отсутствующая
+   * строчка в истории, а не сорванный ролик. Обратный порядок отдал бы
+   * человеку ошибку там, где ролик уже на YouTube.
+   */
+  const mark = useCallback(
+    async (jobId: string | null, status: JobStatus, extra: Record<string, unknown> = {}) => {
+      if (!jobId) return;
+
+      try {
+        await fetch(`/api/pulse/jobs/${jobId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status, ...extra }),
+        });
+      } catch {
+        // Молча: см. выше. Отметка — вспомогательная, ролик важнее.
+      }
+    },
+    [],
+  );
+
   async function run() {
     if (!beat || !metadata) return;
 
@@ -133,7 +171,41 @@ export function PulseWizard({
     const cancel = new AbortController();
     controller.current = cancel;
 
+    let jobId: string | null = null;
+
     try {
+      /*
+       * Задача создаётся до сборки, а не после.
+       *
+       * После — поздно: если ролик собрался и упал на загрузке, следов не
+       * осталось бы совсем, и повторить было бы нечего. Создать заранее
+       * дороже на один запрос, но он окупается ровно тогда, когда всё
+       * ломается, а ломается это часто.
+       */
+      const created = await fetch("/api/pulse/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          beatId: beat.id,
+          beatTitle: beat.title,
+          title: metadata.title,
+          description: metadata.description,
+          tags: metadata.tags,
+          privacy,
+          template,
+        }),
+      }).then(async (response) => {
+        const data = (await response.json().catch(() => null)) as
+          | { job?: { id: string } }
+          | null;
+
+        return data?.job?.id ?? null;
+      });
+
+      jobId = created;
+
+      await mark(jobId, "rendering");
+
       setStage(t("pulse.stageRender"));
 
       const video = await renderBeatVideo({
@@ -142,12 +214,17 @@ export function PulseWizard({
         title: metadata.title,
         techLine: metadata.techLine,
         producer,
-        credit: beat.artists.length > 0 ? beat.artists.join(", ") : null,
+        // Кредит в ролике — битмейкеру, как и в описании. Раньше сюда
+        // попадали артисты, и ролик запекал «must credit: madk1d, villian»:
+        // артисты тут не имеют отношения, имя нужно тому, кто бит сделал.
+        credit: producer || null,
         // Ролик идёт в реальном времени: три минуты трека — три минуты
         // сборки, ускорить нельзя, звук из потока не разгоняется.
         signal: cancel.signal,
         onProgress: (ratio) => setProgress(ratio),
       });
+
+      await mark(jobId, "uploading");
 
       setStage(t("pulse.stageUpload"));
 
@@ -184,9 +261,26 @@ export function PulseWizard({
 
       setProgress(1);
       setStage(null);
-      setResult(watchUrlOf(session.sessionUrl));
+
+      const watchUrl = watchUrlOf(session.sessionUrl);
+
+      setResult(watchUrl);
+
+      // Номер ролика кладём в задачу: из него потом считаются просмотры, и
+      // без него статистика не узнает, чей это ролик.
+      await mark(jobId, "published", {
+        progress: 1,
+        videoId: videoIdOf(session.sessionUrl),
+        watchUrl,
+      });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("pulse.failed"));
+      const message = cause instanceof Error ? cause.message : t("pulse.failed");
+
+      setError(message);
+
+      // Отказ пишется с текстом: «что-то сломалось» бесполезно через неделю,
+      // а текст от YouTube объясняет, съедена квота или запрещён монтаж.
+      await mark(jobId, "failed", { error: message });
     } finally {
       setBusy(false);
       setStage(null);
@@ -410,6 +504,14 @@ export function PulseWizard({
             </p>
             <a href={result} className="text-sm text-paper underline" target="_blank" rel="noreferrer">
               {result}
+            </a>
+            {/*
+             * Ссылка на историю сразу после выхода: это единственный момент,
+             * когда человек точно знает, что только что опубликовал, и ещё
+             * помнит, какой это был бит. Через неделю он не вспомнит.
+             */}
+            <a href="/pulse/history" className="chip chip-hover self-start">
+              {t("pulse.history")}
             </a>
           </div>
         ) : null}

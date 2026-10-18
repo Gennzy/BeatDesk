@@ -27,14 +27,30 @@ export class ClientUploadError extends Error {
 }
 
 /**
- * Адрес ролика по адресу сессии.
+ * Номер ролика по адресу сессии.
  *
- * Идентификатор сессии и есть номер ролика: YouTube называет его
- * upload_id и после приёмки последнего куска им уже можно пользоваться.
- * Отдельный запрос за номером не нужен.
+ * Идентификатор сессии и есть номер ролика: YouTube называет его upload_id и
+ * после приёмки последнего кучка им уже можно пользоваться. Отдельный запрос
+ * за номером не нужен.
+ *
+ * Вынесено отдельно от ссылки, потому что номер нужен не только человеку
+ * («открыть ролик»), но и базе: из него потом считаются просмотры, и без него
+ * статистика не узнает, чей это ролик.
  */
+export function videoIdOf(sessionUrl: string): string {
+  try {
+    return new URL(sessionUrl).searchParams.get("upload_id") ?? "";
+  } catch {
+    // Адрес приходит из нашего же ответа YouTube, но разбирать его на
+    // уверенности нет: мусорный адрес не должен ронять публикацию после
+    // успешной загрузки ролика.
+    return "";
+  }
+}
+
+/** Адрес ролика по адресу сессии. */
 export function watchUrlOf(sessionUrl: string): string {
-  const id = new URL(sessionUrl).searchParams.get("upload_id") ?? "";
+  const id = videoIdOf(sessionUrl);
 
   return id ? `https://www.youtube.com/watch?v=${id}` : "";
 }

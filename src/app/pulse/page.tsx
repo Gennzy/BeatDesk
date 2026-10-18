@@ -67,9 +67,14 @@ export default async function PulsePage() {
           <span className="label text-mute">{t("pulse.tagline")}</span>
         </div>
 
-        <a href="/cabinet" className="chip chip-hover">
-          {t("pulse.back")}
-        </a>
+        <div className="flex items-center gap-2">
+          <a href="/pulse/history" className="chip chip-hover">
+            {t("pulse.history")}
+          </a>
+          <a href="/cabinet" className="chip chip-hover">
+            {t("pulse.back")}
+          </a>
+        </div>
       </Container>
 
       <Container className="py-10">

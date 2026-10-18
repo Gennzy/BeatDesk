@@ -1586,6 +1586,29 @@ const guestOrder = await guestContext.newPage();
     );
     check("теги не вернулись в строку через запятую", !pulseUi.commaField, "теги снова строкой в поле");    }
 
+    /*
+     * История публикаций открывается и не падает на пустой базе.
+     *
+     * Проверка не требует миграции 0054: страница и с пустой таблицей, и без
+     * неё обязана показывать пустое состояние, а не пятисотку. Именно это и
+     * проверяется — что история не кидает гостя и не сообщает об ошибке.
+     */
+    await pulsePage.goto(`${BASE}/pulse/history`, { waitUntil: "networkidle2", timeout: 60_000 });
+    await wait(1200);
+
+    const historyUi = await pulsePage.evaluate(() => ({
+      text: document.body.innerText,
+      broken: /Application error|Internal Server Error|500/i.test(document.body.innerText),
+    }));
+
+    check("история публикаций открывается", /PULSE/i.test(historyUi.text), "страница не открылась");
+    check("история не падает без задач", !historyUi.broken, "страница отдала ошибку");
+    check(
+      "из истории виден путь обратно в мастер",
+      await pulsePage.evaluate(() => Boolean(document.querySelector('a[href="/pulse"]'))),
+      "нет ссылки на мастер",
+    );
+
     await pulsePage.close();
 
     if (pulseBeatId) {
