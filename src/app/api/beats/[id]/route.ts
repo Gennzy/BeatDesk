@@ -5,7 +5,7 @@ import { ASSET_KINDS, MAX_COVER_BYTES, assetsBelongTo, extensionOf, validateCove
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeGenre } from "@/lib/beat-validation";
-import { applyDiscount, normalizeDiscount, normalizePrices, pricesForDb } from "@/lib/prices";
+import { applyDiscount, normalizeDiscount, normalizePrices, pricesForDb, type Prices } from "@/lib/prices";
 import { canPutOnSale, canTakeOffSale, type SaleState } from "@/lib/sales/state";
 import { parseNames } from "@/lib/tags";
 
@@ -225,13 +225,22 @@ patch.genre = normalizeGenre(genre);
       // копия здесь означала бы, что бит, выложенный сразу, и бит,
       // выставленный кнопкой, считаются продающимися по разным признакам —
       // и однажды разойдутся.
-      const priced = Object.values(normalizePrices(access.beat.prices)).some((value) => Number(value) > 0);
+      //
+      // Проверяются итоговые значения, а не те, что лежали в базе до запроса.
+      // Кабинет отправляет цены, показ и «в продажу» одним запросом, и по
+      // старым данным кнопка всегда отвечала «поставь цену хотя бы на MP3» —
+      // хотя цену человек ввёл в этом же нажатии. Второе нажатие проходило,
+      // поэтому дефект выглядел как «надо нажать дважды».
+      const effectivePrices = normalizePrices((patch.prices as Prices | undefined) ?? access.beat.prices);
+      const priced = Object.values(effectivePrices).some((value) => Number(value) > 0);
 
       if (!priced) {
-        return NextResponse.json({ error: "Поставь цену хотя бы на MP3 — без цены бит не купить" }, { status: 400 });
+        return NextResponse.json({ error: "Поставь цену хотя бы на один уровень — без цены бит не купить" }, { status: 400 });
       }
 
-      if (!access.beat.is_public) {
+      const effectivePublic = patch.is_public ?? access.beat.is_public;
+
+      if (!effectivePublic) {
         return NextResponse.json(
           { error: "Сначала покажи бит в ленте: в продаже может быть только то, что видно" },
           { status: 400 },

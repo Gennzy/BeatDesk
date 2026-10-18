@@ -126,7 +126,25 @@ export function UploadForm({ userId }: { userId: string }) {
   const roles = beatRoles({ keys: Object.keys(files), hasCover: cover !== null });
 
   function selectFile(kind: BeatFileKind, file: File | null) {
-    setFiles((prev) => ({ ...prev, [kind]: file ?? undefined }));
+    /*
+     * Ключ удаляется, а не обнуляется.
+     *
+     * При «убрать» сюда приходит null, и ключ оставался в объекте со значением
+     * undefined. Object.keys его видел, и beatRoles рапортовал «archive со
+     * стемами на месте» — при том, что в бакет уйдёт files: {}, бит получит
+     * цену и уйдёт в продажу, а покупатель Track Out получит 404.
+     *
+     * Проверка врала ровно тогда, когда была нужна.
+     */
+    setFiles((prev) => {
+      const next = { ...prev };
+
+      if (file) next[kind] = file;
+      else delete next[kind];
+
+      return next;
+    });
+
     setFileErrors((prev) => ({ ...prev, [kind]: file ? (validateBeatFile(kind, file) ?? undefined) : undefined }));
   }
 
@@ -154,10 +172,21 @@ export function UploadForm({ userId }: { userId: string }) {
     }
     if (cover) errors.cover = validateCoverFile(cover) ?? undefined;
 
-    if (!files.mp3 && !files.wav) {
-      setError(t("upload.audioRequired"));
-      return;
-    }
+    /*
+ * Требуется именно MP3, а не «хотя бы один аудиофайл».
+ *
+ * mp3_url — это публичное превью в ленте, и WAV лежит в приватном баке
+ * мастеров: отдать его как превью нельзя, ссылку пришлось бы подписывать на
+ * каждого зрителя. Поэтому загрузка только с WAV упиралась в 400 уже после
+ * того, как в бакет ушли её куски, — до 500 МБ в никуда.
+ *
+ * Проверка стоит до загрузки файлов именно поэтому: узнать об этом после
+ * получаса нарезки — значит заставить человека ждать ради отказа.
+ */
+if (!files.mp3) {
+  setError(t("upload.mp3Required"));
+  return;
+}
 
     const form = new FormData(event.currentTarget);
 

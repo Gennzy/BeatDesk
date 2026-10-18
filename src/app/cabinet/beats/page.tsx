@@ -126,6 +126,8 @@ export default async function CabinetBeatsPage() {
                   saleState={beat.saleState}
                   isPublic={beat.isPublic}
                   prices={beat.prices}
+                  pricesBefore={beat.pricesBefore}
+                  discountPercent={beat.discountPercent}
                   currency={beat.currency}
                 />
               </li>

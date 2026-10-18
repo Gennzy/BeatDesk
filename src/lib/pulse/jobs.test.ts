@@ -12,6 +12,7 @@ import {
   retryableJobs,
   type JobStatus,
 } from "./jobs";
+import { toJob, type JobRow } from "./jobs-server";
 
 const NOW = new Date("2026-10-17T12:00:00.000Z");
 
@@ -22,6 +23,73 @@ const job = (status: JobStatus, minutesAgo = 0) => ({
 });
 
 describe("статусы задачи", () => {
+  it("строка из базы превращается в задачу", () => {
+    /*
+     * Здесь ловится расхождение регистров: база отдаёт змеиное, интерфейс ждёт
+     * верблюжье. Страница истории брала строки как есть и падала на
+     * undefined.trim(), а `as never` молча пропускал несовпадение типов.
+     */
+    const row: JobRow = {
+      id: "job-1",
+      user_id: "user-1",
+      beat_id: null,
+      beat_title: "Night Vision",
+      title: "madk1d type beat — Night Vision",
+      description: "",
+      tags: [],
+      privacy: "unlisted",
+      template: "nonProfit",
+      status: "published",
+      progress: 1,
+      error: null,
+      video_id: "abc123",
+      watch_url: "https://www.youtube.com/watch?v=abc123",
+      attempts: 1,
+      published_at: "2026-10-17T12:00:00.000Z",
+      started_at: "2026-10-17T11:00:00.000Z",
+      created_at: "2026-10-17T10:00:00.000Z",
+      updated_at: "2026-10-17T12:00:00.000Z",
+    };
+
+    const job = toJob(row);
+
+    expect(job.beatTitle).toBe("Night Vision");
+    expect(job.createdAt).toBe(row.created_at);
+    expect(job.watchUrl).toBe(row.watch_url);
+    expect(job.status).toBe("published");
+    // Функции статуса работают по дате из базы, а не по undefined.
+    expect(isStuck(job, 15, new Date("2026-10-17T12:05:00.000Z"))).toBe(false);
+    expect(jobTitle(job)).toBe("Night Vision");
+  });
+
+it("неизвестный статус не ломает страницу, а читается как отказ", () => {
+    const base: JobRow = {
+      id: "j",
+      user_id: "u",
+      beat_id: null,
+      beat_title: "B",
+      title: "t",
+      description: "",
+      tags: [],
+      privacy: "private",
+      template: "paid",
+      status: "draft",
+      progress: 0,
+      error: null,
+      video_id: null,
+      watch_url: null,
+      attempts: 0,
+      published_at: null,
+      started_at: null,
+      created_at: "2026-10-17T10:00:00.000Z",
+      updated_at: "2026-10-17T10:00:00.000Z",
+    };
+
+    // Значение из базы, которого правило не знает, не должно приводить к
+    // undefined в логике переходов.
+    expect(toJob({ ...base, status: "что-то новое" }).status).toBe("failed");
+  });
+
   it("в базу попадают только заранее описанные статусы", () => {
     expect(isJobStatus("published")).toBe(true);
     expect(isJobStatus("deleted")).toBe(false);

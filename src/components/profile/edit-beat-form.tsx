@@ -51,6 +51,8 @@ type Props = {
      * вижу».
      */
     files: Record<string, { name?: string; size?: number }> | null;
+    /** Есть ли превью: без него карточка в ленте не играется. */
+    hasPreview: boolean;
     /** Идентификатор владельца: без него файл не положить в свою же папку. */
     userId: string;
     /** Жанр бита: null — без жанра. */
@@ -230,6 +232,15 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
     payload.set("isPublic", form.get("isPublic") === "on" ? "true" : "false");
     payload.set("onSale", form.get("onSale") === "on" ? "true" : "false");
     payload.set("currency", String(form.get("currency") ?? "RUB"));
+    /*
+     * Скидка обязана уйти вместе с ценами.
+     *
+     * Поле в форме есть, но в запрос не попадало, и сервер читал
+     * normalizeDiscount(null) = 0. Любое сохранение — заголовок, тег, обложка —
+     * обнуляло скидку и возвращало полную цену. Продавец не получал ни ошибки,
+     * ни уведомления, а покупатель платил на 30 % больше обещанного.
+     */
+    payload.set("discountPercent", String(form.get("discountPercent") ?? "0"));
     payload.set(
       "prices",
       JSON.stringify({
@@ -491,10 +502,18 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
         title={title}
         tags={parseTags(tags)}
         roles={beatRoles({
-          keys: beat.fileRoles,
-          // Обложку можно выбрать прямо сейчас: она ещё не сохранена, но
-          // претензия «обложка не загружена» в этом случае врала бы.
+          /*
+           * Ключи берём из files, а не из fileRoles.
+           *
+           * fileRoles — это уже результат beatRoles («mp3», «stems»), и если
+           * скормить его beatRoles как keys, тот ищет «zip»/«rar» и не находит
+           * «stems» никогда. Форма показывала «не хватает: архива со стемами»
+           * даже после успешной загрузки архива — и снять претензию было
+           * нечем.
+           */
+          keys: Object.keys({ ...(beat.files ?? {}), ...files }),
           hasCover: beat.coverUrl !== null || cover !== null,
+          hasPreview: Boolean(beat.hasPreview),
         })}
       />
 

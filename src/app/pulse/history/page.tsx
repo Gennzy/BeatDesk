@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { PulseJobs } from "@/components/pulse/pulse-jobs";
+import { toJob, type JobRow } from "@/lib/pulse/jobs-server";
 import { Container } from "@/components/ui/container";
 import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
@@ -61,7 +62,15 @@ export default async function PulseHistoryPage() {
 
       <Container className="py-10">
         <PulseJobs
-          jobs={(jobs ?? []) as never}
+          /*
+           * Строка из базы приходит в змеином регистре, а компонент ждёт
+           * верблюжий. Раньше здесь стояло `as never`, и `never` принимает
+           * что угодно: проверка типов молча пропускала несовпадение, а
+           * страница падала на первой же задаче — `undefined.trim()` в
+           * jobTitle. Даты были пустыми, ссылка на YouTube не рисовалась, и
+           * любая задача в работе красилась как зависшая.
+           */
+          jobs={((jobs ?? []) as JobRow[]).map(toJob)}
           counts={summary.counts ?? {}}
           stuckIds={(summary.stuck ?? []).map((item) => item.id)}
         />

@@ -87,6 +87,7 @@ export default async function EditBeatPage({ params }: { params: Promise<{ id: s
               // Форме нужно знать, что уже лежит, иначе человек не отличил бы
               // «файла нет» от «файл есть, но я его не вижу».
               files: beat.files,
+              hasPreview: Boolean(beat.mp3_url),
               // Путь в баке начинается с владельца: без него файл положил бы
               // не в свою папку.
               userId: user.id,

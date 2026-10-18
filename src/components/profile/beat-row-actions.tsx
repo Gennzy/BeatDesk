@@ -28,18 +28,29 @@ export function BeatRowActions({
   saleState,
   isPublic,
   prices,
+  pricesBefore,
+  discountPercent,
   currency,
 }: {
   beatId: string;
   saleState: SaleState;
   isPublic: boolean;
   prices: Record<string, number | null> | null;
+  /** Цены до скидки: без них остальные уровны обнуляются вместе со скидкой. */
+  pricesBefore?: Record<string, number | null> | null;
+  discountPercent?: number | null;
   currency: string;
 }) {
   const { t } = useI18n();
   const router = useRouter();
 
   const current = normalizePrices(prices);
+  /*
+   * Исходные цены: то, что человек вводил до скидки. При скидке в prices лежит
+   * уже урезанное, а отправлять надо исходное — иначе скидка применяется
+   * второй раз к своим же следам либо исчезает.
+   */
+  const base = normalizePrices(pricesBefore ?? prices);
   const [price, setPrice] = useState(current.mp3 === null ? "" : String(current.mp3));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,11 +80,22 @@ export function BeatRowActions({
         "prices",
         JSON.stringify({
           mp3: trimmed,
-          wav: current.wav ?? "",
-          trackout: current.trackout ?? "",
-          exclusive: current.exclusive ?? "",
+          /*
+           * Остальные уровни берём из цен ДО скидки.
+           *
+           * В prices лежит то, что спишет заказ, то есть уже урезанное. Если
+           * отправить это как исходные цены, то сервер, не найдя discountPercent,
+           * записал бы их как есть — и поднял цену на всех уровнях до скидочной,
+           * то есть вверх, а не вниз. Мелочь с обратным знаком: деньги.
+           */
+          wav: base.wav ?? "",
+          trackout: base.trackout ?? "",
+          exclusive: base.exclusive ?? "",
         }),
       );
+
+      // Без этого сервер обнулит скидку, и цена станет полной.
+      body.set("discountPercent", String(discountPercent ?? 0));
     }
 
     for (const [key, value] of Object.entries(extra)) body.set(key, value);
