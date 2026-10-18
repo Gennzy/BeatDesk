@@ -3,12 +3,48 @@ import { describe, expect, it } from "vitest";
 import {
   canPutOnSale,
   canTakeOffSale,
+  initialSaleState,
   isReservationLive,
   SALE_STATES,
   sellableTiers,
   soldOutReason,
   showsInFeed,
 } from "./state";
+
+describe("бит выходит в продажу сам, при загрузке", () => {
+  // Загруженный бит уходил в черновик: база подставляла дефолт, а отдельного
+  // шага никто не ищет. Продавать было нечем, пока продавец не откроет
+  // правку и не нажмёт кнопку.
+  it("с ценой и показом в ленте — сразу в продаже", () => {
+    expect(initialSaleState({ prices: { mp3: 50000 }, isPublic: true })).toBe("on_sale");
+  });
+
+  it("без цены остаётся черновиком", () => {
+    // «В продаже» на бите без цены врёт дважды: и продавцу, и покупателю.
+    expect(initialSaleState({ prices: { mp3: null }, isPublic: true })).toBe("draft");
+    expect(initialSaleState({ prices: { mp3: null, wav: null }, isPublic: true })).toBe("draft");
+  });
+
+  it("нулевая цена — это не цена", () => {
+    expect(initialSaleState({ prices: { mp3: 0 }, isPublic: true })).toBe("draft");
+  });
+
+  it("одной цены достаточно", () => {
+    expect(initialSaleState({ prices: { mp3: null, trackout: 150000 }, isPublic: true })).toBe("on_sale");
+  });
+
+  it("скрытый из ленты бит в продажу не идёт", () => {
+    // Корзина требует и цены, и показа в ленте, поэтому скрытый бит в
+    // продаже всё равно не купить.
+    expect(initialSaleState({ prices: { mp3: 50000 }, isPublic: false })).toBe("draft");
+  });
+
+  it("мелочь в цене не превращается в продажу", () => {
+    // Цены лежат в минорных единицах, и любой положительный остаток — это
+    // настоящая цена, пусть и смешонная.
+    expect(initialSaleState({ prices: { mp3: 1 }, isPublic: true })).toBe("on_sale");
+  });
+});
 
 describe("состояние бита в продаже", () => {
   it("все четыре состояния объявлены и имеют подписи", () => {

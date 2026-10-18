@@ -7,12 +7,22 @@ export function escapeHtml(value: string): string {
     .replace(/>/g, "&gt;");
 }
 
-/** Подпись поста: заголовок, type beat, темп и тональность, теги, цены. */
+/** Подпись поста: заголовок, type beat, темп и тональность, жанр, теги, цены. */
 export function formatBeatCaption(input: {
   title: string;
   artists: string[];
   bpm: number;
   musicalKey: string;
+  /**
+   * Жанр по-русски.
+   *
+   * В телеграме по жанру ищут глазами и фильтром канала, а в подписи его не
+   * было: бит «Дарк» выглядел в ленте так же, как «Поп», и человек, который
+   * листает тёмное, не мог отличить одно от другого, не открывая каждую
+   * карточку. Слова из тегов тут не заменяют: жанр — это то, по чему
+   * фильтруют, а теги — то, что кто-то успел набрать руками.
+   */
+  genre?: string | null;
   tags: string[];
   prices: Prices;
   currency?: string;
@@ -56,6 +66,7 @@ export function formatBeatCaption(input: {
     titleSaysIt ? null : `<i>${escapeHtml(typeBeat)}</i>`,
     "",
     `<code>${input.bpm} BPM · ${escapeHtml(input.musicalKey)}</code>`,
+    input.genre ? `Жанр: ${escapeHtml(input.genre)}` : null,
     ...tiers.map((tier) => escapeHtml(tier)),
     input.tags.length > 0 ? "" : null,
     telegramTags(input.tags, input.artists),

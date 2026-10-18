@@ -266,7 +266,7 @@ async function sendSharedBeat(token: string, share: string, chat: Chat, siteUrl:
 
   const { data: beat } = await admin
     .from("beats")
-    .select("id, title, bpm, key, tags, type_beat_artists, cover_url, prices, currency, owner_id, is_public, sale_state")
+    .select("id, title, bpm, key, tags, genre, type_beat_artists, cover_url, prices, currency, owner_id, is_public, sale_state")
     .eq("id", payload.b)
     .maybeSingle();
 
@@ -300,6 +300,7 @@ async function sendSharedBeat(token: string, share: string, chat: Chat, siteUrl:
     artists: (beat.type_beat_artists ?? []) as string[],
     bpm: beat.bpm,
     musicalKey: beat.key ?? "",
+    genre: beat.genre,
     tags: (beat.tags ?? []) as string[],
     prices,
     currency: beat.currency ?? "RUB",

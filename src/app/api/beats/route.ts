@@ -5,6 +5,7 @@ import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { notifySelf } from "@/lib/notifications/self";
 import { createClient } from "@/lib/supabase/server";
 import { applyDiscount, normalizeDiscount, pricesForDb } from "@/lib/prices";
+import { initialSaleState } from "@/lib/sales/state";
 
 type Body = {
   title?: unknown;
@@ -110,6 +111,16 @@ export async function POST(request: Request) {
       cover_url: coverUrl,
       files: typeof body.files === "object" && body.files !== null ? body.files : {},
       is_public: Boolean(body.is_public),
+      /*
+       * Бит выставляется в продажу сам, без второго шага.
+       *
+       * Раньше sale_state здесь не задавался, и база подставляла свой дефолт
+       * «черновик». Человек выкладывал бит, проставлял цены, загружал файлы —
+       * и получал бит, который не продаётся, пока он не догадается ещё раз
+       * открыть правку и нажать кнопку. Правило одно с правкой бита, поэтому
+       * и живёт в sales/state, а не написано здесь заново.
+       */
+      sale_state: initialSaleState({ prices: basePrices, isPublic: Boolean(body.is_public) }),
     })
     .select("id, title")
     .single();

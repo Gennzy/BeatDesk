@@ -14,6 +14,14 @@ export type BeatMeta = {
   artists: string[];
   bpm: number;
   musicalKey: string;
+  /**
+   * Жанр по-русски, если известен.
+   *
+   * Не часть обязательных полей: старые записи и часть путей публикации жанра
+   * не знают, и требование здесь превратилось бы в обязательный пустой
+   * подставной жанр у всех подряд.
+   */
+  genre?: string | null;
   tags: string[];
   prices: Prices;
   currency?: string;

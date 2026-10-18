@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { normalizeGenre } from "@/lib/beat-validation";
 import { applyDiscount, normalizeDiscount, normalizePrices, pricesForDb } from "@/lib/prices";
 import { canPutOnSale, canTakeOffSale, type SaleState } from "@/lib/sales/state";
+import { parseNames } from "@/lib/tags";
 
 async function requireOwner(beatId: string) {
   const supabase = await createClient();
@@ -78,11 +79,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const typeBeat = text("typeBeat");
   if (typeBeat !== null) {
-    patch.type_beat_artists = typeBeat
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .slice(0, 6);
+    // Разбор имён общий с формой загрузки: правило «пробел внутри имени,
+    // запятая разделяет» раньше было написано здесь в третий раз, и одна из
+    // копий разошлась с остальными.
+    patch.type_beat_artists = parseNames(typeBeat).slice(0, 6);
   }
 
   const bpm = text("bpm");
@@ -183,6 +183,11 @@ patch.genre = normalizeGenre(genre);
       // требует оба условия, и молча выставить бит в продажу при закрытой
       // витрине значило бы показать продавцу «в продаже» при нулевых
       // покупках.
+      //
+      // Правило берётся из sales/state тем же, что и на загрузке. Своя
+      // копия здесь означала бы, что бит, выложенный сразу, и бит,
+      // выставленный кнопкой, считаются продающимися по разным признакам —
+      // и однажды разойдутся.
       const priced = Object.values(normalizePrices(access.beat.prices)).some((value) => Number(value) > 0);
 
       if (!priced) {

@@ -11,6 +11,7 @@ import { CurrencyPicker } from "@/components/profile/currency-picker";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { KeyPicker } from "@/components/ui/key-picker";
+import { GenreSelect } from "@/components/beat/genre-select";
 import { Switch } from "@/components/ui/switch";
 import type { FeedBeat } from "@/lib/feed";
 import { compressImage } from "@/lib/image";
@@ -238,6 +239,21 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
           <Field label={t("upload.key")}>
             <KeyPicker defaultValue={beat.musicalKey} />
           </Field>
+
+          {/*
+           * Жанр был обязателен при сохранении, но поля в форме не было.
+           *
+           * Форма читала genre, которого в ней не существовало, получала
+           * пустое значение и отказывалась сохранять бит: править было
+           * нечем вообще, а отказ приходил с требованием выбрать жанр, для
+           * которого не было ни одного списка. Самый неприятный вид отказа —
+           * когда виноваты данные, а спросить некуда.
+           *
+           * Ставится с текущим значением, иначе список открывался бы пустым и
+           * выглядел бы как «beat без жанра», хотя он есть.
+           */}
+          <GenreSelect name="genre" value={beat.genre} />
+
           <Field label={t("upload.tags")} hint={t("upload.tagsHint")}>
             <Input name="tags" value={tags} onChange={(event) => setTags(event.target.value)} className="font-mono" />
           </Field>
@@ -250,8 +266,10 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
           title,
           bpm: beat.bpm,
           musicalKey: beat.musicalKey,
-          // В форме теги живут строкой, а в подсказке нужны списком.
-          tags: tags.split(/[\s,]+/).filter(Boolean),
+          // В форме теги живут строкой, а в подсказке нужны списком. Разбор
+          // один на весь проект: в этой форме он стоял в трёх видах, и
+          // подсказка считала теги иначе, чем сохраняла форма.
+          tags: parseTags(tags),
           artists: beat.artists,
         }}
         hasStems={beat.hasStems}
@@ -364,7 +382,7 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
       <SellReadiness
         prices={prices}
         title={title}
-        tags={tags.split(",").map((tag) => tag.trim()).filter(Boolean)}
+        tags={parseTags(tags)}
         roles={beatRoles({
           keys: beat.fileRoles,
           // Обложку можно выбрать прямо сейчас: она ещё не сохранена, но

@@ -106,4 +106,46 @@ describe("карточка бита в Telegram", () => {
     expect(caption).toContain("by gennzy");
     expect(caption).not.toContain("by @gennzy");
   });
+
+  it("жанр стоит в посте", () => {
+    // По жанру в канале фильтруют глазами. Без него тёмный бит выглядел в
+    // ленте так же, как попсовый, и отличить можно было, только открыв каждую
+    // карточку.
+    const caption = formatBeatCaption({
+      ...base,
+      genre: "Дарк",
+      prices: { mp3: 500, wav: null, trackout: null, exclusive: null },
+    });
+
+    expect(caption).toContain("Жанр: Дарк");
+  });
+
+  it("жанр выводится, только если он известен", () => {
+    // Старые записи жанра не знают, и пустая строка «Жанр: » выглядела бы
+    // как недосмотр.
+    const caption = formatBeatCaption({
+      ...base,
+      genre: null,
+      prices: { mp3: 500, wav: null, trackout: null, exclusive: null },
+    });
+
+    expect(caption).not.toContain("Жанр:");
+  });
+
+  it("каждый тег становится своим хештегом и не слипается", () => {
+    /*
+     * Регрессия с настоящего поста: теги «future, lil durk» разбирались в два
+     * тега, и телеграм выдавал #future #lildurk — одно слипшееся слово вместо
+     * трёх, которое не находит никто.
+     */
+    const caption = formatBeatCaption({
+      ...base,
+      tags: ["future", "lil", "durk"],
+      prices: { mp3: 500, wav: null, trackout: null, exclusive: null },
+    });
+
+    expect(caption).toContain("#future #lil #durk");
+    expect(caption).not.toContain("#futurelil");
+    expect(caption).not.toContain("#lildurk");
+  });
 });

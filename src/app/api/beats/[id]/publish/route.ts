@@ -47,7 +47,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const { data: beat } = await supabase
     .from("beats")
-    .select("id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, currency, owner_id, profiles!beats_owner_id_fkey(username)")
+    .select("id, title, type_beat_artists, bpm, key, tags, genre, mp3_url, cover_url, prices, currency, owner_id, profiles!beats_owner_id_fkey(username)")
     .eq("id", id)
     .maybeSingle();
 
@@ -63,6 +63,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     artists: beat.type_beat_artists ?? [],
     bpm: beat.bpm,
     musicalKey: beat.key,
+    // Жанр уезжает в пост: по нему фильтруют в канале, и без него тёмный бит
+    // выглядит в ленте так же, как попсовый.
+    genre: beat.genre,
     tags: beat.tags ?? [],
     /*
      * Цены нормализуются, а не кастуются.

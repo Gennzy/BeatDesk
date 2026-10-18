@@ -7,6 +7,8 @@ export type PublishBeat = {
   artists: string[];
   bpm: number;
   musicalKey: string;
+  /** Жанр по-русски: в телеграме по нему фильтруют глазами. */
+  genre?: string | null;
   tags: string[];
   prices: Prices;
   currency?: string;

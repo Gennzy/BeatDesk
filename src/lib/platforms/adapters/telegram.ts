@@ -50,6 +50,7 @@ export async function publishToTelegram(
     artists: payload.beat.artists,
     bpm: payload.beat.bpm,
     musicalKey: payload.beat.musicalKey,
+    genre: payload.beat.genre,
     tags: payload.beat.tags,
     prices: payload.beat.prices,
     username: payload.beat.username,
