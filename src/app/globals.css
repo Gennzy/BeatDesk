@@ -61,6 +61,20 @@
   --color-line: var(--gray-850);
   --color-line-2: var(--gray-800);
 
+  /*
+   * Граница интерактивного элемента.
+   *
+   * Отдельная от --color-line намеренно. Волосяная линия (#1b1b1b) на почти
+   * чёрном фоне не видна вообще, и кнопка с такой рамкой теряет форму: текст
+   * есть, а кажется, что нажатия не��. Рядом стоящая яркая кнопка добивала
+   * эффект — вторая читалась как отключённая.
+   *
+   * Здесь контраст к фону около 3:1, и этого достаточно, чтобы граница
+   * читалась как граница. Текст на ней остаётся paper — он и был в порядке,
+   * проблема была не в нём.
+   */
+  --color-edge: var(--gray-500);
+
   /* Текст. Две ступени, и обе проходят WCAG AA: серый даёт 4.7 к 1. */
   --color-paper: var(--bone-100);
   --color-mute: var(--gray-400);
@@ -380,7 +394,9 @@
    */
   .control {
     width: 100%;
-    border: 1px solid var(--color-line);
+    /* Рамка поля — интерактивная граница, а не волосяная линия: иначе поле
+       сливается с фоном так же, как кнопка без формы. */
+    border: 1px solid var(--color-edge);
     border-radius: var(--radius-md);
     background: var(--color-ink-3);
     padding-inline: 0.75rem;
@@ -392,7 +408,7 @@
   }
 
   .control:hover:not(:disabled) {
-    border-color: var(--color-line-2);
+    border-color: var(--gray-400);
   }
 
   .control:focus,
@@ -432,9 +448,12 @@
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    border: 1px solid var(--color-line);
+    /* Чип часто стоит там, где на него нажимают: «в корзину», «пересобрать»,
+       «выставить в продажу». Волосяная рамка делала нажатие неразличимым
+       от текста, поэтому здесь интерактивная граница. */
+    border: 1px solid var(--color-edge);
     border-radius: var(--radius-pill);
-    background: color-mix(in oklab, var(--color-paper) 3%, transparent);
+    background: color-mix(in oklab, var(--color-paper) 5%, transparent);
     padding: 0.2rem 0.6rem;
     font-size: 0.75rem;
     line-height: 1.2;
@@ -445,8 +464,40 @@
   }
 
   .chip-hover:hover {
-    border-color: var(--color-line-2);
+    border-color: var(--gray-400);
     color: var(--color-paper);
+  }
+
+  /*
+   * Вторичная кнопка: та же форма, что и главная, но без заливки.
+   *
+   * Раньше у «В корзину» был border-line, а рядом стоял яркий «Купить», и вторая
+   * кнопка читалась как погашенная. Форма теперь одинаковая — различают заливка
+   * и толщина, а не присутствие рамки.
+   */
+  .btn-ghost {
+    display: inline-flex;
+    height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 1px solid var(--color-edge);
+    border-radius: var(--radius-pill);
+    padding-inline: 1.25rem;
+    font-size: 0.875rem;
+    color: var(--color-paper);
+    transition:
+      border-color var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    border-color: var(--gray-400);
+    background: color-mix(in oklab, var(--color-paper) 6%, transparent);
+  }
+
+  .btn-ghost:disabled {
+    opacity: 0.5;
   }
 
   /* Кнопка-таб: активная залита, и заливка сдвигается плавно. */

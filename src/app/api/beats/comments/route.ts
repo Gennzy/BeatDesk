@@ -55,22 +55,55 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Слишком длинный комментарий" }, { status: 400 });
   }
 
-  const { error } = await supabase.from("beat_comments").insert({
+/*
+ * Возвращаем созданный комментарий, а не только «created».
+ *
+ * Клиент добавляет строку в список сразу, не перечитывая страницу, и раньше
+ * получал отсюда пустой ответ — значит подставлял authorUsername: null. Свой
+ * же комментарий показывался как «ГОСТЬ» до перезагрузки страницы, и выглядело
+ * это так, будто комментарий потерял автора.
+ */
+const { data: created, error } = await supabase
+  .from("beat_comments")
+  .insert({
     beat_id: beatId,
     author_id: user.id,
     parent_id: parentId,
     body: text,
-  });
+  })
+  .select("id, body, created_at, author_id, parent_id")
+  .single();
 
-  if (error) {
-    if (error.code === "23505") {
-      return NextResponse.json({ error: "Ты уже ответил на этот комментарий" }, { status: 409 });
-    }
-    console.error("beat comment failed", error.code);
-    return NextResponse.json({ error: "Не удалось оставить комментарий" }, { status: 400 });
+if (error) {
+  if (error.code === "23505") {
+    return NextResponse.json({ error: "Ты уже ответил на этот комментарий" }, { status: 409 });
   }
+  console.error("beat comment failed", error.code);
+  return NextResponse.json({ error: "Не удалось оставить комментарий" }, { status: 400 });
+}
 
-  return NextResponse.json({ status: "created" }, { status: 201 });
+// Ник берём здесь: в браузере его может не быть, и тогда строка снова стала бы
+// «ГОСТЬ», только уже без всякой причины.
+const { data: author } = await supabase
+  .from("profiles")
+  .select("username, avatar_url")
+  .eq("id", user.id)
+  .maybeSingle();
+
+return NextResponse.json(
+  {
+    comment: {
+      id: (created as { id: string }).id,
+      body: text,
+      createdAt: (created as { created_at: string }).created_at,
+      authorId: user.id,
+      authorUsername: (author as { username?: string } | null)?.username ?? null,
+      authorAvatar: (author as { avatar_url?: string | null } | null)?.avatar_url ?? null,
+      parentId,
+    },
+  },
+  { status: 201 },
+);
 }
 
 export async function DELETE(request: NextRequest) {

@@ -47,13 +47,27 @@ export async function GET(request: NextRequest) {
     bpmMax: hi,
   };
 
-  try {
+try {
     const supabase = await createClient();
     const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { beats, nextOffset } = await fetchPublicBeats(supabase, offset, undefined, filters, user?.id ?? null);
+    /*
+     * Рейтинг освежается здесь, а не по расписанию.
+     *
+     * Формула score содержит затухание по времени, то есть бит без реакций
+     * через три дня должен весить вдвое меньше. Пересчитывал только триггер на
+     * реакциях, поэтому затухание не применялось никогда: лента замирала.
+     *
+     * Функция трогает только биты, чей вес старше десяти минут, так что обычно
+     * она не делает ничего — условие отсекает всё свежее. Ошибка молча
+     * игнорируется намеренно: лента должна открыться и без пересчёта, иначе
+     * замороженный рейтинг ронял бы витрину целиком.
+     */
+    await supabase.rpc("refresh_beat_scores", { p_max_age_seconds: 600 });
+
+    const { beats, nextOffset } = await fetchPublicBeats(supabase, offset, undefined, filters, user?.id ?? null);
     return NextResponse.json({ beats, nextOffset });
   } catch {
     return NextResponse.json({ error: "Не удалось загрузить ленту" }, { status: 500 });

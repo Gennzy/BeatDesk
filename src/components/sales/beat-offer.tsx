@@ -25,6 +25,15 @@ type Props = {
   isOwner: boolean;
   /** Вошедший ли человек: корзина серверная и гостю недоступна. */
   signedIn: boolean;
+  /**
+   * Продаётся ли бит прямо сейчас.
+   *
+   * Считается базой, а не на глаз: create_order откажет по трём причинам —
+   * бит вне ленты, снят с продажи, оплачивается другим человеком. Пока эти
+   * причины не знались компоненту, он рисовал уровни и «Купить» на бите,
+   * который купить нельзя.
+   */
+  sellable: boolean;
 };
 
 /**
@@ -35,7 +44,16 @@ type Props = {
  * «MP3 + WAV за 1 500 ₽» в шапке с кнопкой рядом. Теперь список один,
  * и кнопка стоит на своём уровне.
  */
-export function BeatOffer({ beatId, tiers, pricesBefore, discountPercent, currency, isOwner, signedIn }: Props) {
+export function BeatOffer({
+  beatId,
+  tiers,
+  pricesBefore,
+  discountPercent,
+  currency,
+  isOwner,
+  signedIn,
+  sellable,
+}: Props) {
   const { t, locale } = useI18n();
   const router = useRouter();
   const [tier, setTier] = useState<PriceKey | null>(tiers[0]?.key ?? null);
@@ -156,6 +174,22 @@ export function BeatOffer({ beatId, tiers, pricesBefore, discountPercent, curren
           >
             {t("order.ownBeatLink")}
           </Link>
+        </div>
+      ) : !sellable ? (
+        /*
+         * Бит, который база не продаст, не должен выглядеть продающимся.
+         *
+         * Раньше здесь стояли уровни, цены, «Купить» и «В корзину» — и все
+         * четыре отказывали по одной причине: бит вне ленты, снят с продажи или
+         * уже кем-то оплачивается. Человек выбирал уровень, вводил почту и
+         * получал отказ на последнем шаге.
+         *
+         * Причина показывается вместо призыва: кнопка, которая всегда
+         * отказывает, хуже её отсутствия — она обещает то, чего не будет.
+         */
+        <div className="flex flex-col gap-3 rounded-panel border border-line px-5 py-6">
+          <span className="label text-mute">{t("beat.notForSale")}</span>
+          <p className="max-w-[46ch] text-sub text-mute">{t("beat.notForSaleNote")}</p>
         </div>
       ) : (
         <div className="flex flex-col gap-4">

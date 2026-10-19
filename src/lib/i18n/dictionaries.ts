@@ -686,6 +686,8 @@ const ru = {
   "beat.fromPrice": "за лицензию, от",
   "beat.from": "от",
   "beat.notForSale": "Бит сейчас не продаётся",
+  "beat.notForSaleNote":
+    "Автор снял его с продажи или ещё не выставил. Написать ему можно ниже.",
   "beat.edit": "Изменить бит",
   "beat.draftOwnerTitle": "Бит в черновике",
   "beat.draftOwnerNote":
@@ -1540,6 +1542,7 @@ const en: Record<keyof typeof ru, string> = {
   "beat.fromPrice": "per license, from",
   "beat.from": "from",
   "beat.notForSale": "This beat is not for sale",
+  "beat.notForSaleNote": "The seller took it off sale or has not listed it yet. You can write to them below.",
   "beat.edit": "Edit beat",
   "beat.draftOwnerTitle": "Beat is a draft",
   "beat.draftOwnerNote":

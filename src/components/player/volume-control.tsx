@@ -33,12 +33,23 @@ export function VolumeControl({ size = "sm" }: { size?: "sm" | "lg" }) {
         aria-label={silent ? t("player.unmute") : t("player.mute")}
         title={silent ? t("player.unmute") : t("player.mute")}
         className={cn(
-          "grid shrink-0 place-items-center border transition-colors",
+          /*
+           * Без рамки.
+           *
+           * Кнопка стояла в рамке и выглядела чужеродно: остальные элементы
+           * панели рамок не имеют, и она читалась как артефакт, а не как
+           * элемент управления. Значок при этом был мельче самой кнопки и
+           * тонул в ней.
+           *
+           * Зона нажатия остаётся прежней: значок стал крупнее, но тыкать
+           * нужно так же удобно, как раньше.
+           */
+          "grid shrink-0 place-items-center transition-colors",
           size === "lg" ? "size-10" : "size-8",
-          silent ? "text-signal" : "text-mute hover:border-line-2 hover:text-paper",
+          silent ? "text-signal" : "text-mute hover:text-paper",
         )}
       >
-        <Icon name={silent ? "mute" : "volume"} className={size === "lg" ? "size-4" : "size-3.5"} />
+        <Icon name={silent ? "mute" : "volume"} className={size === "lg" ? "size-5" : "size-4"} />
       </button>
 
       <input
@@ -53,8 +64,12 @@ export function VolumeControl({ size = "sm" }: { size?: "sm" | "lg" }) {
         className={cn(
           // Ползунок виден от среднего экрана: на телефоне рядом с ним
           // больше нечего поставить.
+          //
+          // Высота задана явно: у input[type=range] своя высота по умолчанию,
+          // и рядом со значком он висел ниже и тоньше — панель читалась как
+          // набор разнородных деталей, а не как один блок.
           "hidden accent-signal sm:block",
-          size === "lg" ? "w-28 cursor-pointer" : "w-20 cursor-pointer",
+          size === "lg" ? "h-4 w-28 cursor-pointer" : "h-3.5 w-20 cursor-pointer",
         )}
       />
     </div>

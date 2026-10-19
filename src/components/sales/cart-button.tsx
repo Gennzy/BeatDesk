@@ -77,7 +77,7 @@ export function CartButton({ beatId, tier, signedIn }: { beatId: string; tier: P
         onClick={() => void add()}
         disabled={!tier || state === "busy"}
         aria-live="polite"
-        className="flex h-12 items-center gap-2 rounded-control border border-line px-5 text-sm text-paper transition-colors hover:border-line-2 disabled:cursor-not-allowed disabled:opacity-50 focusable"
+        className="btn-ghost w-full disabled:cursor-not-allowed focusable"
       >
         <CartIcon filled={state === "added"} />
         <span>{state === "busy" ? t("cart.adding") : state === "added" ? t("cart.added") : t("cart.add")}</span>

@@ -78,7 +78,16 @@ export function FileDrop({ label, hint, prompt, removeLabel, accept, format, sel
       >
         {selected ? (
           <>
-            <span className="truncate font-display text-sm text-paper uppercase">{selected.name}</span>
+            {/*
+             * truncate без ширины не работает.
+             *
+             * Родитель — flex с items-start, и его элемент по ширине
+             * подстраивается под текст. Многоточие считает ширину, которой
+             * нет, и длинное имя файла вылезало за рамку зоны.
+             *
+             * w-full задаёт шириру, которой truncate и ждёт.
+             */}
+            <span className="w-full truncate font-display text-sm text-paper uppercase">{selected.name}</span>
             <span className="label text-mute">{formatSize(selected.size)}</span>
           </>
         ) : (
