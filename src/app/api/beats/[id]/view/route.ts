@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { clientKey, rateLimit } from "@/lib/rate-limit";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!beat || beat.owner_id === user.id) return NextResponse.json({ ok: true });
   }
 
-  const { data, error } = await supabase.rpc("bump_beat_counter", {
+  const { data, error } = await getAdminClient().rpc("bump_beat_counter", {
     p_beat_id: id,
     p_column: kind,
   });
