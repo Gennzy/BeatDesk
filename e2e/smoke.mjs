@@ -1110,6 +1110,32 @@ async function main() {
 
             if (!toggle || !box) return { found: true, controls: false };
 
+            /*
+             * Ждём, пока строка проснётся.
+             *
+             * Проверка жалала по полю сразу после загрузки страницы, и если
+             * React ещё не привязал обработчики, значение менялось в DOM, но
+             * состояние оставалось прежним — и цена уходила старая. Ошибка
+             * выглядела как «правка цены не работает», хотя работает.
+             *
+             * Признак готовности — поле с ценой: у него есть значение с
+             * сервера, и оно не пустое.
+             */
+            const ready = await new Promise((resolve) => {
+              const started = Date.now();
+
+              const poll = () => {
+                if (box.value.trim() !== "") return resolve(true);
+                if (Date.now() - started > 8000) return resolve(false);
+
+                setTimeout(poll, 200);
+              };
+
+              poll();
+            });
+
+            if (!ready) return { found: true, controls: false, ready: false };
+
             // Цена уходит по blur: проверяется, что значение доехало до базы,
             // а не осталось в поле.
             const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
