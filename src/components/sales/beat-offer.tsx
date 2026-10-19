@@ -13,6 +13,7 @@ import { DiscountPrice, beforePrice } from "@/components/beat/discount-price";
 import { formatMoney } from "@/lib/currency";
 import { useI18n } from "@/lib/i18n/provider";
 import { tierContents } from "@/lib/sales/delivery";
+import { hasTierFile, TIER_FILE, type TierFileFacts } from "@/lib/sales/tier-file";
 import { priceLabel, type PriceKey, type Prices } from "@/lib/prices";
 
 type Props = {
@@ -34,6 +35,15 @@ type Props = {
    * который купить нельзя.
    */
   sellable: boolean;
+  /**
+   * Что лежит в мастерах.
+   *
+   * Нужно, чтобы уровень без файла не выглядел покупаемым. Проверка в базе
+   * (0056) и так не даст оплатить Track Out без архива дорожек, но человек
+   * узнаёт об этом только после нажатия «Купить» — уже с деньгами на руках.
+   * Здесь он видит это сразу.
+   */
+  files: TierFileFacts;
 };
 
 /**
@@ -53,10 +63,20 @@ export function BeatOffer({
   isOwner,
   signedIn,
   sellable,
+  files,
 }: Props) {
   const { t, locale } = useI18n();
   const router = useRouter();
-  const [tier, setTier] = useState<PriceKey | null>(tiers[0]?.key ?? null);
+  /*
+   * Выбирается первый уровень, который есть чем отдать.
+   *
+   * Раньше выбирался просто первый — и если у продавца не было архива
+   * дорожек, кнопка «Купить» сразу предлагала уровень, который база не
+   * отдаст. Теперь первым выбирается тот, что можно купить по-настоящему.
+   */
+  const [tier, setTier] = useState<PriceKey | null>(
+    tiers.find((item) => hasTierFile(files, dbTier(item.key)))?.key ?? tiers[0]?.key ?? null,
+  );
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "busy" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -115,6 +135,8 @@ export function BeatOffer({
       <ul className="flex flex-col gap-2">
         {tiers.map((item) => {
           const chosen = item.key === tier;
+          const dbKey = dbTier(item.key);
+          const hasFile = hasTierFile(files, dbKey);
 
           return (
             <li
@@ -127,7 +149,18 @@ export function BeatOffer({
             >
               <span className="flex flex-col gap-1">
                 <span className="label text-paper">{priceLabel[item.key]}</span>
-                <span className="text-xs leading-snug text-mute">{tierContents(dbTier(item.key), locale).join(" · ")}</span>
+                <span className="text-xs leading-snug text-mute">{tierContents(dbKey, locale).join(" · ")}</span>
+
+                {/*
+                 * Файла нет — уровень не отдадут. Сказать об этом надо до
+                 * оплаты, а не после: человек узнал бы об этом уже с деньгами
+                 * на руках и заказом, который нечем выполнять.
+                 */}
+                {!hasFile ? (
+                  <span className="text-xs leading-snug text-danger">
+                    {t("share.tierNoFile", { file: TIER_FILE[dbKey as keyof typeof TIER_FILE] ?? "файл" })}
+                  </span>
+                ) : null}
               </span>
 
               <span className="flex items-baseline gap-3">
@@ -142,11 +175,15 @@ export function BeatOffer({
                     type="button"
                     onClick={() => setTier(item.key)}
                     aria-pressed={chosen}
+                    /*
+                     * Уровень без файла нельзя выбрать: база всё равно откажет,
+                     * а человек потратил бы нажатие, чтобы узнать об этом.
+                     */
+                    disabled={!hasFile}
                     className={cn(
                       "label h-9 rounded-pill px-3.5 transition-colors",
-                      chosen
-                        ? "bg-signal text-ink"
-                        : "border border-line text-mute hover:border-line-2 hover:text-paper",
+                      chosen ? "bg-signal text-ink" : "border border-line text-mute hover:border-line-2 hover:text-paper",
+                      !hasFile && "cursor-not-allowed opacity-50 hover:border-line hover:text-mute",
                     )}
                   >
                     {chosen ? t("order.selected") : t("order.choose")}

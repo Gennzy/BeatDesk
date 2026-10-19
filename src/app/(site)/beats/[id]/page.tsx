@@ -62,7 +62,7 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
    * каталог. Поэтому набор один, а откат на старый тот же, что в ленте.
    */
   const FULL_COLUMNS =
-    "id, title, type_beat_artists, bpm, key, tags, genre, mp3_url, cover_url, prices, prices_before, discount_percent, currency, sale_state, is_public, owner_id, plays, views, impressions, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links, level)";
+    "id, title, type_beat_artists, bpm, key, tags, genre, mp3_url, cover_url, files, prices, prices_before, discount_percent, currency, sale_state, is_public, owner_id, plays, views, impressions, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links, level)";
   const SAFE_COLUMNS =
     "id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, prices_before, discount_percent, currency, sale_state, is_public, owner_id, plays, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links)";
 
@@ -73,7 +73,7 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
    * без зачёркнутой цены. Лучше так, чем витрина, которая не грузится.
    */
   const PRE_DISCOUNT_COLUMNS =
-    "id, title, type_beat_artists, bpm, key, tags, genre, mp3_url, cover_url, prices, currency, sale_state, is_public, owner_id, plays, views, impressions, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links, level)";
+    "id, title, type_beat_artists, bpm, key, tags, genre, mp3_url, cover_url, files, prices, currency, sale_state, is_public, owner_id, plays, views, impressions, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links, level)";
 
   let result = await supabase.from("beats").select(FULL_COLUMNS).eq("id", id).maybeSingle();
 
@@ -306,6 +306,16 @@ const sellable = saleState === "on_sale" && beat.is_public === true;
                   isOwner={isOwner}
                   signedIn={Boolean(user)}
                   sellable={sellable}
+                  /*
+                   * Флаги, а не сам jsonb: путь в баке содержит
+                   * идентификатор владельца и имя бита, и в браузере ему не
+                   * место. На странице достаточно знать, есть файл или нет.
+                   */
+                  files={{
+                    hasPreview: Boolean(beat.mp3_url),
+                    hasWav: Boolean(beat.files?.wav),
+                    hasStems: Boolean(beat.files?.zip ?? beat.files?.rar),
+                  }}
                 />
 
             {/*

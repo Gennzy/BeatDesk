@@ -89,12 +89,46 @@ export async function POST(request: Request) {
         return { data: null, error: { message: "Заказ — в одной валюте: убери лишнее из корзины" } };
       }
 
-      return supabase.rpc("create_order", {
+      /*
+       * create_order_checked, а не create_order.
+       *
+       * Разница в том, что первый сначала убеждается, что файлы уровней
+       * есть, и только потом создаёт заказ. Без проверки покупатель платил за
+       * Track Out без архива дорожек и получал 404 «Файл не загружен» — деньги
+       * уплачены, товар не выдан.
+       *
+       * Проверка живёт в базе, а не здесь: create_order была выдана и
+       * authenticated, и её можно было вызвать напрямую, обойдя маршрут.
+       */
+      const checked = await supabase.rpc("create_order_checked", {
         p_items: parsed,
         p_currency: currencies[0],
         p_buyer_email: email,
         p_contact: contact,
       });
+
+      /*
+       * Откат на старую функцию, пока миграция не применена.
+       *
+       * Порядок деплоя не в наших руках: код может уехать на сервер раньше,
+       * чем миграция 0056 применена. Без отката в этот промежуток ломались бы
+       * ВСЕ покупки с текстом «не нашлась функция» — а это не поломка
+       * проверки, это поломка продаж.
+       *
+       * Проверка файлов при этом не работает, и это честно: она включается
+       * с миграцией, а не с деплоем. Ошибка отдаётся покупателю как есть, и
+       * по ней видно, что пора применить миграцию.
+       */
+      if (checked.error && /create_order_checked/.test(checked.error.message)) {
+        return supabase.rpc("create_order", {
+          p_items: parsed,
+          p_currency: currencies[0],
+          p_buyer_email: email,
+          p_contact: contact,
+        });
+      }
+
+      return checked;
     })();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
