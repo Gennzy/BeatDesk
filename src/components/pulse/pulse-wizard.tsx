@@ -14,6 +14,7 @@ import {
 import { renderBeatVideo } from "@/lib/pulse/render-video";
 import { sendChunks, videoIdOf, watchUrlOf } from "@/lib/pulse/client-upload";
 import type { JobStatus } from "@/lib/pulse/jobs";
+import type { MidiNote } from "@/lib/pulse/midi";
 import type { AiPackage } from "@/lib/ai/pulse-package";
 import { useI18n } from "@/lib/i18n/provider";
 
@@ -297,6 +298,56 @@ export function PulseWizard({
     [],
   );
 
+  /**
+   * Ноты мелодии бита.
+   *
+   * Забираются, когда выбран бит: ролик с нотами собирается иначе, чем
+   * ролик без них, и мелодия нужна до начала сборки, а не во время.
+   *
+   * Ноты хранятся вместе с идентификатором бита, для которого они пришли.
+   * Так они не остаются от прежнего бита, пока грузятся новые, и отдельного
+   * сброса не нужно — а сброс состояния прямо в эффекте React считает
+   * лишним рендером и ругается на него.
+   */
+  const [midi, setMidi] = useState<{ beatId: string; notes: MidiNote[]; bpm: number | null } | null>(null);
+  const midiBeatId = beat?.id ?? null;
+
+  useEffect(() => {
+    if (!midiBeatId) return;
+
+
+    const controller = new AbortController();
+
+    void (async () => {
+      try {
+        const response = await fetch(`/api/pulse/midi?beatId=${midiBeatId}`, { signal: controller.signal });
+        const data = (await response.json().catch(() => null)) as
+          | { notes?: MidiNote[]; bpm?: number | null }
+          | null;
+
+        if (!response.ok || !data?.notes) {
+          setMidi({ beatId: midiBeatId, notes: [], bpm: null });
+          return;
+        }
+
+        setMidi({
+          beatId: midiBeatId,
+          notes: data.notes,
+          bpm: typeof data.bpm === "number" ? data.bpm : null,
+        });
+      } catch {
+        // Мелонии нет или сервер недоступен: ролик собирается без нот.
+        setMidi({ beatId: midiBeatId, notes: [], bpm: null });
+      }
+    })();
+
+    return () => controller.abort();
+  }, [midiBeatId]);
+
+  // Ноты относятся к тому биту, для которого их принесли.
+  const notes = midi && midi.beatId === beat?.id ? midi.notes : [];
+  const midiBpm = midi && midi.beatId === beat?.id ? midi.bpm : null;
+
   async function run() {
     if (!beat || !metadata) return;
 
@@ -355,6 +406,11 @@ export function PulseWizard({
         // попадали артисты, и ролик запекал «must credit: madk1d, villian»:
         // артисты тут не имеют отношения, имя нужно тому, кто бит сделал.
         credit: producer || null,
+        // Ноты мелодии: по ним в кадре рисуется клавиатура. Их может не
+        // быть — тогда ролик собирается ровно как раньше.
+        notes,
+        midiBpm: midiBpm ?? undefined,
+        audioBpm: beat.bpm,
         // Ролик идёт в реальном времени: три минуты трека — три минуты
         // сборки, ускорить нельзя, звук из потока не разгоняется.
         signal: cancel.signal,

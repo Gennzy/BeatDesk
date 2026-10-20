@@ -4,11 +4,19 @@ import type { SupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Prices } from "@/lib/prices";
 
 export type BeatFileKind = "mp3" | "wav" | "zip" | "rar";
+
+/**
+ * Что лежит в мастерах бита.
+ *
+ * Помимо мастеров и дорожек — MIDI: мелодия, по которой ролик рисует ноты.
+ * Это не мастер, но лежит рядом с битом по той же причине: мелодия относится
+ * к этому биту и уезжает вместе с ним.
+ */
+export type AssetKind = Exclude<BeatFileKind, "mp3"> | "midi";
 export type BeatFiles = Partial<Record<BeatFileKind, File>>;
-export type AssetKind = Exclude<BeatFileKind, "mp3">;
 
 export const BEAT_FILE_KINDS = ["mp3", "wav", "zip", "rar"] as const;
-export const ASSET_KINDS = ["wav", "zip", "rar"] as const;
+export const ASSET_KINDS = ["wav", "zip", "rar", "midi"] as const;
 
 const MB = 1024 * 1024;
 
@@ -19,6 +27,14 @@ export const CHUNK_BYTES = 20 * MB;
 export const MAX_ASSET_BYTES = 500 * MB;
 export const MAX_MP3_BYTES = 15 * MB;
 export const MAX_COVER_BYTES = 5 * MB;
+
+/**
+ * Потолок для MIDI.
+ *
+ * Мелодия — это несколько килобат: ноты и их времена. Файл на сотни мегабайт
+ * здесь не мелодия, а мусор, и грузить его в бакет смысла нет.
+ */
+export const MAX_MIDI_BYTES = 2 * MB;
 
 type FileRule = {
   accept: string;
@@ -33,10 +49,31 @@ export const BEAT_FILE_RULES: Record<BeatFileKind, FileRule> = {
   rar: { accept: "application/vnd.rar,application/x-rar-compressed", extensions: ["rar"], maxBytes: MAX_ASSET_BYTES },
 };
 
+/**
+ * Правила для MIDI.
+ *
+ * Отдельные, а не в общей таблице мастеров: мелодия не мастер. Она весит
+ * килобайты, у неё другое расширение и другое назначение — по ней ролик
+ * рисует ноты.
+ */
+export const MIDI_FILE_RULE: FileRule = {
+  accept: "audio/midi,audio/x-midi,.mid,.midi",
+  extensions: ["mid", "midi"],
+  maxBytes: MAX_MIDI_BYTES,
+};
+
+/** Проверка MIDI-файла. */
+export function validateMidiFile(file: File): "upload.errorFileType" | "upload.errorFileSize" | null {
+  if (!MIDI_FILE_RULE.extensions.includes(extensionOf(file.name))) return "upload.errorFileType";
+  if (file.size > MIDI_FILE_RULE.maxBytes) return "upload.errorFileSize";
+  return null;
+}
+
 export const ASSET_MIME: Record<AssetKind, string> = {
   wav: "audio/wav",
   zip: "application/zip",
   rar: "application/vnd.rar",
+  midi: "audio/midi",
 };
 
 export type AssetPart = { url?: string; path?: string; size: number };
@@ -181,7 +218,7 @@ export function safeFileName(name: string): string {
   return `${stem.slice(0, keep)}${ext}`;
 }
 
-function partName(kind: BeatFileKind, fileName: string, index: number, total: number): string {
+function partName(kind: BeatFileKind | "midi", fileName: string, index: number, total: number): string {
   const stamp = total > 1 ? `.part${String(index + 1).padStart(3, "0")}-of-${String(total).padStart(3, "0")}` : "";
   return `${kind}-${safeFileName(fileName)}${stamp}`;
 }

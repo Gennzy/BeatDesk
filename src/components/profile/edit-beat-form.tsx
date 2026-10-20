@@ -17,7 +17,7 @@ import type { FeedBeat } from "@/lib/feed";
 import { compressImage } from "@/lib/image";
 import type { GenreSlug } from "@/lib/beat-validation";
 import type { TierId } from "@/lib/audio/delivery-rules";
-import { beatRoles, uploadAsset, validateBeatFile } from "@/lib/beats";
+import { beatRoles, uploadAsset, validateBeatFile, validateMidiFile } from "@/lib/beats";
 import { normalizeGenre } from "@/lib/beat-validation";
 import { applyDiscount, emptyPrices, parsePrice as toPrice, normalizeDiscount } from "@/lib/prices";
 import { parseTags } from "@/lib/tags";
@@ -76,7 +76,7 @@ export function EditBeatForm({ beat }: Props) {
   /** Что лежит в мастерах сейчас: база плюс то, что положили в этом окне. */
   const [files, setFiles] = useState<Record<string, { name?: string; size?: number }>>(beat.files ?? {});
   /** Какой файл сейчас летит в бакет: null — никто не грузится. */
-  const [uploadingKind, setUploadingKind] = useState<"wav" | "zip" | null>(null);
+  const [uploadingKind, setUploadingKind] = useState<"wav" | "zip" | "midi" | null>(null);
 
   /*
    * Превью создаётся в обработчике выбора, а не в эффекте: новый objectURL
@@ -101,10 +101,11 @@ export function EditBeatForm({ beat }: Props) {
    * Ошибка показывается тем же сообщением, что и сохранение: отдельное
    * «что-то сломалось с файлом» заставляет человека гадать, куда смотреть.
    */
-  async function uploadFile(kind: "wav" | "zip", file: File | null) {
+  async function uploadFile(kind: "wav" | "zip" | "midi", file: File | null) {
     if (!file) return;
 
-    const problem = validateBeatFile(kind, file);
+    // У мелодии свои правила: она не мастер и весит килобайты.
+    const problem = kind === "midi" ? validateMidiFile(file) : validateBeatFile(kind, file);
 
     if (problem) {
       setState("error");
@@ -413,6 +414,29 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
           {videoMessage ? (
             <p className={videoState === "error" ? "label text-danger" : "label text-signal"}>{videoMessage}</p>
           ) : null}
+        </div>
+
+        {/*
+          Мелодия в MIDI.
+          *
+          * Это не мастер: по ней ролик рисует настоящие ноты, и покупатель
+          * слышит тему, а не видит обложку с названием. Файл маленький, но
+          * клавиатуру без него не нарисовать, поэтому поле необязательное —
+          * ролик собирается и без него.
+        */}
+        <div className="flex flex-col gap-2 sm:col-span-2">
+          <span className="label text-paper">{t("upload.midi")}</span>
+          <span className="text-xs text-mute">{t("upload.midiHint")}</span>
+
+          <input
+            type="file"
+            accept=".mid,.midi,audio/midi"
+            disabled={uploadingKind !== null}
+            onChange={(event) => void uploadFile("midi", event.target.files?.[0] ?? null)}
+            className="label h-9 w-full max-w-xs cursor-pointer rounded-xs border border-line bg-ink px-3 py-2 text-mute file:mr-3 file:border-0 file:bg-signal file:px-2 file:py-1 file:text-ink disabled:opacity-50"
+          />
+
+          {files.midi ? <span className="text-xs text-signal">{t("upload.filePresent")}</span> : null}
         </div>
       </div>
 

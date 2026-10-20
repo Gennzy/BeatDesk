@@ -24,6 +24,8 @@
  */
 
 /** Разрешение по умолчанию — как у конкурентов: 16:9 FullHD. */
+import { activeNotesAt, layoutKeyboard } from "./keyboard";
+import { fitNotesToAudio, type MidiNote } from "./midi";
 export const VIDEO_WIDTH = 1920;
 export const VIDEO_HEIGHT = 1080;
 export const VIDEO_FPS = 30;
@@ -64,6 +66,17 @@ export type RenderInput = {
   fps?: number;
   /** От 0 до 1. Человек должен видеть, что идёт сборка, а не зависание. */
   onProgress?: (ratio: number, secondsLeft: number) => void;
+  /**
+   * Ноты мелодии: по ним в кадре рисуется клавиатура.
+   *
+   * Время в секундах и уже подогнанное под аудио: разбор MIDI и масштаб по
+   * темпу делаются до рендера, а внутри кадра остаётся только нарисовать.
+   */
+  notes?: MidiNote[];
+  /** Темп бита: по нему ноты мелодии растягиваются или сжимаются. */
+  audioBpm?: number;
+  /** Темп MIDI-мелодии: по нему считается масштаб. */
+  midiBpm?: number;
   signal?: AbortSignal;
 };
 
@@ -162,6 +175,10 @@ function drawFrame(
     techLine: string;
     producer: string;
     credit: string | null;
+    /** Раскладка клавиатуры: пустая — рисуем как раньше, без нот. */
+    keyboard: { keys: { pitch: number; x: number; width: number; black: boolean }[] };
+    /** Номера нот, которые звучат в этом кадре. */
+    activePitches: Set<number>;
     /** Заголовок не должен вылезать за края. */
     fit: (value: string, max: number) => number;
   },
@@ -244,6 +261,74 @@ function drawFrame(
     ctx.fillStyle = "rgba(242, 239, 231, 0.55)";
     ctx.fillText(input.credit, pad, height - pad);
   }
+
+  /*
+   * Клавиатура мелодии.
+   *
+   * Стоит внизу, поверх всего: это единственный элемент кадра, который
+   * меняется, и он должен читаться как «сейчас играет вот это».
+   *
+   * Диапазон клавиш один на всю мелодию, а не пересчитывается каждый кадр:
+   * иначе клавиатура дёргалась бы от такта к такту.
+   */
+  if (input.keyboard && input.keyboard.keys.length > 0) {
+    drawKeyboard(ctx, input.keyboard, {
+      x: pad,
+      y: height - pad - Math.round(height * 0.14),
+      width: width - pad * 2,
+      height: Math.round(height * 0.1),
+      active: input.activePitches,
+      lime,
+      bone,
+    });
+  }
+}
+
+/**
+ * Клавиатура: белые клавиши, поверх них чёрные, нажатые — лаймовые.
+ *
+ * Нажатые определяются не временем, а списком номеров нот: время в кадре
+ * меняется каждый кадр, а список нажатых считается один раз.
+ */
+export function drawKeyboard(
+  ctx: CanvasRenderingContext2D,
+  keyboard: { keys: { pitch: number; x: number; width: number; black: boolean }[] },
+  box: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    active: Set<number>;
+    lime: string;
+    bone: string;
+  },
+) {
+  const whiteHeight = box.height;
+  const blackHeight = Math.round(box.height * 0.62);
+
+  // Белые клавиши.
+  for (const key of keyboard.keys) {
+    if (key.black) continue;
+
+    const left = box.x + key.x * box.width;
+    const w = key.width * box.width;
+
+    ctx.fillStyle = key.pitch !== undefined && box.active.has(key.pitch) ? box.lime : "rgba(242, 239, 231, 0.16)";
+
+    ctx.fillRect(left, box.y, w - 1, whiteHeight);
+  }
+
+  // Чёрные — поверх, иначе белые их перекроют.
+  for (const key of keyboard.keys) {
+    if (!key.black) continue;
+
+    const left = box.x + key.x * box.width;
+    const w = key.width * box.width;
+
+    ctx.fillStyle = box.active.has(key.pitch) ? box.lime : "rgba(10, 10, 10, 0.85)";
+
+    ctx.fillRect(left, box.y, w, blackHeight);
+  }
 }
 
 /** Перенос по словам: техническая строка и длинное название не режутся посреди слова. */
@@ -323,6 +408,22 @@ export async function renderBeatVideo(input: RenderInput): Promise<RenderOutput>
   const peaks = peaksOf(buffer, 512);
   const credits = input.credit ? `must credit: ${input.credit}` : null;
 
+  /*
+   * Ноты подгоняются под аудио и рисуются один раз на всю мелодию.
+   *
+   * Мелодия может быть написана под другой темп, чем бит, и без подгонки
+   * ноты в кадре разойдутся со звуком. Раскладка клавиатуры считается один
+   * раз: если считать её каждый кадр, клавиатура дёргалась бы от такта к
+   * такту.
+   */
+  const notes = fitNotesToAudio(input.notes ?? [], {
+    audioSeconds: buffer.duration,
+    audioBpm: input.audioBpm ?? 120,
+    midiBpm: input.midiBpm ?? 120,
+  });
+
+  const keyboard = layoutKeyboard(notes);
+
   const stream = canvas.captureStream(fps);
 
   const context = new AudioContext();
@@ -361,10 +462,21 @@ export async function renderBeatVideo(input: RenderInput): Promise<RenderOutput>
   const draw = () => {
     const ratio = Math.min(1, (performance.now() - started) / durationMs);
 
+    /*
+     * Клавиатура и нажатые ноты.
+     *
+     * Раскладка считается один раз на всю мелодию, а набор нажатых — каждый
+     * кадр: он зависит от того, что сейчас звучит.
+     */
+    const seconds = ratio * buffer.duration;
+    const activePitches = new Set(activeNotesAt(notes, seconds).map((note) => note.pitch));
+
     drawFrame(ctx, {
       cover,
       peaks,
       ratio,
+      keyboard,
+      activePitches,
       width,
       height,
       title: input.title,
