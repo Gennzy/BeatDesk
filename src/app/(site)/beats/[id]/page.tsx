@@ -100,6 +100,27 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
   const owner = Array.isArray(beat.profiles) ? beat.profiles[0] : beat.profiles;
   const isOwner = Boolean(user && user.id === beat.owner_id);
 
+  /*
+   * Ролик бита, если он выложен через Pulse.
+   *
+   * Берётся отдельно от бита, потому что лежит не в бите, а в задаче
+   * публикации. Одна выборка по beat_id — и страница знает, что биту есть
+   * чем показать себя, кроме превью.
+   *
+   * Таблицы может не быть (миграция 0054 не применена) — тогда ролика нет,
+   * и это не ошибка, а отсутствие фичи.
+   */
+  const { data: videoRows } = await supabase
+    .from("pulse_jobs")
+    .select("watch_url, published_at")
+    .eq("beat_id", beat.id)
+    .eq("status", "published")
+    .not("watch_url", "is", null)
+    .order("published_at", { ascending: false })
+    .limit(1);
+
+  const videoUrl = (videoRows?.[0] as { watch_url?: string | null } | undefined)?.watch_url ?? null;
+
   const prices = normalizePrices(beat.prices);
   const pricesBefore = beat.prices_before ? normalizePrices(beat.prices_before) : null;
   const discountPercent = Number(beat.discount_percent ?? 0);
@@ -222,6 +243,7 @@ const sellable = saleState === "on_sale" && beat.is_public === true;
                   beatId={beat.id}
                   coverUrl={beat.cover_url}
                   audioUrl={beat.mp3_url}
+                  videoUrl={videoUrl}
                   title={beat.title}
                   username={owner?.username ?? ""}
                   bpm={beat.bpm}

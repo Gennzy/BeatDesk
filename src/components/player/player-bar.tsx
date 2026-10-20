@@ -55,6 +55,26 @@ export function PlayerBar() {
           */}
           <VolumeControl />
 
+          {/*
+            Ролик: если он есть, разворачиваем плеер сразу в видео.
+            Кнопка появляется только когда ролик действительно есть — иначе
+            это обещание, которое ничего не делает.
+          */}
+          {track.videoUrl ? (
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              aria-label={t("player.modeVideo")}
+              title={t("player.modeVideo")}
+              className="grid size-10 shrink-0 place-items-center border border-line text-signal transition-colors hover:border-signal/60 sm:size-8"
+            >
+              <svg viewBox="0 0 16 16" aria-hidden className="size-3.5 fill-current">
+                <path d="M1.5 2.5h13v11h-13v-11Zm1.5 1.5v8h10v-8H3Z" />
+                <path d="M6 5.5l5 2.5-5 2.5v-5Z" />
+              </svg>
+            </button>
+          ) : null}
+
           {/* Развернуть: на телефоне панель узкая, а обложка нужна крупной. */}
           <button
             type="button"

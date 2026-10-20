@@ -16,6 +16,7 @@ export function BeatCover({
   beatId,
   coverUrl,
   audioUrl,
+  videoUrl = null,
   title,
   username,
   bpm,
@@ -26,6 +27,8 @@ export function BeatCover({
   beatId: string;
   coverUrl: string | null;
   audioUrl: string | null;
+  /** Ролик на YouTube, если бит выложен через Pulse. */
+  videoUrl?: string | null;
   title: string;
   /** Ник, темп и тональность нужны полноэкранному плееру. */
   username: string;
@@ -67,7 +70,9 @@ export function BeatCover({
   const active = track?.id === beat.id && isPlaying;
 
   function listen() {
-    const next = trackFromBeat(beat);
+    // Ролик едет вместе с треком: полноэкранный плеер умеет переключаться
+    // на видео, и переключаться должно быть на что.
+    const next = trackFromBeat(beat, videoUrl);
     if (!next) return;
     if (active) toggle();
     else play(next);

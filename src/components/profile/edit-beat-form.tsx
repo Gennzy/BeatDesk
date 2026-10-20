@@ -51,6 +51,8 @@ type Props = {
      * вижу».
      */
     files: Record<string, { name?: string; size?: number }> | null;
+    /** Ролик бита на YouTube, если он уже прикреплён. */
+    videoUrl?: string | null;
     /** Есть ли превью: без него карточка в ленте не играется. */
     hasPreview: boolean;
     /** Идентификатор владельца: без него файл не положить в свою же папку. */
@@ -206,6 +208,46 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
 
+  /** Ссылка на ролик в YouTube: прикрепляется отдельно от остальной правки. */
+  const [videoUrl, setVideoUrl] = useState(beat.videoUrl ?? "");
+  const [videoState, setVideoState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [videoMessage, setVideoMessage] = useState<string | null>(null);
+
+  /**
+   * Прикрепить ролик.
+   *
+   * Отдельное действие, а не поле в общей форме: ролик лежит не в бите, а в
+   * истории публикаций, и общая кнопка «Сохранить» про него ничего не знает.
+   */
+  async function linkVideo() {
+    setVideoState("saving");
+    setVideoMessage(null);
+
+    try {
+      const response = await fetch("/api/pulse/link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ beatId: beat.id, url: videoUrl }),
+      });
+
+      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+
+      if (!response.ok) {
+        setVideoState("error");
+        setVideoMessage(data?.error ?? t("edit.error"));
+
+        return;
+      }
+
+      setVideoState("saved");
+      setVideoMessage(t("edit.videoLinked"));
+      router.refresh();
+    } catch {
+      setVideoState("error");
+      setVideoMessage(t("edit.error"));
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setState("saving");
@@ -337,6 +379,41 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
             />
           </div>
         ))}
+
+        {/*
+          Ролик на YouTube.
+          *
+          * Отдельным блоком и отдельной кнопкой, а не полем общей формы:
+          * ролик лежит не в бите, а в истории публикаций, и кнопка «Сохранить»
+          * про него ничего не знает. Ссылку можно вставить и для ролика,
+          * выложенного мимо нас, — запрещать человеку показывать покупателям
+          * площадки свой ролик было бы глупо.
+        */}
+        <div className="flex flex-col gap-2 sm:col-span-2">
+          <span className="label text-paper">{t("edit.videoTitle")}</span>
+          <span className="text-xs text-mute">{t("edit.videoHint")}</span>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              value={videoUrl}
+              onChange={(event) => setVideoUrl(event.target.value)}
+              placeholder="https://www.youtube.com/watch?v=…"
+              className="max-w-md"
+            />
+            <button
+              type="button"
+              onClick={() => void linkVideo()}
+              disabled={videoState === "saving" || videoUrl.trim() === ""}
+              className="chip chip-hover disabled:opacity-50"
+            >
+              {videoState === "saving" ? t("edit.videoSaving") : t("edit.videoLink")}
+            </button>
+          </div>
+
+          {videoMessage ? (
+            <p className={videoState === "error" ? "label text-danger" : "label text-signal"}>{videoMessage}</p>
+          ) : null}
+        </div>
       </div>
 
       <div className="grid gap-6">

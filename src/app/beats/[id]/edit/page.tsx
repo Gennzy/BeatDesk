@@ -38,6 +38,21 @@ export default async function EditBeatPage({ params }: { params: Promise<{ id: s
   if (!beat) notFound();
   if (beat.owner_id !== user.id) redirect(`/beats/${id}`);
 
+  /*
+   * Ролик бита, если он прикреплён: поле показывает, что уже есть, чтобы
+   * человек не прикреплял второй ролик, не заметив первого.
+   */
+  const { data: videoRows } = await supabase
+    .from("pulse_jobs")
+    .select("watch_url")
+    .eq("beat_id", beat.id)
+    .eq("status", "published")
+    .not("watch_url", "is", null)
+    .order("published_at", { ascending: false })
+    .limit(1);
+
+  const videoUrl = (videoRows?.[0] as { watch_url?: string | null } | undefined)?.watch_url ?? null;
+
   return (
     <section className="py-14 lg:py-20">
       <Container>
@@ -88,6 +103,7 @@ export default async function EditBeatPage({ params }: { params: Promise<{ id: s
               // «файла нет» от «файл есть, но я его не вижу».
               files: beat.files,
               hasPreview: Boolean(beat.mp3_url),
+              videoUrl,
               // Путь в баке начинается с владельца: без него файл положил бы
               // не в свою папку.
               userId: user.id,
