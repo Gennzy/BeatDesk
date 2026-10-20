@@ -40,9 +40,18 @@ type Props = {
   connected: ConnectionRow[];
   platforms: Platform[];
   groups: PlatformGroup[];
+  /**
+   * Заголовок группы и пояснение под ним.
+   *
+   * По умолчанию берутся из словаря по названию группы, но для отдельного
+   * блока это может врать: YouTube площадка не постит сама, и подпись
+   * «BeatDesk постит сам по кнопке» рядом с ним означает ровно обратное.
+   */
+  heading?: string;
+  sub?: string;
 };
 
-export function ConnectionsBoard({ connected, platforms, groups, oauthReturn }: Props) {
+export function ConnectionsBoard({ connected, platforms, groups, oauthReturn, heading, sub }: Props) {
   const { t } = useI18n();
   const router = useRouter();
 
@@ -183,9 +192,11 @@ export function ConnectionsBoard({ connected, platforms, groups, oauthReturn }: 
             <header className="flex flex-col gap-2 border-b border-line pb-4">
               <div className="flex items-center gap-3">
                 <span aria-hidden className="size-1.5 bg-mute/50" />
-                <span className="label text-paper">{t("platform.group.broadcast")}</span>
+                <span className="label text-paper">{heading ?? t("platform.group.broadcast")}</span>
               </div>
-              <p className="max-w-[68ch] text-sub text-mute">{t(`connections.groupHint.${group}` as "connections.groupHint.broadcast")}</p>
+              <p className="max-w-[68ch] text-sub text-mute">
+                {sub ?? t(`connections.groupHint.${group}` as "connections.groupHint.broadcast")}
+              </p>
             </header>
 
             <ul className="flex flex-col gap-4">

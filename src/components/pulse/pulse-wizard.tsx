@@ -79,6 +79,8 @@ export function PulseWizard({
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  /** Холст сборки: из него же пишется ролик, и он же показывается на экране. */
+  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [privacy, setPrivacy] = useState<"private" | "unlisted" | "public">("unlisted");
@@ -415,6 +417,9 @@ export function PulseWizard({
         // сборки, ускорить нельзя, звук из потока не разгоняется.
         signal: cancel.signal,
         onProgress: (ratio) => setProgress(ratio),
+        // Живой кадр: человек должен видеть, что ролик собирается, а не
+        // завис. Три минуты без ничего на экране выглядят как поломка.
+        onCanvas: (node) => setCanvas(node),
       });
 
       await mark(jobId, "uploading");
@@ -477,6 +482,9 @@ export function PulseWizard({
     } finally {
       setBusy(false);
       setStage(null);
+      // Холст отпускается: он больше не рисуется, и держать его в состоянии
+      // незачем.
+      setCanvas(null);
       controller.current = null;
     }
   }
@@ -685,7 +693,15 @@ export function PulseWizard({
         {!connected ? (
           <p className="max-w-[70ch] rounded-panel border border-line bg-ink-3 px-4 py-3 text-sm leading-relaxed text-paper">
             {t("pulse.notConnected")}{" "}
-            <Link href="/cabinet/channels" className="text-signal underline">
+            {/*
+              * Ссылка ведёт сразу в настройки, а не в «Каналы» кабинета.
+              *
+              * «Каналы» — это доска целей публикации: куда отправлять посты.
+              * YouTube там нет и быть не должно, потому что площадка в него
+              * не публикует сама. Человек попадал в место, где подключить
+              * канал было нечем, и уходил искать.
+              */}
+            <Link href="/settings/connections" className="text-signal underline">
               {t("pulse.connect")}
             </Link>
           </p>
@@ -754,6 +770,43 @@ export function PulseWizard({
 
         {stage ? (
           <div className="flex flex-col gap-2">
+            {/*
+             * Живой кадр сборки.
+             *
+             * Ролик собирается в реальном времени, три минуты, и до этого на
+             * экране была только полоска. Это выглядит как зависание: человек
+             * не знает, идёт оно или стоит, и через минуту отменяет.
+             *
+             * Кадр показывается тем же холстом, из которого пишется ролик, —
+             * то есть это не «примерно похожее видео», а ровно то, что уйдёт в
+             * YouTube.
+             */}
+            {canvas ? (
+              <canvas
+                ref={(node) => {
+                  // Холст из рендера нельзя отдать разметке напрямую: он
+                  // уже занят записью. Поэтому он копируется в видимый.
+                  if (!node) return;
+
+                  const context = node.getContext("2d");
+
+                  if (!context) return;
+
+                  const paint = () => {
+                    if (!canvas.isConnected) return;
+
+                    context.drawImage(canvas, 0, 0, node.width, node.height);
+                    requestAnimationFrame(paint);
+                  };
+
+                  requestAnimationFrame(paint);
+                }}
+                width={480}
+                height={270}
+                className="w-full max-w-md border border-line bg-ink-2"
+              />
+            ) : null}
+
             <div className="h-1 w-full max-w-md overflow-hidden rounded-full bg-ink-3">
               <div className="h-full bg-signal" style={{ width: `${Math.round(progress * 100)}%` }} />
             </div>

@@ -36,6 +36,16 @@ export default async function ConnectionsPage({ searchParams }: { searchParams: 
     connectedAt: connection.createdAt,
   }));
 
+  /*
+   * YouTube стоит отдельно и первым.
+   *
+   * Он единственный, к которому площадка не публикует сама: ролик уходит
+   * через Pulse, и канал нужен именно для этого. В общем списке с Telegram и
+   * VK он терялся среди чужих, а его подключение — самый частый вопрос у
+   * битмейкера: «куда нажать, чтобы ролик ушёл».
+   */
+  const youtube = platformsByGroup("broadcast").filter((platform) => platform.id === "youtube");
+
   return (
     <section className="py-14 lg:py-20">
       <Container>
@@ -50,12 +60,27 @@ export default async function ConnectionsPage({ searchParams }: { searchParams: 
           <p className="max-w-[68ch] text-sub text-mute">{t("connections.sub")}</p>
         </div>
 
-        <ConnectionsBoard
-          connected={connected}
-          platforms={GROUPS.flatMap((group) => platformsByGroup(group))}
-          groups={GROUPS}
-          oauthReturn={{ youtube: params.youtube, channel: params.channel, detail: params.detail }}
-        />
+        {youtube.length > 0 ? (
+          <div className="mt-10">
+            <ConnectionsBoard
+              connected={connected.filter((row) => row.platform === "youtube")}
+              platforms={youtube}
+              groups={["broadcast"]}
+              heading={t("connections.youtubeTitle")}
+              sub={t("connections.youtubeSub")}
+              oauthReturn={{ youtube: params.youtube, channel: params.channel, detail: params.detail }}
+            />
+          </div>
+        ) : null}
+
+        <div className="mt-12">
+          <ConnectionsBoard
+            connected={connected}
+            platforms={platformsByGroup("broadcast").filter((platform) => platform.id !== "youtube")}
+            groups={GROUPS}
+            oauthReturn={{ youtube: params.youtube, channel: params.channel, detail: params.detail }}
+          />
+        </div>
       </Container>
     </section>
   );

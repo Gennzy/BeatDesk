@@ -67,6 +67,13 @@ export type RenderInput = {
   /** От 0 до 1. Человек должен видеть, что идёт сборка, а не зависание. */
   onProgress?: (ratio: number, secondsLeft: number) => void;
   /**
+   * Живой холст сборки.
+   *
+   * Отдаётся, чтобы показать кадр во время рендера: три минуты сборки без
+   * ничего на экране выглядят как зависание.
+   */
+  onCanvas?: (canvas: HTMLCanvasElement) => void;
+  /**
    * Ноты мелодии: по ним в кадре рисуется клавиатура.
    *
    * Время в секундах и уже подогнанное под аудио: разбор MIDI и масштаб по
@@ -400,6 +407,15 @@ export async function renderBeatVideo(input: RenderInput): Promise<RenderOutput>
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
+
+  /*
+   * Холст отдаётся наружу, чтобы человек видел, что собирается.
+   *
+   * Ролик три минуты идёт, и до этого была только полоска прогресса. Ровно
+   * это выглядит как зависание: человек не знает, работает оно или стоит.
+   * Живой кадр на экране отвечает на вопрос без текста.
+   */
+  input.onCanvas?.(canvas);
 
   const ctx = canvas.getContext("2d");
 

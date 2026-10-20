@@ -831,7 +831,9 @@ const ru = {
 
 
 
-  "connections.title": "Площадки",
+    "connections.youtubeTitle": "YouTube",
+  "connections.youtubeSub": "Канал для роликов: сюда уходят видео, собранные в Pulse. Без подключения канала ролик собрать нельзя.",
+"connections.title": "Площадки",
   "connections.heading": "Куда публикуем",
   "connections.sub": "Подключи каналы один раз — потом биты уходят туда по кнопке. Здесь же видно, какое подключение протухло.",
   "connections.statusOk": "отвечает",
@@ -1695,7 +1697,9 @@ const en: Record<keyof typeof ru, string> = {
 
 
 
-  "connections.title": "Platforms",
+    "connections.youtubeTitle": "YouTube",
+  "connections.youtubeSub": "The channel for videos: Pulse publishes the videos you build here. Without a connected channel you cannot build a video.",
+"connections.title": "Platforms",
   "connections.heading": "Where we publish",
   "connections.sub": "Connect a channel once and beats go there with one button. This is also where you see which connection has gone stale.",
   "connections.statusOk": "responds",
