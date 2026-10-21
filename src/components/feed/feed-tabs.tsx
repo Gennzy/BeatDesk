@@ -62,7 +62,18 @@ export function FeedTabs({ beats, nextOffset, filters, posts, myBeats, loggedIn,
 
   return (
     <div className="flex flex-col gap-8">
-      <div role="tablist" className="flex items-center gap-2 border-b border-line">
+      {/*
+        * Переключатель разделов.
+        *
+        * Раньше это были два слова с тонкой лаймовой линией под активным, и
+        * человек её не замечал: рядом с обычными ссылками это читалось как
+        * подчёркивание, а не как переключатель. Раздел «Посты» просто не
+        * находился.
+        *
+        * Теперь это сегментированный контрол: лаймовая пилюля на тёмном фоне
+        * видна сразу, и активный раздел не нужно искать.
+        */}
+      <div role="tablist" className="inline-flex w-fit items-center gap-1 rounded-pill border border-line bg-ink-2 p-1">
         {(["beats", "posts"] as View[]).map((item) => (
           <button
             key={item}
@@ -73,8 +84,8 @@ export function FeedTabs({ beats, nextOffset, filters, posts, myBeats, loggedIn,
             aria-controls={`panel-${item}`}
             onClick={() => switchTo(item)}
             className={cn(
-              "label border-b-2 px-4 py-3 transition-colors",
-              view === item ? "border-signal text-paper" : "border-transparent text-mute hover:text-paper",
+              "label rounded-pill px-5 py-2 transition-colors",
+              view === item ? "bg-signal text-ink" : "text-mute hover:text-paper",
             )}
           >
             {item === "beats" ? t("posts.beats") : t("posts.sound")}
