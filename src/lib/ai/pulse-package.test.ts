@@ -173,4 +173,27 @@ describe("запрос к модели", () => {
     expect(system?.content).toContain("не писать «must credit»");
     expect(system?.content).toContain("не писать о лицензии");
   });
+
+  it("реальный спрос площадки попадает в промпт", () => {
+    /*
+     * Это и есть «теги по факту спроса»: модель получает не общие знания,
+     * а то, что у нас действительно находят. Без этого строки не меняются и
+     * подсказка остаётся такой же, как у любого, кто пользуется той же
+     * моделью.
+     */
+    const [, user] = buildPackageMessages({
+      beat,
+      template: "nonProfit",
+      demandTags: ["phonk", "drift"],
+    });
+
+    expect(user?.content).toContain("phonk");
+    expect(user?.content).toContain("drift");
+  });
+
+  it("без спроса лишней строки нет", () => {
+    const [, user] = buildPackageMessages({ beat, template: "nonProfit" });
+
+    expect(user?.content).not.toContain("реально находят");
+  });
 });

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { mergeWithRules, suggestPackage } from "@/lib/ai/pulse-package";
+import { demandTagsFor } from "@/lib/demand-server";
 import { isConfigured } from "@/lib/ai/openrouter";
 import { buildPulseMetadata, type PulseTemplate } from "@/lib/pulse/metadata";
 import type { GenreSlug } from "@/lib/beat-validation";
@@ -78,7 +79,17 @@ export async function POST(request: NextRequest) {
    */
   const ruled = buildPulseMetadata(beat, template);
 
-  const ai = await suggestPackage({ beat, template });
+  /*
+   * Спрос площадки достаётся до обращения к модели.
+   *
+   * Это и есть то, что отличает нашу подсказку от любой другой: модель
+   * получает не общие знания о битах, а теги, которые у нас действительно
+   * приводят прослушивания. Без этого модель выдаёт красивые и бесполезные
+   * слова — и это ровно то, что делает подсказки Echo обычными.
+   */
+  const demandTags = await demandTagsFor(beat.genre);
+
+  const ai = await suggestPackage({ beat, template, demandTags });
   const merged = mergeWithRules(ai, ruled);
 
   return NextResponse.json({

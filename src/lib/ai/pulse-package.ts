@@ -50,6 +50,13 @@ export type AiPackage = {
 export type PackageInput = {
   beat: BeatMeta;
   template: PulseTemplate;
+  /**
+   * Теги, которые на самом деле находят у нас.
+   *
+   * Приходят с сервера: там база, здесь только бит. Модель без них угадывает,
+   * а с ними — знает, что работает именно здесь.
+   */
+  demandTags?: string[];
 };
 
 export const SYSTEM_PROMPT = [
@@ -75,7 +82,7 @@ export const SYSTEM_PROMPT = [
 ].join("\n");
 
 /** Сборка запроса. Отдельная функция, чтобы правила читались в тестах. */
-export function buildPackageMessages({ beat, template }: PackageInput): ChatMessage[] {
+export function buildPackageMessages({ beat, template, demandTags }: PackageInput): ChatMessage[] {
   const now = new Date();
 
   const facts: string[] = [`название бита: «${beat.title}»`, `продюсер: ${beat.producer}`];
@@ -100,6 +107,20 @@ export function buildPackageMessages({ beat, template }: PackageInput): ChatMess
       ? "лицензия: бесплатно, только некоммерческое использование"
       : "лицензия: платно, бит продаётся",
   );
+
+  /*
+   * Реальный спрос площадки.
+   *
+   * Модель знает, как ищут биты вообще, — по своему обучению. Она не знает,
+   * как ищут у нас, и это единственное, где у площадки есть преимущество: её
+   * собственные прослушивания.
+   *
+   * Эти теги — не пример и не совет, а то, что действительно приводит людей.
+   * Спроси у модели без них, и она выдаст красивые и бесполезные слова.
+   */
+  if (demandTags?.length) {
+    facts.push(`теги, которые у нас реально находят: ${demandTags.join(", ")}`);
+  }
 
   return [
     { role: "system", content: SYSTEM_PROMPT },
