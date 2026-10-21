@@ -11,6 +11,7 @@ import { SellerCard } from "@/components/beat/seller-card";
 import { BeatShare } from "@/components/beat/beat-share";
 import { ShareToTelegram } from "@/components/platforms/share-to-telegram";
 import { BeatOffer } from "@/components/sales/beat-offer";
+import { FreeDownloadButton } from "@/components/sales/free-download-button";
 import { Container } from "@/components/ui/container";
 import { Icon } from "@/components/ui/icon";
 import { formatMoney } from "@/lib/currency";
@@ -62,9 +63,9 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
    * каталог. Поэтому набор один, а откат на старый тот же, что в ленте.
    */
   const FULL_COLUMNS =
-    "id, title, type_beat_artists, bpm, key, tags, genre, mp3_url, cover_url, files, prices, prices_before, discount_percent, currency, sale_state, is_public, owner_id, plays, views, impressions, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links, level)";
+    "id, title, type_beat_artists, bpm, key, tags, genre, mp3_url, cover_url, files, prices, prices_before, discount_percent, currency, sale_state, is_public, free_download, owner_id, plays, views, impressions, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links, level)";
   const SAFE_COLUMNS =
-    "id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, prices_before, discount_percent, currency, sale_state, is_public, owner_id, plays, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links)";
+    "id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, prices_before, discount_percent, currency, sale_state, free_download, is_public, owner_id, plays, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links)";
 
   /*
    * Пока не применена миграция 0035, колонок скидки нет, и запрос с ними
@@ -73,7 +74,7 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
    * без зачёркнутой цены. Лучше так, чем витрина, которая не грузится.
    */
   const PRE_DISCOUNT_COLUMNS =
-    "id, title, type_beat_artists, bpm, key, tags, genre, mp3_url, cover_url, files, prices, currency, sale_state, is_public, owner_id, plays, views, impressions, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links, level)";
+    "id, title, type_beat_artists, bpm, key, tags, genre, mp3_url, cover_url, files, prices, currency, sale_state, is_public, free_download, owner_id, plays, views, impressions, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links, level)";
 
   let result = await supabase.from("beats").select(FULL_COLUMNS).eq("id", id).maybeSingle();
 
@@ -299,6 +300,25 @@ const sellable = saleState === "on_sale" && beat.is_public === true;
                     целостность.
                   */}
                   {isOwner ? <ShareToTelegram beatId={beat.id} /> : null}
+
+                  {/*
+                    Бесплатное скачивание.
+                    *
+                    * Кнопка есть только если битмейкер её разрешил: решение
+                    * одно на бит, и оно вынесено в форму загрузки.
+                    *
+                    * Скачивание идёт через нас, а не прямой ссылкой: иначе мы
+                    * не узнаем, кто взял файл, и защита от кражи останется
+                    * красивым обещанием.
+                  */}
+                  {beat.free_download ? (
+                    <FreeDownloadButton
+                      beatId={beat.id}
+                      fileUrl={beat.mp3_url}
+                      signedIn={Boolean(user)}
+                      className="mt-3"
+                    />
+                  ) : null}
 
                   {/*
                     Правка — только владельцу, и раньше с бита на неё было

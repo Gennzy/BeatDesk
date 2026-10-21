@@ -248,6 +248,9 @@ if (!files.mp3) {
       // именно из состояния: hidden-поле может не отправиться.
       currency,
       is_public: form.get("isPublic") === "on",
+    // Бесплатное скачивание: решение битмейкера, и вместе с ним бит
+    // встаёт под защиту — мы запоминаем, кто и когда его брал.
+    free_download: form.get("freeDownload") === "on",
     };
 
     setStatus("uploading");
@@ -430,6 +433,22 @@ if (!files.mp3) {
           <SellReadiness prices={prices} title={title} tags={parseTags(tagsText)} roles={roles} />
 
           <Switch label={t("upload.publish")} hint={t("upload.publishHint")} name="isPublic" defaultChecked={false} />
+
+          {/*
+            Бесплатное скачивание.
+            *
+            * Решение битмейкера, и оно меняет экономику площадки: пока бит лежит
+            бесплатно, его можно слить и выложить трек на площадки. Включая
+            защиту, битмейкер получает возможность узнать, кто именно слил: мы
+            записываем, кто и когда брал файл.
+          */}
+          <Switch
+            label={t("upload.freeDownload")}
+            hint={t("upload.freeDownloadHint")}
+            name="freeDownload"
+            defaultChecked={false}
+          />
+
           <p className="text-xs leading-relaxed text-mute">{t("upload.feedNote")}</p>
 
           {error ? <p className="label leading-relaxed text-amber">{error}</p> : null}

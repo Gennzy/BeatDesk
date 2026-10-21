@@ -21,6 +21,7 @@ type Body = {
   cover_url?: unknown;
   files?: unknown;
   is_public?: unknown;
+  free_download?: unknown;
 };
 
 function text(value: unknown, max = 2000): string | null {
@@ -111,6 +112,11 @@ export async function POST(request: Request) {
       cover_url: coverUrl,
       files: typeof body.files === "object" && body.files !== null ? body.files : {},
       is_public: Boolean(body.is_public),
+      /*
+       * Бесплатное скачивание — решение битмейкера, и вместе с ним бит встаёт
+       * под защиту: мы запоминаем, кто и когда брал файл.
+       */
+      free_download: Boolean(body.free_download),
       /*
        * Бит выставляется в продажу сам, без второго шага.
        *
