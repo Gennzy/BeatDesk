@@ -12,6 +12,7 @@ import { BeatShare } from "@/components/beat/beat-share";
 import { ShareToTelegram } from "@/components/platforms/share-to-telegram";
 import { BeatOffer } from "@/components/sales/beat-offer";
 import { FreeDownloadButton } from "@/components/sales/free-download-button";
+import { ProtectButton } from "@/components/protection/protect-button";
 import { Container } from "@/components/ui/container";
 import { Icon } from "@/components/ui/icon";
 import { formatMoney } from "@/lib/currency";
@@ -316,6 +317,21 @@ const sellable = saleState === "on_sale" && beat.is_public === true;
                       beatId={beat.id}
                       fileUrl={beat.mp3_url}
                       signedIn={Boolean(user)}
+                      className="mt-3"
+                    />
+                  ) : null}
+
+                  {/*
+                    Защита бита — только владельцу.
+                    *
+                    * Кнопка появляется, когда мастер загружен: без него нечем
+                    * искать, и кнопка без дела была бы обещанием.
+                    */}
+                  {isOwner ? (
+                    <ProtectButton
+                      beatId={beat.id}
+                      title={beat.title}
+                      artists={beat.type_beat_artists ?? []}
                       className="mt-3"
                     />
                   ) : null}

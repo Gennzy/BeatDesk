@@ -56,6 +56,14 @@ export default async function CabinetBeatsPage() {
                 {t("trends.heading")}
               </Link>
 
+              {/*
+                Отчёт по защите: живёт рядом с битами, потому что туда
+                битмейкер и приходит за ответом «где играют мои биты».
+              */}
+              <Link href="/cabinet/protection" className="chip chip-hover">
+                {t("protection.heading")}
+              </Link>
+
               <Link href="/cabinet/upload" className="inline-flex h-10 w-fit items-center gap-2 rounded-pill bg-signal px-5 text-xs font-semibold tracking-[0.08em] text-ink uppercase transition-opacity hover:opacity-90">
                 <Icon name="upload" className="size-4" />
                 {t("cabinet.upload")}

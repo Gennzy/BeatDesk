@@ -35,11 +35,21 @@ export async function envelopeOfUrl(url: string): Promise<string> {
 
   if (!response.ok) throw new Error("Файл недоступен");
 
-  const buffer = await response.arrayBuffer();
+  return envelopeOfBytes(new Uint8Array(await response.arrayBuffer()));
+}
+
+/**
+ * Отпечаток по байтам.
+ *
+ * Отдельная функция, потому что байты приходят двумя путями: из своего файла
+ * при скачивании и из превью площадки при поиске сливов. Расчёт должен быть
+ * один и тот же, иначе след не совпадёт с тем, что мы отдавали.
+ */
+export async function envelopeOfBytes(bytes: Uint8Array): Promise<string> {
   const context = new AudioContext();
 
   try {
-    const audio = await context.decodeAudioData(buffer);
+    const audio = await context.decodeAudioData(bytes.buffer.slice(0) as ArrayBuffer);
 
     // Смешиваем в один канал: отпечаток не должен зависеть от того, во
     // сколько каналов в файле.

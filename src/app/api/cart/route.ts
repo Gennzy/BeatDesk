@@ -87,14 +87,31 @@ export async function POST(request: Request) {
   }
 
   /*
-   * onConflict меняет уровень, если бит уже в корзине. Именно за это и
-   * отвечает ключ (user_id, beat_id): второй клик по «в корзину» с другим
-   * уровнем не должен превращаться в две позиции одного бита.
+   * Позиция с битом и позиция с товаром — это разные строки, и в корзине
+   * могут лежать обе.
+   *
+   * Upsert с onConflict тут больше не годится: ключ столкновения перестал
+   * существовать, и добавление в корзину падало у всех подряд. Поэтому
+   * замена идёт удалением и вставкой — это не зависит от того, какое
+   * ограничение стоит в базе.
+   *
+   * Второй клик по «в корзину» с другим уровнем не должен плодить строки, и
+   * не плодит: старая позиция того же бита убрана, новая поставлена.
    */
-  const { error } = await supabase.from("cart_items").upsert(
-    { user_id: user.id, beat_id: beatId, tier },
-    { onConflict: "user_id,beat_id" },
-  );
+  const { error: deleteError } = await supabase
+    .from("cart_items")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("beat_id", beatId);
+
+  if (deleteError) {
+    console.error("cart cleanup failed", deleteError.code);
+    return NextResponse.json({ error: "Не удалось добавить в корзину" }, { status: 400 });
+  }
+
+  const { error } = await supabase
+    .from("cart_items")
+    .insert({ user_id: user.id, beat_id: beatId, tier });
 
   if (error) {
     console.error("cart upsert failed", error.code);

@@ -410,7 +410,16 @@ async function main() {
     // которого нет, и обязан увидеть это сразу, а не после отправки.
     console.log("\nГотовность к продаже");
     await user.goto(`${BASE}/cabinet/upload`, { waitUntil: "networkidle2", timeout: 60_000 });
-    await wait(1500);
+
+    /*
+     * Ждём форму, а не время.
+     *
+     * Страница тяжёлая, и на загруженной машине она не успевала за полторы
+     * секунды. Проверка брала текст пустой страницы и ругалась, что нет
+     * объяснения про цену, а потом падала на пустом поле — то есть ошибка
+     * была не в приложении, а в ожидании.
+     */
+    await user.waitForSelector('input[name="priceMp3"]', { timeout: 30_000 }).catch(() => {});
 
     const emptyReadiness = await user.evaluate(() => document.body.innerText);
     check("форма загрузки объясняет, что без цены бит не купить", /назначьте хотя бы цену/i.test(emptyReadiness));
@@ -418,6 +427,8 @@ async function main() {
     // Ставим цену на MP3, не загружая ничего: превью нет, значит уровень не готов.
     await user.evaluate(() => {
       const input = document.querySelector('input[name="priceMp3"]');
+      if (!input) return;
+
       const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
       setter.call(input, "500");
       input.dispatchEvent(new Event("input", { bubbles: true }));
