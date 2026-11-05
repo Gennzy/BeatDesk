@@ -44,13 +44,19 @@ export default async function CabinetAnalyticsPage() {
 
   if (!user) redirect("/login?next=/cabinet/analytics");
 
-  const [beats, transactions] = await Promise.all([
+  const [beats, transactions, recentItems] = await Promise.all([
     fetchBeatsByOwner(supabase, user.id, true).catch(() => []),
     supabase
       .from("seller_transactions")
       .select("amount_minor, currency, kind, created_at")
       .eq("seller_id", user.id)
       .eq("kind", "sale"),
+    supabase
+      .from("order_items")
+      .select("beat_title, seller_net_minor, currency, created_at")
+      .eq("beat_owner_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(10),
   ]);
 
   const sales = (transactions.data ?? []) as { amount_minor: number; currency: string; created_at: string }[];
@@ -58,6 +64,7 @@ export default async function CabinetAnalyticsPage() {
   const totalSales = sales.length;
   const totalRevenueMinor = sales.reduce((sum, row) => sum + Number(row.amount_minor ?? 0), 0);
   const currency = sales[0]?.currency ?? "RUB";
+  const recentSales = (recentItems.data ?? []) as { beat_title: string; seller_net_minor: number; currency: string; created_at: string }[];
 
   const topBeats = [...beats]
     .sort((a, b) => (b.plays ?? 0) - (a.plays ?? 0))
@@ -115,6 +122,24 @@ export default async function CabinetAnalyticsPage() {
               <span>{daily[daily.length - 1]?.date.slice(5)}</span>
             </div>
           </div>
+        </div>
+
+        <div className="pt-10">
+          <h2 className="label text-mute mb-4">Последние продажи</h2>
+          {recentSales.length === 0 ? (
+            <p className="text-sm text-mute">Продаж пока нет.</p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {recentSales.map((sale, index) => (
+                <li key={index} className="flex items-center justify-between border-b border-line py-3">
+                  <span className="text-sm text-paper">{sale.beat_title}</span>
+                  <span className="label text-mute">
+                    {formatMoney(Number(sale.seller_net_minor) / 100, sale.currency)} · {new Date(sale.created_at).toLocaleDateString("ru-RU")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <div className="pt-10">
