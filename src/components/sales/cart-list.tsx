@@ -14,6 +14,8 @@ import type { PriceKey } from "@/lib/prices";
 
 export type CartItem = {
   beatId: string;
+  productId: string | null;
+  isProduct: boolean;
   title: string;
   coverUrl: string | null;
   username: string;
@@ -54,11 +56,13 @@ export function CartList({ items, total, label, priceNames }: Props) {
 
   const payable = items.filter((item) => item.available);
 
-  async function remove(beatId: string) {
-    setBusy(beatId);
+  async function remove(item: CartItem) {
+    const key = item.isProduct ? (item.productId as string) : item.beatId;
+    setBusy(key);
 
     try {
-      await fetch(`/api/cart/${beatId}`, { method: "DELETE" });
+      const url = item.isProduct ? `/api/cart/product/${key}` : `/api/cart/${key}`;
+      await fetch(url, { method: "DELETE" });
       startTransition(() => router.refresh());
     } finally {
       setBusy(null);
@@ -96,13 +100,22 @@ export function CartList({ items, total, label, priceNames }: Props) {
       <ul className="flex flex-col gap-3">
         {items.map((item) => (
           <li
-            key={item.beatId}
+            key={item.isProduct ? `p-${item.productId}` : item.beatId}
             className={
               item.available
                 ? "flex flex-wrap items-center gap-5 rounded-panel border border-line p-4"
                 : "flex flex-wrap items-center gap-5 rounded-panel border border-line bg-ink-2/40 p-4 opacity-70"
             }
           >
+            {item.isProduct ? (
+              <span className="shrink-0">
+                {item.coverUrl ? (
+                  <Image src={item.coverUrl} alt="" width={64} height={64} className="size-16 rounded-lg object-cover" />
+                ) : (
+                  <span aria-hidden className="cover-grid block size-16 rounded-lg border border-line" />
+                )}
+              </span>
+            ) : (
             <Link href={`/beats/${item.beatId}`} className="focusable shrink-0">
               {item.coverUrl ? (
                 <Image
@@ -116,11 +129,16 @@ export function CartList({ items, total, label, priceNames }: Props) {
                 <span aria-hidden className="cover-grid block size-16 rounded-lg border border-line" />
               )}
             </Link>
+            )}
 
             <div className="flex min-w-48 flex-1 flex-col gap-1.5">
-              <Link href={`/beats/${item.beatId}`} className="font-display text-lg uppercase leading-tight text-paper hover:underline focusable">
-                {item.title}
-              </Link>
+              {item.isProduct ? (
+                <span className="font-display text-lg uppercase leading-tight text-paper">{item.title}</span>
+              ) : (
+                <Link href={`/beats/${item.beatId}`} className="font-display text-lg uppercase leading-tight text-paper hover:underline focusable">
+                  {item.title}
+                </Link>
+              )}
               {item.username ? <span className="label text-mute">{item.username}</span> : null}
 
               {/*
@@ -129,6 +147,8 @@ export function CartList({ items, total, label, priceNames }: Props) {
                 продаёт. Уровень без цены не показываем вовсе — выбрать его
                 нельзя, а пустой пункт в списке выглядит как ошибка.
               */}
+              {!item.isProduct ? (
+              <>
               <label className="mt-1 flex w-fit flex-col gap-1">
                 <span className="label text-mute">{label.tierLabel}</span>
                 <select
@@ -147,6 +167,8 @@ export function CartList({ items, total, label, priceNames }: Props) {
               {tierError?.beatId === item.beatId ? (
                 <p className="label leading-relaxed text-amber">{tierError.message}</p>
               ) : null}
+              </>
+              ) : null}
             </div>
 
             <div className="flex items-center gap-5">
@@ -163,8 +185,8 @@ export function CartList({ items, total, label, priceNames }: Props) {
 
               <button
                 type="button"
-                onClick={() => void remove(item.beatId)}
-                disabled={busy === item.beatId}
+                onClick={() => void remove(item)}
+                disabled={busy === (item.isProduct ? item.productId : item.beatId)}
                 className="label text-mute underline-offset-4 hover:text-paper hover:underline disabled:opacity-50 focusable"
               >
                 {label.remove}

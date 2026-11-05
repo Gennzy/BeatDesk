@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Container } from "@/components/ui/container";
+import { ProductCartButton } from "@/components/products/product-cart-button";
 import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -27,6 +28,7 @@ export default async function CabinetProductsPage() {
     .eq("owner_id", user.id)
     .order("created_at", { ascending: false });
 
+  const signedIn = Boolean(user);
   const list = products ?? [];
 
   return (
@@ -56,7 +58,10 @@ export default async function CabinetProductsPage() {
                   {(product.price_minor / 100).toFixed(2)} {product.currency}
                 </span>
                 <span className="label text-mute">{product.is_public ? "Публично" : "Черновик"}</span>
-                <Link href={`/cabinet/products/${product.id}/edit`} className="label text-mute hover:text-paper">Редактировать</Link>
+                <div className="flex items-center gap-3">
+                  <ProductCartButton productId={product.id} signedIn={signedIn} />
+                  <Link href={`/cabinet/products/${product.id}/edit`} className="label text-mute hover:text-paper">Редактировать</Link>
+                </div>
               </li>
             ))}
           </ul>

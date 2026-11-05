@@ -29,7 +29,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("cart_items")
-    .select("id, beat_id, tier, created_at, beats(id, title, cover_url, mp3_url, prices, prices_before, discount_percent, currency, sale_state, is_public, owner_id, profiles!beats_owner_id_fkey(username, avatar_url))")
+    .select("id, beat_id, product_id, tier, created_at, beats(id, title, cover_url, mp3_url, prices, prices_before, discount_percent, currency, sale_state, is_public, owner_id, profiles!beats_owner_id_fkey(username, avatar_url)), products(id, title, cover_url, price_minor, currency, kind)")
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
 
@@ -58,11 +58,35 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = (await request.json().catch(() => null)) as { beatId?: unknown; tier?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { beatId?: unknown; productId?: unknown; tier?: unknown } | null;
   const beatId = typeof body?.beatId === "string" ? body.beatId : null;
+  const productId = typeof body?.productId === "string" ? body.productId : null;
   const tier = normalizeTier(body?.tier);
 
-  if (!beatId) return NextResponse.json({ error: "Нужен бит" }, { status: 400 });
+  if (!beatId && !productId) return NextResponse.json({ error: "Нужен товар" }, { status: 400 });
+
+  // Товар (кит/пресет/услуга): без уровней, одна позиция.
+  if (productId) {
+    const { data: product } = await supabase
+      .from("products")
+      .select("id, owner_id, is_public, price_minor")
+      .eq("id", productId)
+      .maybeSingle();
+
+    if (!product) return NextResponse.json({ error: "Товар не найден" }, { status: 404 });
+    if (product.owner_id === user.id) return NextResponse.json({ error: "Свой товар не нужно покупать" }, { status: 400 });
+    if (!product.is_public) return NextResponse.json({ error: "Товар сейчас не продаётся" }, { status: 400 });
+
+    if (!productId) return NextResponse.json({ error: "Нужен товар" }, { status: 400 });
+    const { error: deleteError } = await supabase.from("cart_items").delete().eq("user_id", user.id).eq("product_id", productId);
+    if (deleteError) return NextResponse.json({ error: "Не удалось добавить в корзину" }, { status: 400 });
+
+    const { error } = await supabase.from("cart_items").insert({ user_id: user.id, product_id: productId });
+    if (error) return NextResponse.json({ error: "Не удалось добавить в корзину" }, { status: 400 });
+
+    return NextResponse.json({ productId });
+  }
+
   if (!tier) return NextResponse.json({ error: "Нужен уровень лицензии" }, { status: 400 });
 
   const { data: beat } = await supabase
@@ -71,6 +95,7 @@ export async function POST(request: Request) {
     .eq("id", beatId)
     .maybeSingle();
 
+  if (!beatId) return NextResponse.json({ error: "Нужен бит" }, { status: 400 });
   if (!beat) return NextResponse.json({ error: "Бит не найден" }, { status: 404 });
 
   // Свой бит в корзину класть незачем: там нет ни покупки, ни загрузки.

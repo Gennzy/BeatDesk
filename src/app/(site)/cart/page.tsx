@@ -15,8 +15,9 @@ export const metadata: Metadata = {
 
 type CartRow = {
   id: string;
-  beat_id: string;
-  tier: string;
+  beat_id: string | null;
+  product_id: string | null;
+  tier: string | null;
   created_at: string;
   beats: {
     id: string;
@@ -29,6 +30,14 @@ type CartRow = {
     sale_state: string | null;
     is_public: boolean | null;
     profiles: { username: string } | { username: string }[] | null;
+  } | null;
+  products: {
+    id: string;
+    title: string;
+    cover_url: string | null;
+    price_minor: number;
+    currency: string | null;
+    kind: string;
   } | null;
 };
 
@@ -44,7 +53,7 @@ export default async function CartPage() {
   const { data, error } = await supabase
     .from("cart_items")
     .select(
-      "id, beat_id, tier, created_at, beats(id, title, cover_url, prices, prices_before, discount_percent, currency, sale_state, is_public, profiles!beats_owner_id_fkey(username))",
+      "id, beat_id, product_id, tier, created_at, beats(id, title, cover_url, prices, prices_before, discount_percent, currency, sale_state, is_public, profiles!beats_owner_id_fkey(username)), products(id, title, cover_url, price_minor, currency, kind)",
     )
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
@@ -91,15 +100,33 @@ export default async function CartPage() {
   );
 }
 
-/** Одна позиция корзины: цена, уровень, продавец и годность позиции. */
+/** Одна позиция корзины: цена, уровень/товар, продавец и годность позиции. */
 function toItem(row: CartRow) {
+  // Товар (кит/пресет/услуга): без уровней, одна цена.
+  if (row.product_id && row.products) {
+    const product = row.products;
+    return {
+      beatId: "",
+      productId: product.id,
+      isProduct: true,
+      title: product.title,
+      coverUrl: product.cover_url,
+      username: "",
+      currency: product.currency ?? "RUB",
+      tierKey: null,
+      price: product.price_minor / 100,
+      before: null,
+      discountPercent: 0,
+      available: true,
+      tiers: [] as PriceKey[],
+    };
+  }
+
   const beat = row.beats;
 
-  // Ссылка на бит могла пропасть: удалённый бит удаляет позицию по
-  // каскаду, но если он стал черновиком, строка остаётся.
   if (!beat) return null;
 
-  const key = priceKey(row.tier) as PriceKey | null;
+  const key = row.tier ? (priceKey(row.tier) as PriceKey | null) : null;
   const prices = normalizePrices(beat.prices) as Prices;
   const before = beat.prices_before ? normalizePrices(beat.prices_before) : null;
   const price = key ? prices[key] : null;
@@ -111,6 +138,8 @@ function toItem(row: CartRow) {
 
   return {
     beatId: beat.id,
+    productId: null,
+    isProduct: false,
     title: beat.title,
     coverUrl: beat.cover_url,
     username: profiles?.username ?? "",
@@ -119,7 +148,6 @@ function toItem(row: CartRow) {
     price,
     before: key && before ? before[key] : null,
     discountPercent: beat.discount_percent ?? 0,
-    // Оплатить имеет смысл только то, что ещё продаётся.
     available: sellable && price !== null && price !== undefined,
     tiers,
   };
