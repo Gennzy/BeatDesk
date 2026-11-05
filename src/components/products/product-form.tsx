@@ -32,23 +32,23 @@ export function ProductForm({ product }: { product?: Product }) {
     const form = event.currentTarget;
     const data = new FormData(form);
 
-    const body = {
-      kind: data.get("kind"),
-      title: data.get("title"),
-      description: data.get("description"),
-      price_minor: Number(data.get("price")) * 100,
-      currency: data.get("currency"),
-      is_public: data.get("isPublic") === "on",
-    };
-
     const url = isEdit ? `/api/products/${product!.id}` : "/api/products";
     const method = isEdit ? "PATCH" : "POST";
+
+    const formData = new FormData();
+    formData.set("kind", String(data.get("kind") ?? ""));
+    formData.set("title", String(data.get("title") ?? ""));
+    formData.set("description", String(data.get("description") ?? ""));
+    formData.set("price_minor", String(Number(data.get("price")) * 100));
+    formData.set("currency", String(data.get("currency") ?? "RUB"));
+    formData.set("is_public", data.get("isPublic") === "on" ? "true" : "false");
+    const cover = data.get("coverFile");
+    if (cover instanceof File && cover.size > 0) formData.set("coverFile", cover);
 
     try {
       const response = await fetch(url, {
         method,
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
+        body: formData,
       });
 
       const result = (await response.json()) as { product?: { id: string }; error?: string; ok?: boolean };
@@ -121,6 +121,10 @@ export function ProductForm({ product }: { product?: Product }) {
         <input type="checkbox" name="isPublic" defaultChecked={product?.is_public ?? false} className="size-4" />
         <span className="text-sm text-paper">Опубликовать в каталоге</span>
       </label>
+
+      <Field label="Обложка">
+        <Input name="coverFile" type="file" accept="image/jpeg,image/png,image/webp" />
+      </Field>
 
       {error ? <p className="label text-amber">{error}</p> : null}
 

@@ -32,11 +32,28 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Товар не найден" }, { status: 404 });
   }
 
-  let body: Body;
-  try {
-    body = (await request.json()) as Body;
-  } catch {
-    return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
+  const contentType = request.headers.get("content-type") ?? "";
+  let body: Body = {};
+  let coverFile: File | null = null;
+
+  if (contentType.includes("multipart/form-data")) {
+    const form = await request.formData();
+    body = {
+      kind: form.get("kind") ?? undefined,
+      title: form.get("title") ?? undefined,
+      description: form.get("description") ?? undefined,
+      price_minor: form.get("price_minor") ?? undefined,
+      currency: form.get("currency") ?? undefined,
+      is_public: form.get("is_public") === "on" ? true : form.get("is_public") === "false" ? false : undefined,
+    };
+    const cf = form.get("coverFile");
+    if (cf instanceof File && cf.size > 0) coverFile = cf;
+  } else {
+    try {
+      body = (await request.json()) as Body;
+    } catch {
+      return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
+    }
   }
 
   const patch: Record<string, unknown> = {};
@@ -65,6 +82,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   if (body.is_public !== undefined) {
     patch.is_public = Boolean(body.is_public);
+  }
+
+  if (coverFile) {
+    const path = `${user.id}/products/${id}/cover-${Date.now()}.${coverFile.name.split(".").pop() ?? "jpg"}`;
+    const { error: uploadError } = await supabase.storage.from("covers").upload(path, coverFile, { cacheControl: "3600", upsert: true });
+    if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 });
+    patch.cover_url = supabase.storage.from("covers").getPublicUrl(path).data.publicUrl;
   }
 
   const { error } = await supabase.from("products").update(patch).eq("id", id).eq("owner_id", user.id);
