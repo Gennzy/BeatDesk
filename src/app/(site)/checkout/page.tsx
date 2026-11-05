@@ -15,8 +15,9 @@ export const metadata: Metadata = {
 };
 
 type CartRow = {
-  beat_id: string;
-  tier: string;
+  beat_id: string | null;
+  product_id: string | null;
+  tier: string | null;
   beats: {
     id: string;
     title: string;
@@ -24,6 +25,12 @@ type CartRow = {
     currency: string | null;
     sale_state: string | null;
     is_public: boolean | null;
+  } | null;
+  products: {
+    id: string;
+    title: string;
+    price_minor: number;
+    currency: string | null;
   } | null;
 };
 
@@ -51,17 +58,33 @@ export default async function CheckoutPage() {
   const items = (data ?? [])
     .map((row) => {
       const row0 = row as unknown as CartRow;
-      const beat = row0.beats;
 
+      // Товар (кит/пресет/услуга): без уровней, одна цена.
+      if (row0.product_id && row0.products) {
+        const product = row0.products;
+        return {
+          beatId: "",
+          productId: product.id,
+          title: product.title,
+          currency: product.currency ?? "RUB",
+          tierKey: null,
+          price: product.price_minor / 100,
+          available: true,
+          tiers: [] as PriceKey[],
+        };
+      }
+
+      const beat = row0.beats;
       if (!beat) return null;
 
-      const key = priceKey(row0.tier) as PriceKey | null;
+      const key = row0.tier ? (priceKey(row0.tier) as PriceKey | null) : null;
       const prices = normalizePrices(beat.prices);
       const price = key ? prices[key] : null;
       const sellable = beat.sale_state === "on_sale" && beat.is_public === true;
 
       return {
         beatId: beat.id,
+        productId: null,
         title: beat.title,
         currency: beat.currency ?? "RUB",
         tierKey: key,
@@ -99,7 +122,7 @@ export default async function CheckoutPage() {
 
           <aside className="flex w-full flex-col gap-3 rounded-panel border border-line p-5 lg:w-96">
             {items.map((item) => (
-              <div key={item.beatId} className="flex items-baseline justify-between gap-4 text-sm">
+              <div key={item.productId ?? item.beatId} className="flex items-baseline justify-between gap-4 text-sm">
                 <span className="truncate text-paper">{item.title}</span>
                 <span className="font-mono text-mute tabular-nums">
                   {item.price !== null ? formatMoney(item.price, item.currency) : "—"}

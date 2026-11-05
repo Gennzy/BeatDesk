@@ -26,7 +26,7 @@ import { useI18n } from "@/lib/i18n/provider";
  * нужны здесь. Требовать лишнее — значит заставлять страницу добывать поля,
  * которые никто не прочитает.
  */
-export type CheckoutItem = { beatId: string; tierKey: string | null };
+export type CheckoutItem = { beatId: string; productId?: string | null; tierKey: string | null };
 
 export function CheckoutPanel({ items, label }: { items: CheckoutItem[]; label: Record<string, string> }) {
   const { t } = useI18n();
@@ -45,7 +45,7 @@ export function CheckoutPanel({ items, label }: { items: CheckoutItem[]; label: 
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          items: items.map((item) => ({ beatId: item.beatId, tier: item.tierKey })),
+          items: items.map((item) => (item.productId ? { productId: item.productId } : { beatId: item.beatId, tier: item.tierKey })),
           email,
         }),
       });
@@ -63,7 +63,11 @@ export function CheckoutPanel({ items, label }: { items: CheckoutItem[]; label: 
        * сервер не подтвердил, позиции ещё нужны человеку, чтобы он мог
        * повторить попытку.
        */
-      await Promise.all(items.map((item) => fetch(`/api/cart/${item.beatId}`, { method: "DELETE" })));
+      await Promise.all(
+        items.map((item) =>
+          fetch(item.productId ? `/api/cart/product/${item.productId}` : `/api/cart/${item.beatId}`, { method: "DELETE" }),
+        ),
+      );
 
       router.push(`/orders/${data.id}`);
     } catch {

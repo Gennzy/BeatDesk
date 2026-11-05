@@ -78,12 +78,24 @@ export async function POST(request: Request) {
        * трогает, только штампует валюту в позиции, так что проверка здесь —
        * единственное место, где подмена ловится.
        */
-      const { data: beats } = await supabase
-        .from("beats")
-        .select("id, currency")
-        .in("id", parsed.map((item) => item.beat_id));
+      const beatIds = parsed.map((item) => item.beat_id).filter((id): id is string => typeof id === "string");
+      const productIds = parsed.map((item) => item.product_id).filter((id): id is string => typeof id === "string");
 
-      const currencies = [...new Set(((beats ?? []) as { currency: string }[]).map((row) => row.currency))];
+      const [{ data: beats }, { data: products }] = await Promise.all([
+        beatIds.length > 0
+          ? supabase.from("beats").select("id, currency").in("id", beatIds)
+          : Promise.resolve({ data: [] as { id: string; currency: string }[] }),
+        productIds.length > 0
+          ? supabase.from("products").select("id, currency").in("id", productIds)
+          : Promise.resolve({ data: [] as { id: string; currency: string }[] }),
+      ]);
+
+      const currencies = [
+        ...new Set([
+          ...((beats ?? []) as { currency: string }[]).map((row) => row.currency),
+          ...((products ?? []) as { currency: string }[]).map((row) => row.currency),
+        ]),
+      ];
 
       if (currencies.length !== 1 || !isCurrency(currencies[0])) {
         return { data: null, error: { message: "Заказ — в одной валюте: убери лишнее из корзины" } };
