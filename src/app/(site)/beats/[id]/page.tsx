@@ -134,16 +134,40 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
 
   // Похожие биты: тот же жанр, исключая текущий. Простая эвристика,
   // без аудио-отпечатка: даёт discovery, пока Beat ID не готов.
-  const { data: similarRows } = beat.genre
-    ? await supabase
-        .from("beats")
-        .select("id, title, bpm, key, cover_url")
-        .eq("is_public", true)
-        .eq("genre", beat.genre)
-        .neq("id", beat.id)
-        .limit(4)
-    : { data: [] as { id: string; title: string; bpm: number; key: string; cover_url: string | null }[] };
-  const similarBeats = (similarRows ?? []) as { id: string; title: string; bpm: number; key: string; cover_url: string | null }[];
+  // Похожие биты: тот же жанр ИЛИ пересечение тегов. Два запроса
+  // объединяются и дедуплицируются, чтобы не терять ни один источник.
+  const tags = beat.tags ?? [];
+  const [{ data: byGenre }, { data: byTags }] = await Promise.all([
+    beat.genre
+      ? supabase
+          .from("beats")
+          .select("id, title, bpm, key, cover_url, plays")
+          .eq("is_public", true)
+          .eq("genre", beat.genre)
+          .neq("id", beat.id)
+          .order("plays", { ascending: false })
+          .limit(6)
+      : Promise.resolve({ data: [] as { id: string; title: string; bpm: number; key: string; cover_url: string | null; plays: number }[] }),
+    tags.length > 0
+      ? supabase
+          .from("beats")
+          .select("id, title, bpm, key, cover_url, plays")
+          .eq("is_public", true)
+          .overlaps("tags", tags)
+          .neq("id", beat.id)
+          .order("plays", { ascending: false })
+          .limit(6)
+      : Promise.resolve({ data: [] as { id: string; title: string; bpm: number; key: string; cover_url: string | null; plays: number }[] }),
+  ]);
+
+  const seen = new Set<string>();
+  const similarBeats: { id: string; title: string; bpm: number; key: string; cover_url: string | null }[] = [];
+  for (const row of [...(byGenre ?? []), ...(byTags ?? [])]) {
+    if (seen.has(row.id)) continue;
+    seen.add(row.id);
+    similarBeats.push(row);
+    if (similarBeats.length >= 6) break;
+  }
 
   const prices = normalizePrices(beat.prices);
   const pricesBefore = beat.prices_before ? normalizePrices(beat.prices_before) : null;
