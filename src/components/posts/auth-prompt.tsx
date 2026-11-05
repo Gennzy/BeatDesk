@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { useI18n } from "@/lib/i18n/provider";
+import { useEffect } from "react";
 
 type Props = {
   /** Куда вернуть человека после входа. */
@@ -24,8 +25,16 @@ export function AuthPrompt({ nextPath, username, action, onClose }: Props) {
   const titleKey = `auth.${action}Title` as "auth.likeTitle";
   const hintKey = `auth.${action}Hint` as "auth.likeHint";
 
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
-    <div role="dialog" aria-label={t(titleKey)} className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-6">
+    <div role="dialog" aria-modal="true" aria-label={t(titleKey)} className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-6">
       <div className="pointer-events-auto flex w-full max-w-md flex-col gap-3 border border-signal/40 bg-ink-2 p-5 shadow-[var(--shadow-3)]">
         <div className="flex items-center gap-3">
           <span aria-hidden className="size-1.5 bg-mute/50" />

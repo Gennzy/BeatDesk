@@ -86,9 +86,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {/* Баннеры уведомлений живут здесь: они должны переживать смену
                   маршрута, иначе всплывашка исчезала бы на каждом переходе. */}
               <ToastProvider>
+                <a
+                  href="#main-content"
+                  className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded-control focus:bg-signal focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-ink"
+                >
+                  Перейти к содержимому
+                </a>
                 <div className="flex min-h-svh flex-col">
                   <SiteHeader user={user} />
-                  <main className="flex-1 pb-20 pb-[calc(5rem+env(safe-area-inset-bottom))]">{children}</main>
+                  <main id="main-content" tabIndex={-1} className="flex-1 pb-20 pb-[calc(5rem+env(safe-area-inset-bottom))]">{children}</main>
                   <SiteFooter user={user} />
                   <PlayerBar />
                 </div>

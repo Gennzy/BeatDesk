@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { LanguageSwitch } from "@/components/language-switch";
 import { Logo } from "@/components/layout/logo";
@@ -52,12 +52,54 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
   // Значение из адреса: возврат из поиска не должен терять запрос.
   const searchQuery = params.get("q") ?? "";
   const [open, setOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const menuPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+        return;
+      }
+      if (event.key !== "Tab" || !menuPanelRef.current) return;
+      const focusables = menuPanelRef.current.querySelectorAll<HTMLElement>(
+        'a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      // Фокус на первый элемент меню при открытии.
+      const panel = menuPanelRef.current;
+      if (panel) {
+        const first = panel.querySelector<HTMLElement>('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        first?.focus();
+      }
+    } else {
+      // Возврат фокуса на кнопку меню при закрытии.
+      menuButtonRef.current?.focus();
+    }
   }, [open]);
 
   const close = () => setOpen(false);
@@ -189,6 +231,7 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
             </div>
 
             <button
+              ref={menuButtonRef}
               type="button"
               onClick={() => setOpen((value) => !value)}
               aria-expanded={open}
@@ -202,7 +245,7 @@ export function SiteHeader({ user }: { user: SessionUser | null }) {
       </Container>
 
       {open ? (
-        <div className="liquid-glass liquid-glass-strong border-t border-line md:hidden">
+        <div ref={menuPanelRef} className="liquid-glass liquid-glass-strong border-t border-line md:hidden">
           <Container>
             <nav className="flex flex-col divide-y divide-line">
               {links.map((link) => (
