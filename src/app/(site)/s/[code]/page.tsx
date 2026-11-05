@@ -23,7 +23,7 @@ export default async function ShortLinkPage({ params }: { params: Promise<{ code
     const supabase = await createClient();
     const { data } = await supabase
       .from("beats")
-      .select("id, title, bpm, key, cover_url, prices, currency, is_public")
+      .select("id, title, bpm, key, cover_url, prices, currency, is_public, profiles!beats_owner_id_fkey(username, links)")
       .eq("id", beatId)
       .maybeSingle();
 
@@ -47,6 +47,35 @@ export default async function ShortLinkPage({ params }: { params: Promise<{ code
                   {cheapest !== undefined ? ` · от ${cheapest}` : ""}
                 </p>
               </div>
+
+              {(() => {
+                const profile = Array.isArray(data.profiles) ? data.profiles[0] : data.profiles;
+                const links = (profile?.links ?? {}) as Record<string, string>;
+                const platforms = [
+                  { key: "youtube", label: "YouTube", href: links.youtube },
+                  { key: "vk", label: "ВК", href: links.vk },
+                  { key: "telegram", label: "Telegram", href: links.telegram },
+                  { key: "instagram", label: "Instagram", href: links.instagram },
+                  { key: "beatchain", label: "BeatChain", href: links.beatchain },
+                ].filter((p) => p.href);
+                if (platforms.length === 0) return null;
+                return (
+                  <div className="flex flex-wrap gap-2">
+                    {platforms.map((p) => (
+                      <a
+                        key={p.key}
+                        href={p.href!.startsWith("http") ? p.href! : `https://${p.href}`}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="label border border-line px-3 py-2 text-mute transition-colors hover:border-line-2 hover:text-paper"
+                      >
+                        {p.label}
+                      </a>
+                    ))}
+                  </div>
+                );
+              })()}
+
               <Link
                 href={`/beats/${data.id}`}
                 className="flex h-12 items-center justify-center rounded-control bg-signal px-5 text-sm font-medium text-ink transition-opacity hover:opacity-90"
