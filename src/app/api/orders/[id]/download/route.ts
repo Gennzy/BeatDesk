@@ -67,7 +67,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const { data: items } = await supabase
     .from("order_items")
-    .select("id, beat_id, tier")
+    .select("id, beat_id, product_id, tier")
     .eq("order_id", id);
 
   const item = (items ?? []).find((row) => row.id === itemId);
@@ -86,6 +86,62 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   if (!license) return NextResponse.json({ error: "Лицензия не найдена" }, { status: 404 });
   if (license.revoked_at) return NextResponse.json({ error: "Лицензия отозвана" }, { status: 403 });
+
+  // Товар (кит/пресет/услуга): выдаём все его файлы, без уровней.
+  if (item.product_id) {
+    let admin;
+    try {
+      admin = getAdminClient();
+    } catch (error) {
+      if (error instanceof ServiceRoleNotConfiguredError) {
+        return NextResponse.json({ error: error.message }, { status: 503 });
+      }
+      throw error;
+    }
+
+    const { data: product } = await admin
+      .from("products")
+      .select("files, title")
+      .eq("id", item.product_id)
+      .maybeSingle();
+
+    if (!product) return NextResponse.json({ error: "Товар не найден" }, { status: 404 });
+
+    const files = (product.files ?? {}) as Record<string, { name?: string; path?: string; parts?: { path?: string }[] }>;
+    const paths: string[] = [];
+    for (const asset of Object.values(files)) {
+      if (asset?.path) paths.push(asset.path);
+      for (const part of asset?.parts ?? []) {
+        if (part?.path) paths.push(part.path);
+      }
+    }
+
+    if (paths.length === 0) {
+      return NextResponse.json({ error: "Файл не загружен: напиши продавцу" }, { status: 404 });
+    }
+
+    const urls: string[] = [];
+    for (const path of paths) {
+      const { data, error } = await admin.storage.from(MASTERS_BUCKET).createSignedUrl(path, SIGN_TTL_SECONDS);
+      if (error || !data?.signedUrl) {
+        return NextResponse.json({ error: "Файл недоступен" }, { status: 502 });
+      }
+      urls.push(data.signedUrl);
+    }
+
+    try {
+      await admin.from("order_downloads").insert({
+        order_id: id,
+        license_id: license.id,
+        buyer_id: user.id,
+        kind: "product",
+      });
+    } catch {
+      console.error("Не удалось записать выдачу в order_downloads", { orderId: id, licenseId: license.id });
+    }
+
+    return NextResponse.json({ urls, name: product.title ?? "product" });
+  }
 
   if (!tierAllows(item.tier, kind)) {
     return NextResponse.json({ error: "Этот уровень не включает такой файл" }, { status: 403 });
