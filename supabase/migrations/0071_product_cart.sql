@@ -22,6 +22,7 @@ create unique index if not exists cart_items_unique_beat
 create unique index if not exists cart_items_unique_product
   on public.cart_items (user_id, product_id) where product_id is not null;
 
+alter table public.cart_items drop constraint if exists cart_items_one_subject;
 alter table public.cart_items
   add constraint cart_items_one_subject check (
     (beat_id is not null and product_id is null) or
@@ -38,6 +39,7 @@ alter table public.order_items
 alter table public.order_items
   alter column tier drop not null;
 
+alter table public.order_items drop constraint if exists order_items_one_subject;
 alter table public.order_items
   add constraint order_items_one_subject check (
     (beat_id is not null and product_id is null) or
