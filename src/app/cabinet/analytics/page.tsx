@@ -77,7 +77,12 @@ export default async function CabinetAnalyticsPage() {
     <section className="py-10 lg:py-20">
       <Container>
         <div className="flex flex-col gap-6 border-b border-line py-8">
-          <h1 className="font-display text-section font-semibold text-paper uppercase">Аналитика</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="font-display text-section font-semibold text-paper uppercase">Аналитика</h1>
+            <a href="/api/analytics/export" className="label border border-line px-3 py-2 text-mute transition-colors hover:border-line-2 hover:text-paper">
+              Экспорт CSV
+            </a>
+          </div>
           <p className="label text-mute">Прослушивания, продажи и доход по вашим битам.</p>
         </div>
 
