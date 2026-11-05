@@ -56,6 +56,7 @@ export default async function CabinetProductsPage() {
                   {(product.price_minor / 100).toFixed(2)} {product.currency}
                 </span>
                 <span className="label text-mute">{product.is_public ? "Публично" : "Черновик"}</span>
+                <Link href={`/cabinet/products/${product.id}/edit`} className="label text-mute hover:text-paper">Редактировать</Link>
               </li>
             ))}
           </ul>
