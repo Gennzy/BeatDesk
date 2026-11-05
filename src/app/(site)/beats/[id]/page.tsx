@@ -132,6 +132,19 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
 
   const videoUrl = (videoRows?.[0] as { watch_url?: string | null } | undefined)?.watch_url ?? null;
 
+  // Похожие биты: тот же жанр, исключая текущий. Простая эвристика,
+  // без аудио-отпечатка: даёт discovery, пока Beat ID не готов.
+  const { data: similarRows } = beat.genre
+    ? await supabase
+        .from("beats")
+        .select("id, title, bpm, key, cover_url")
+        .eq("is_public", true)
+        .eq("genre", beat.genre)
+        .neq("id", beat.id)
+        .limit(4)
+    : { data: [] as { id: string; title: string; bpm: number; key: string; cover_url: string | null }[] };
+  const similarBeats = (similarRows ?? []) as { id: string; title: string; bpm: number; key: string; cover_url: string | null }[];
+
   const prices = normalizePrices(beat.prices);
   const pricesBefore = beat.prices_before ? normalizePrices(beat.prices_before) : null;
   const discountPercent = Number(beat.discount_percent ?? 0);
@@ -529,6 +542,20 @@ const sellable = saleState === "on_sale" && beat.is_public === true;
             </div>
           </aside>
         </div>
+
+        {similarBeats.length > 0 ? (
+          <div className="pt-12">
+            <h2 className="label text-mute mb-4">Похожие биты</h2>
+            <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {similarBeats.map((item) => (
+                <li key={item.id} className="panel flex flex-col gap-2 p-4">
+                  <a href={`/beats/${item.id}`} className="text-sm font-semibold text-paper hover:text-signal">{item.title}</a>
+                  <span className="label text-mute">{item.bpm} BPM · {item.key}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </Container>
     </section>
   );
