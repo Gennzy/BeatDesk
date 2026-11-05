@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 
 import { usePlayer } from "@/components/player/player-provider";
 import { useI18n } from "@/lib/i18n/provider";
+import Link from "next/link";
+import Image from "next/image";
 import { youtubeEmbedUrl, youtubeIdOf } from "@/lib/pulse/video";
 import { Progress } from "./player-progress";
 import { PlayPause } from "./player-controls";
@@ -93,8 +95,8 @@ export function PlayerFullscreen({ onClose }: { onClose: () => void }) {
         <div
           className={
             showVideo
-              ? "aspect-[9/16] w-full max-w-[min(70vh,22rem)] overflow-hidden rounded-lg border border-line bg-ink-2 shadow-[var(--shadow-3)]"
-              : "aspect-square w-full max-w-[min(70vh,26rem)] overflow-hidden rounded-lg border border-line bg-ink-2 shadow-[var(--shadow-3)]"
+              ? "aspect-[9/16] w-full max-w-[min(70vh,22rem)] relative overflow-hidden rounded-lg border border-line bg-ink-2 shadow-[var(--shadow-3)]"
+              : "aspect-square w-full max-w-[min(70vh,26rem)] relative overflow-hidden rounded-lg border border-line bg-ink-2 shadow-[var(--shadow-3)]"
           }
         >
           {showVideo ? (
@@ -106,8 +108,7 @@ export function PlayerFullscreen({ onClose }: { onClose: () => void }) {
               className="size-full border-0"
             />
           ) : track.coverUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={track.coverUrl} alt="" className="size-full object-cover" />
+            <Image src={track.coverUrl} alt="" fill sizes="(min-width: 768px) 416px, 100vw" className="object-cover" />
           ) : (
             <div className="grid size-full place-items-center">
               <span className="label text-mute">{t("feed.noCover")}</span>
@@ -164,6 +165,13 @@ export function PlayerFullscreen({ onClose }: { onClose: () => void }) {
         <PlayPause isPlaying={isPlaying} onToggle={toggle} size="lg" />
 
         {/* На большом экране ползунок виден всегда: здесь есть место. */}
+        <Link
+          href={`/beats/${track.id}`}
+          className="label rounded-pill border border-signal/40 px-3 py-1.5 text-signal transition-colors hover:border-signal hover:bg-signal/10"
+        >
+          {t("player.buy")}
+        </Link>
+
         <VolumeControl size="lg" />
       </div>
     </div>

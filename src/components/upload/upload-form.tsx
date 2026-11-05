@@ -7,7 +7,7 @@ import { CurrencyPicker } from "@/components/profile/currency-picker";
 import { Button } from "@/components/ui/button";
 import { SectionHead } from "@/components/ui/container";
 import { FileDrop } from "@/components/ui/file-drop";
-import { Field, Input } from "@/components/ui/input";
+import { Field, Input, Textarea } from "@/components/ui/input";
 import { KeyPicker } from "@/components/ui/key-picker";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -236,6 +236,33 @@ if (!files.mp3) {
         trackout: toNumber(form.get("priceTrackout")),
         exclusive: toNumber(form.get("priceExclusive")),
       },
+      license_terms: (() => {
+        const pick = (name: string) => String(form.get(name) ?? "").trim() || undefined;
+        const terms = {
+          mp3: pick("licenseTermsMp3"),
+          bundle: pick("licenseTermsBundle"),
+          trackout: pick("licenseTermsTrackout"),
+          exclusive: pick("licenseTermsExclusive"),
+        };
+        return Object.values(terms).some(Boolean) ? terms : undefined;
+      })(),
+      collaborators: (() => {
+        const raw = String(form.get("collaborators") ?? "").trim();
+        if (!raw) return undefined;
+        const rows = raw
+          .split(/\n|,|;/)
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((line) => {
+            const parts = line.split(/\s+/);
+            const username = parts[0];
+            const percent = Number(parts[1]);
+            if (!username || !Number.isFinite(percent)) return null;
+            return { username, share_bps: Math.round(percent * 100) };
+          })
+          .filter((row): row is { username: string; share_bps: number } => row !== null);
+        return rows.length > 0 ? rows : undefined;
+      })(),
       /*
        * Отправляем исходные цены и процент, а не посчитанную цену. Скидка
        * применяется в одном месте на сервере: если бы форма прислала уже
@@ -396,6 +423,25 @@ if (!files.mp3) {
             <Field label={t("upload.priceExclusive")}>
               <Input name="priceExclusive" type="number" inputMode="numeric" placeholder="5000" className="font-mono" onChange={(event) => setPrices((current) => ({ ...current, exclusive: toPrice(event.target.value) }))} />
             </Field>
+            </div>
+
+          <Field label="Соавторы" hint="По одному на строку: ник и доля в процентах, например «john 30». Сумма долей должна быть 100%.">
+            <Textarea name="collaborators" className="min-h-20 font-mono" placeholder="john 50\nmary 50" />
+          </Field>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label={`${t("upload.licenseTerms")} — MP3`}>
+                <Textarea name="licenseTermsMp3" className="min-h-20" />
+              </Field>
+              <Field label={`${t("upload.licenseTerms")} — MP3 + WAV`}>
+                <Textarea name="licenseTermsBundle" className="min-h-20" />
+              </Field>
+              <Field label={`${t("upload.licenseTerms")} — Track Out`}>
+                <Textarea name="licenseTermsTrackout" className="min-h-20" />
+              </Field>
+              <Field label={`${t("upload.licenseTerms")} — ${t("upload.priceExclusive")}`}>
+                <Textarea name="licenseTermsExclusive" className="min-h-20" />
+              </Field>
             </div>
           </div>
 

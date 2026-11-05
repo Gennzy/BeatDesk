@@ -4,6 +4,7 @@ import { usePlayer } from "@/components/player/player-provider";
 import { trackFromBeat } from "@/lib/player";
 import type { FeedBeat } from "@/lib/feed";
 import { cn } from "@/lib/cn";
+import Image from "next/image";
 import { useI18n } from "@/lib/i18n/provider";
 
 /**
@@ -81,8 +82,7 @@ export function BeatCover({
   return (
     <div className={cn("relative aspect-square overflow-hidden rounded-lg bg-ink-3", className)}>
       {coverUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={coverUrl} alt="" loading="lazy" decoding="async" width={1200} height={1200} className="size-full object-cover" />
+        <Image src={coverUrl} alt="" fill sizes="(min-width: 1024px) 480px, 100vw" className="object-cover" />
       ) : (
         <div className="cover-grid size-full" />
       )}

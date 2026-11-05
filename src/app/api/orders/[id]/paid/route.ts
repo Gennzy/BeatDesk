@@ -45,7 +45,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Подтверждать оплату может только оператор площадки" }, { status: 403 });
   }
 
-  const { data: order } = await supabase.from("orders").select("id, status").eq("id", id).maybeSingle();
+  /*
+   * Заказ читается служебным клиентом.
+   *
+   * Оператор не покупатель и не продавец, а политики на orders описывают
+   * только их. Пользовательским клиентом чтение возвращало пусто, и маршрут
+   * отвечал 404: подтвердить оплату было нельзя, лицензии не выдавались,
+   * начисления не шли, баланс оставался нулевым.
+   */
+  const { data: order } = await getAdminClient()
+    .from("orders")
+    .select("id, status")
+    .eq("id", id)
+    .maybeSingle();
 
   if (!order) return NextResponse.json({ error: "Заказ не найден" }, { status: 404 });
 

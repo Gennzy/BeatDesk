@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { FollowButton } from "@/components/posts/follow-button";
@@ -162,11 +163,12 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
         */}
       {profile.cover_url ? (
         <div className="relative mb-8 h-36 w-full overflow-hidden border-b border-line bg-ink-2 lg:mb-10 lg:h-56">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={profile.cover_url}
             alt=""
-            className="size-full object-cover"
+            fill
+            sizes="100vw"
+            className="object-cover"
           />
           <div
             aria-hidden
@@ -188,10 +190,9 @@ export default async function BeatmakerPage({ params }: { params: Promise<{ user
           границе, а подписка болталась под ними отдельной полосой.
         */}
         <div className="panel grid gap-6 p-6 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-start lg:gap-8 lg:p-8">
-          <div className="grid size-28 place-items-center overflow-hidden rounded-xl border border-line bg-ink-3 font-display text-3xl text-mute">
+          <div className="relative grid size-28 place-items-center overflow-hidden rounded-xl border border-line bg-ink-3 font-display text-3xl text-mute">
             {profile.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={profile.avatar_url} alt="" className="size-full object-cover" />
+              <Image src={profile.avatar_url} alt="" fill sizes="112px" className="object-cover" />
             ) : (
               profile.username.slice(0, 2).toUpperCase()
             )}

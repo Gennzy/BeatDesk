@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 import { Container } from "@/components/ui/container";
 import { getLocale, getT } from "@/lib/i18n/server";
@@ -153,13 +154,12 @@ export async function CatalogTiles() {
             >
               {tile.cover ? (
                 <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={tile.cover}
                     alt=""
-                    width={1200}
-                    height={1200}
-                    className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    fill
+                    sizes="(min-width: 1024px) 400px, 100vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                   />
                   {/*
                     Затемнение плотное, а не декоративное.

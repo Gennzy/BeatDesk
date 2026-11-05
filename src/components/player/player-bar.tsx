@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { usePlayer } from "@/components/player/player-provider";
+import Image from "next/image";
 import { PlayPause } from "./player-controls";
 import { PlayerFullscreen } from "./player-fullscreen";
 import { Progress } from "./player-progress";
@@ -24,10 +25,9 @@ export function PlayerBar() {
       <div className="liquid-glass liquid-glass-strong fixed inset-x-0 bottom-0 z-50 border-t border-line">
         <div className="mx-auto flex h-20 w-full max-w-[1560px] items-center gap-4 px-4 pb-[env(safe-area-inset-bottom)] sm:gap-6 sm:px-6 lg:px-12">
           <div className="flex min-w-0 flex-1 items-center gap-3 sm:w-64 sm:flex-none">
-            <div className="size-11 shrink-0 overflow-hidden border border-line bg-ink-3">
+            <div className="relative size-11 shrink-0 overflow-hidden border border-line bg-ink-3">
               {track.coverUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={track.coverUrl} alt="" decoding="async" className="size-full object-cover" />
+                <Image src={track.coverUrl} alt="" fill sizes="44px" className="object-cover" />
               ) : null}
             </div>
             <div className="min-w-0">
@@ -53,6 +53,14 @@ export function PlayerBar() {
             Громкость стоит перед разворачиванием и закрытием: обе кнопки
             про сетку, и человек тянет руку к привычным местам.
           */}
+          <Link
+            href={`/beats/${track.id}`}
+            className="flex h-10 items-center rounded-control border border-signal/40 px-3 text-xs font-medium text-signal transition-colors hover:border-signal hover:bg-signal/10 sm:h-8"
+            title={t("player.buy")}
+          >
+            {t("player.buy")}
+          </Link>
+
           <VolumeControl />
 
           {/*

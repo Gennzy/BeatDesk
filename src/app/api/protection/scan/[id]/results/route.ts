@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { findSuspects } from "@/lib/protection/attribution";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -150,14 +151,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     });
 
   if (rows.length > 0) {
-    const { error } = await supabase.from("protection_matches").insert(rows);
+    // Отчёт пишет сервер: клиент не должен уметь вписать чужую находку.
+    const { error } = await getAdminClient().from("protection_matches").insert(rows);
 
     if (error) {
       return NextResponse.json({ error: "Не удалось сохранить находки" }, { status: 500 });
     }
   }
 
-  await supabase
+  await getAdminClient()
     .from("protection_scans")
     .update({
       status: rows.length > 0 ? "done" : "empty",

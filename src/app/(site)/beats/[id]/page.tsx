@@ -10,6 +10,7 @@ import { LicenseTerms } from "@/components/beat/license-terms";
 import { SellerCard } from "@/components/beat/seller-card";
 import { BeatShare } from "@/components/beat/beat-share";
 import { ShareToTelegram } from "@/components/platforms/share-to-telegram";
+import { SmartLinkButton } from "@/components/beat/smart-link-button";
 import { BeatOffer } from "@/components/sales/beat-offer";
 import { FreeDownloadButton } from "@/components/sales/free-download-button";
 import { ProtectButton } from "@/components/protection/protect-button";
@@ -18,6 +19,7 @@ import { Icon } from "@/components/ui/icon";
 import { formatMoney } from "@/lib/currency";
 import { getT } from "@/lib/i18n/server";
 import { normalizePrices, PRICE_KEYS, priceLabel } from "@/lib/prices";
+import { hasLicenseTerms } from "@/lib/licenses";
 import { getSupabase } from "@/lib/supabase/user";
 import { SALE_STATE_LABELS, type SaleState } from "@/lib/sales/state";
 
@@ -64,7 +66,7 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
    * каталог. Поэтому набор один, а откат на старый тот же, что в ленте.
    */
   const FULL_COLUMNS =
-    "id, title, type_beat_artists, bpm, key, tags, genre, mp3_url, cover_url, files, prices, prices_before, discount_percent, currency, sale_state, is_public, free_download, owner_id, plays, views, impressions, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links, level)";
+    "id, title, type_beat_artists, bpm, key, tags, genre, mp3_url, cover_url, files, prices, prices_before, discount_percent, license_terms, collaborators, currency, sale_state, is_public, free_download, owner_id, plays, views, impressions, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links, level)";
   const SAFE_COLUMNS =
     "id, title, type_beat_artists, bpm, key, tags, mp3_url, cover_url, prices, prices_before, discount_percent, currency, sale_state, free_download, is_public, owner_id, plays, created_at, profiles!beats_owner_id_fkey(id, username, avatar_url, bio, links)";
 
@@ -101,6 +103,13 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
 
   const owner = Array.isArray(beat.profiles) ? beat.profiles[0] : beat.profiles;
   const isOwner = Boolean(user && user.id === beat.owner_id);
+
+  const collaboratorsRaw = (beat.collaborators ?? []) as { user_id: string; share_bps: number }[];
+  const collaboratorIds = collaboratorsRaw.map((c) => c.user_id).filter(Boolean);
+  const { data: collaboratorProfiles } = collaboratorIds.length > 0
+    ? await supabase.from("profiles").select("id, username").in("id", collaboratorIds)
+    : { data: [] as { id: string; username: string }[] };
+  const collaboratorNameById = new Map((collaboratorProfiles ?? []).map((p: { id: string; username: string }) => [p.id, p.username]));
 
   /*
    * Ролик бита, если он выложен через Pulse.
@@ -291,6 +300,39 @@ const sellable = saleState === "on_sale" && beat.is_public === true;
 
                 <LicenseTerms tiers={tiers} />
 
+                {hasLicenseTerms((beat.license_terms ?? {}) as Record<string, string>) ? (
+                  <section className="flex flex-col gap-2">
+                    <h2 className="label text-mute">{t("beat.sellerTerms")}</h2>
+                    <dl className="flex flex-col gap-3">
+                      {(["mp3", "bundle", "trackout", "exclusive"] as const).map((tier) => {
+                        const text = (beat.license_terms as Record<string, string> | null)?.[tier];
+                        if (typeof text !== "string" || !text.trim()) return null;
+                        const label = tier === "mp3" ? "MP3" : tier === "bundle" ? "MP3 + WAV" : tier === "trackout" ? "Track Out" : t("upload.priceExclusive");
+                        return (
+                          <div key={tier} className="flex flex-col gap-1 border-b border-line pb-3 last:border-b-0">
+                            <dt className="label text-mute">{label}</dt>
+                            <dd className="whitespace-pre-wrap text-sm text-paper">{text}</dd>
+                          </div>
+                        );
+                      })}
+                    </dl>
+                  </section>
+                ) : null}
+
+                {collaboratorsRaw.length > 0 ? (
+                  <section className="flex flex-col gap-2">
+                    <h2 className="label text-mute">Соавторы</h2>
+                    <ul className="flex flex-col gap-2">
+                      {collaboratorsRaw.map((c) => (
+                        <li key={c.user_id} className="flex items-center justify-between text-sm">
+                          <span className="text-paper">{collaboratorNameById.get(c.user_id) ?? c.user_id}</span>
+                          <span className="label text-mute">{(c.share_bps / 100).toFixed(0)}%</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ) : null}
+
                 <div className="flex flex-wrap items-center gap-3">
                   <BeatShare beatId={beat.id} title={beat.title} />
 
@@ -301,6 +343,7 @@ const sellable = saleState === "on_sale" && beat.is_public === true;
                     целостность.
                   */}
                   {isOwner ? <ShareToTelegram beatId={beat.id} /> : null}
+                  {isOwner ? <SmartLinkButton beatId={beat.id} /> : null}
 
                   {/*
                     Бесплатное скачивание.

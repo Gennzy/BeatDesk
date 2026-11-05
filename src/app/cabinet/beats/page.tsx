@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -87,10 +88,9 @@ export default async function CabinetBeatsPage() {
               className="surface flex flex-col gap-3 p-4 transition-colors hover:border-line-2"
             >
                 <div className="flex gap-3">
-                  <div className="size-20 shrink-0 overflow-hidden rounded-md bg-ink-3">
+                  <div className="relative size-20 shrink-0 overflow-hidden rounded-md bg-ink-3">
                     {beat.coverUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={beat.coverUrl} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
+                      <Image src={beat.coverUrl} alt="" fill sizes="(min-width: 1024px) 240px, 50vw" className="object-cover" />
                     ) : null}
                   </div>
 

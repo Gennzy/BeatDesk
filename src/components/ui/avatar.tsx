@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import Image from "next/image";
 
 type Props = {
   username: string;
@@ -24,14 +25,13 @@ export function Avatar({ username, src, size = "sm", className }: Props) {
   return (
     <span
       className={cn(
-        "grid shrink-0 place-items-center overflow-hidden rounded-full border border-line bg-ink-3 font-display text-mute",
+        "relative grid shrink-0 place-items-center overflow-hidden rounded-full border border-line bg-ink-3 font-display text-mute",
         sizes[size],
         className,
       )}
     >
       {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
+        <Image src={src} alt="" fill sizes="56px" className="object-cover" />
       ) : (
         <span aria-hidden>{initials}</span>
       )}

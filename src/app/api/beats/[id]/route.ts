@@ -3,9 +3,12 @@ import { NextResponse } from "next/server";
 
 import { ASSET_KINDS, MAX_COVER_BYTES, assetsBelongTo, extensionOf, validateCoverFile } from "@/lib/beats";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeGenre } from "@/lib/beat-validation";
 import { applyDiscount, normalizeDiscount, normalizePrices, pricesForDb, type Prices } from "@/lib/prices";
+import { normalizeLicenseTerms } from "@/lib/licenses";
+import { normalizeCollaborators } from "@/lib/collaborators";
 import { canPutOnSale, canTakeOffSale, type SaleState } from "@/lib/sales/state";
 import { parseNames } from "@/lib/tags";
 
@@ -186,6 +189,40 @@ patch.genre = normalizeGenre(genre);
     }
   }
 
+  const licenseTerms = parseJson<Record<string, unknown>>(form.get("license_terms"));
+  if (licenseTerms) {
+    patch.license_terms = normalizeLicenseTerms(licenseTerms);
+  }
+
+  const collaboratorsRaw = parseJson<unknown>(form.get("collaborators"));
+  if (collaboratorsRaw !== null && collaboratorsRaw !== undefined) {
+    let resolved: unknown = collaboratorsRaw;
+    if (Array.isArray(collaboratorsRaw)) {
+      const out: { user_id: string; share_bps: number }[] = [];
+      for (const item of collaboratorsRaw) {
+        if (!item || typeof item !== "object") continue;
+        const rec = item as Record<string, unknown>;
+        const share = typeof rec.share_bps === "number" ? rec.share_bps : Number(rec.share_bps);
+        let userId = typeof rec.user_id === "string" ? rec.user_id.trim() : "";
+        if (!userId && typeof rec.username === "string") {
+          const { data: profile } = await access.supabase
+            .from("profiles")
+            .select("id")
+            .eq("username", rec.username.trim())
+            .maybeSingle();
+          userId = (profile as { id?: string } | null)?.id ?? "";
+        }
+        out.push({ user_id: userId, share_bps: share });
+      }
+      resolved = out;
+    }
+    const result = normalizeCollaborators(resolved);
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
+    }
+    patch.collaborators = result.value;
+  }
+
   const isPublic = text("isPublic");
   if (isPublic !== null) patch.is_public = isPublic === "true";
 
@@ -293,7 +330,20 @@ patch.genre = normalizeGenre(genre);
     return NextResponse.json({ error: "Нет изменений" }, { status: 400 });
   }
 
-  const { error } = await access.supabase.from("beats").update(patch).eq("id", id);
+  /*
+   * Правка идёт служебным клиентом, а не пользовательским.
+   *
+   * Права на колонки у пользователя ограничены (миграция 0064): счётчики,
+   * уровень и состояние продажи писать нельзя, иначе ими можно было бы
+   * накрутить рейтинг или выставить в продажу бит без цены.
+   *
+   * Владельца мы уже проверили выше, а решает здесь маршрут, а не клиент:
+   * сервер и есть тот, кому положено двигать состояние продажи.
+   */
+  const { error } = await getAdminClient()
+    .from("beats")
+    .update(patch)
+    .eq("id", id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

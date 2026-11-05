@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 
@@ -212,8 +213,7 @@ export function ProfileForm({ userId, profile }: { userId: string; profile: Prof
       <div className="flex flex-wrap items-center gap-6">
         <div className="grid size-20 shrink-0 place-items-center overflow-hidden border border-line bg-ink-2">
           {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarUrl} alt={t("profile.avatar")} className="size-full object-cover" />
+            <Image src={avatarUrl} alt={t("profile.avatar")} fill sizes="96px" className="object-cover" />
           ) : (
             <span className="label text-mute">{username.slice(0, 2).toUpperCase() || "?"}</span>
           )}

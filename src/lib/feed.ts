@@ -1,6 +1,7 @@
 import { normalizePrices } from "@/lib/prices";
 import type { SupabaseServerClient } from "@/lib/supabase/server";
 import type { Prices } from "@/lib/prices";
+import type { LicenseTerms } from "@/lib/licenses";
 
 export const FEED_PAGE_SIZE = 12;
 
@@ -68,6 +69,8 @@ export type FeedBeat = {
   discountPercent: number;
   /** Цены до скидки, для зачёркивания. */
   pricesBefore: Prices | null;
+  /** Условия лицензии по уровням. */
+  licenseTerms: LicenseTerms;
   /** Уровень продавца 1..10: поднимает бит, но не перевешивает содержание. */
   sellerLevel: number;
   likes: number;
@@ -97,6 +100,7 @@ type BeatRow = {
   genre?: string | null;
   discount_percent?: number | null;
   prices_before?: Record<string, number | null> | null;
+  license_terms?: Record<string, string> | null;
   created_at: string;
   updated_at?: string | null;
   profiles:
@@ -107,7 +111,7 @@ type BeatRow = {
 };
 
 const BEAT_COLUMNS =
-  "id, title, bpm, key, genre, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, discount_percent, prices_before, created_at, updated_at, profiles!beats_owner_id_fkey(username, avatar_url, level), beat_reactions(kind, user_id)";
+  "id, title, bpm, key, genre, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, discount_percent, prices_before, license_terms, created_at, updated_at, profiles!beats_owner_id_fkey(username, avatar_url, level), beat_reactions(kind, user_id)";
 
 /**
  * Пока не применена миграция 0035, колонок скидки ещё нет.
@@ -117,7 +121,7 @@ const BEAT_COLUMNS =
  * уровней. Здесь теряется только скидка — сайт продолжает работать.
  */
 const PRE_DISCOUNT_BEAT_COLUMNS =
-  "id, title, bpm, key, genre, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, created_at, updated_at, profiles!beats_owner_id_fkey(username, avatar_url, level), beat_reactions(kind, user_id)";
+  "id, title, bpm, key, genre, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, license_terms, created_at, updated_at, profiles!beats_owner_id_fkey(username, avatar_url, level), beat_reactions(kind, user_id)";
 
 /** Пока не применена миграция 0007, колонок plays и updated_at ещё нет в базе. */
 const LEGACY_BEAT_COLUMNS =
@@ -147,6 +151,7 @@ function serialize(row: BeatRow, viewerId?: string | null): FeedBeat {
     genre: normalizeGenre(row.genre),
     discountPercent: Number(row.discount_percent ?? 0),
     pricesBefore: row.prices_before ? normalizePrices(row.prices_before) : null,
+    licenseTerms: (row.license_terms ?? {}) as LicenseTerms,
     sellerLevel: profile?.level ?? 1,
     likes: reactions.filter((reaction) => reaction.kind === "like").length,
     saves: reactions.filter((reaction) => reaction.kind === "save").length,

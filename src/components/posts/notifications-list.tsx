@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { TimeAgo } from "@/components/ui/time-ago";
 import { cn } from "@/lib/cn";
+import Image from "next/image";
 import { useI18n } from "@/lib/i18n/provider";
 import type { Notification, NotificationKind } from "@/app/api/notifications/route";
 
@@ -193,13 +194,12 @@ function NotificationRow({ item, onRead }: { item: Notification; onRead: () => v
       >
         <span
           className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-full transition-colors",
+            "relative flex size-9 shrink-0 items-center justify-center rounded-full transition-colors",
             unread ? "bg-signal/15 text-signal" : "bg-ink-3 text-mute",
           )}
         >
           {row.from === "person" && item.actorAvatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={item.actorAvatar} alt="" loading="lazy" decoding="async" className="size-full rounded-full object-cover" />
+            <Image src={item.actorAvatar} alt="" fill sizes="36px" className="rounded-full object-cover" />
           ) : (
             <Icon name={row.icon} className="size-4" />
           )}

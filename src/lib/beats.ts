@@ -2,6 +2,8 @@ import type { CurrencyCode } from "@/lib/currency";
 import { LegacyMasterMissingError, MastersBucketMissingError } from "@/lib/supabase/config";
 import type { SupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Prices } from "@/lib/prices";
+import type { LicenseTerms } from "@/lib/licenses";
+import type { Collaborator } from "@/lib/collaborators";
 
 export type BeatFileKind = "mp3" | "wav" | "zip" | "rar";
 
@@ -415,6 +417,10 @@ export type BeatInsert = {
   cover_url: string | null;
   files: BeatFilesColumn;
   prices: Prices;
+  /** Условия лицензии по уровням. Необязательно — пусто = стандартные. */
+  license_terms?: LicenseTerms;
+  /** Соавторы и их доли. Пусто = один владелец. */
+  collaborators?: Array<{ user_id?: string; username?: string; share_bps: number }>;
   /**
    * Скидка в процентах. Сервер применяет её к prices и кладёт исходные цены
    * рядом, поэтому клиент присылает процент, а не посчитанную цену.

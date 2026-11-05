@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 import { Icon, type IconName } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
+import Image from "next/image";
 
 /**
  * Всплывающие уведомления в духе iOS: баннер выезжает сверху, держится
@@ -148,14 +149,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               */}
               <span
                 className={cn(
-                  "flex size-9 shrink-0 items-center justify-center rounded-[11px] border",
+                  "relative flex size-9 shrink-0 items-center justify-center rounded-[11px] border",
                   tone.tile,
                   tone.accent,
                 )}
               >
                 {toast.avatar ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={toast.avatar} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
+                  <Image src={toast.avatar} alt="" fill sizes="36px" className="object-cover" />
                 ) : (
                   <Icon name={toast.icon} className="size-[1.05rem]" />
                 )}

@@ -1,3 +1,5 @@
+"server-only";
+
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { SUPABASE_URL } from "./config";

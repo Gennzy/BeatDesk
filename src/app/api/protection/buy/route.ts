@@ -77,13 +77,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Услуга недоступна" }, { status: 404 });
   }
 
+  /*
+   * Товар проверяется по обоим признакам: он должен быть нашим и это должна
+   * быть услуга.
+   *
+   * Идентификатор приходит из тела запроса, а опубликованные чужие товары
+   * видны всем: без проверки можно было подсунуть в заказ чужой товар и его
+   * цену.
+   */
   const { data: product } = await supabase
     .from("products")
-    .select("id, title, price_minor, currency, kind")
+    .select("id, title, price_minor, currency, kind, owner_id")
     .eq("id", productIdFound)
+    .eq("kind", "service")
+    .eq("owner_id", user.id)
     .maybeSingle();
 
-  if (!product) return NextResponse.json({ error: "Услуга не найдена" }, { status: 404 });
+  if (!product) return NextResponse.json({ error: "Услуга недоступна" }, { status: 404 });
 
   return NextResponse.json({
     productId: product.id,

@@ -56,13 +56,20 @@ export default async function PayoutsPage() {
 
   if (!user || !supabase) redirect("/login");
 
+  /*
+   * Журнал берётся целиком, а не сотней последних строк.
+   *
+   * Баланс считался по последним ста записям, и у продавца с историей больше
+   * ста операций он выходил заниженным. Форма вывода не даёт запросить
+   * больше показанного, то есть деньги вывести было нельзя, пока журнал не
+   * подстригут. При этом на главной кабинета тот же баланс считался без
+   * ограничения — два экрана показывали разные числа.
+   *
+   * Журнал берётся служебным клиентом: у продавца нет политики на чужие
+   * строки, а по своей таблице ограничение тоже мешало.
+   */
   const [{ data: rows }, { data: payouts }, { data: settings }] = await Promise.all([
-    supabase
-      .from("seller_transactions")
-      .select("id, kind, amount_minor, gross_minor, commission_minor, commission_bps, currency, created_at, order_id")
-      .eq("seller_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(100),
+    supabase.rpc("get_seller_ledger", { p_seller_id: user.id }),
     supabase
       .from("payouts")
       .select("id, amount_minor, status, currency, created_at, paid_at")

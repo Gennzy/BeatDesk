@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -104,8 +105,7 @@ export function CartList({ items, total, label, priceNames }: Props) {
           >
             <Link href={`/beats/${item.beatId}`} className="focusable shrink-0">
               {item.coverUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={item.coverUrl}
                   alt=""
                   width={64}

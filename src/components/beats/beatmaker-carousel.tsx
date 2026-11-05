@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useI18n } from "@/lib/i18n/provider";
@@ -169,19 +170,18 @@ export function BeatmakerCarousel({ makers }: { makers: Maker[] }) {
               <div
                 className={
                   centred
-                    ? "size-full overflow-hidden rounded-2xl border border-line bg-ink-3"
-                    : "size-full overflow-hidden rounded-full border border-line bg-ink-3"
+                    ? "relative size-full overflow-hidden rounded-2xl border border-line bg-ink-3"
+                    : "relative size-full overflow-hidden rounded-full border border-line bg-ink-3"
                 }
                 style={{ transition: "border-radius var(--duration-slow) var(--ease-out), transform var(--duration-slow) var(--ease-out)" }}
               >
                 {maker.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={maker.avatarUrl}
                     alt={centred ? maker.username : ""}
-                    loading="lazy"
-                    decoding="async"
-                    className="size-full object-cover"
+                    fill
+                    sizes="96px"
+                    className="object-cover"
                   />
                 ) : (
                   <span className="grid size-full place-items-center font-display text-4xl text-mute">

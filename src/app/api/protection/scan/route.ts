@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { getAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
    * Он нужен потом, когда битмейкер принесёт найденный слитый треп: без
    * эталонного отпечатка нечем отличить наш бит от чужого при разборе.
    */
-  const { error: protectionError } = await supabase.from("beat_protections").upsert(
+  const { error: protectionError } = await getAdminClient().from("beat_protections").upsert(
     {
       beat_id: beatId,
       owner_id: user.id,
@@ -59,7 +60,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Не удалось зарегистрировать бит" }, { status: 500 });
   }
 
-  const { data: scan, error } = await supabase
+  /*
+   * Запись ведёт служебный клиент: писать в отчёты пользователю нельзя,
+   * иначе он вписал бы чужую находку в чужой отчёт. Права на вставку
+   * отозваны именно поэтому.
+   */
+  const { data: scan, error } = await getAdminClient()
     .from("protection_scans")
     .insert({ beat_id: beatId, owner_id: user.id, status: "running" })
     .select("id")

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { usePlayer } from "@/components/player/player-provider";
 import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/cn";
+import Image from "next/image";
 import { DiscountPrice, beforePrice } from "@/components/beat/discount-price";
 import { TimeAgo } from "@/components/ui/time-ago";
 import { useI18n } from "@/lib/i18n/provider";
@@ -110,8 +111,7 @@ export function PostCard({ post, loggedIn = true, depth = 0, inThread = false }:
         <div className="surface flex items-center gap-3 p-3">
           <Link href={`/beats/${beat.id}`} className="flex min-w-0 flex-1 items-center gap-3">
             {beat.coverUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={beat.coverUrl} alt="" loading="lazy" decoding="async" className="size-14 shrink-0 rounded-md object-cover" />
+              <Image src={beat.coverUrl} alt="" width={56} height={56} className="size-14 shrink-0 rounded-md object-cover" />
             ) : (
               <span aria-hidden className="grid size-14 shrink-0 place-items-center rounded-md bg-ink-3 text-[10px] text-mute">
                 {beat.bpm}

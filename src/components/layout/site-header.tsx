@@ -10,6 +10,7 @@ import { Container } from "@/components/ui/container";
 import { Icon } from "@/components/ui/icon";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
+import Image from "next/image";
 import { NotificationBell } from "@/components/posts/notification-bell";
 import { CartLink } from "@/components/sales/cart-link";
 import { useI18n } from "@/lib/i18n/provider";
@@ -28,9 +29,9 @@ function Avatar({ user, size = "sm" }: { user: SessionUser; size?: "sm" | "md" }
   const className = size === "md" ? "size-9" : "size-7";
 
   if (user.avatarUrl) {
+    const px = size === "md" ? 36 : 28;
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={user.avatarUrl} alt="" className={cn(className, "shrink-0 object-cover")} />
+      <Image src={user.avatarUrl} alt="" width={px} height={px} className={cn(className, "shrink-0 object-cover")} />
     );
   }
 

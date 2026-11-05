@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -526,10 +527,9 @@ export function PulseWizard({
                     : "border-line bg-ink-2 hover:border-line-2"
                 }`}
               >
-                <span className="size-10 shrink-0 overflow-hidden rounded-md bg-ink-3">
+                <span className="relative size-10 shrink-0 overflow-hidden rounded-md bg-ink-3">
                   {item.coverUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.coverUrl} alt="" className="size-full object-cover" />
+                    <Image src={item.coverUrl} alt="" fill sizes="40px" className="object-cover" />
                   ) : null}
                 </span>
 
@@ -834,13 +834,12 @@ export function PulseWizard({
             <div className="flex flex-col gap-3 rounded-panel border border-line-2 bg-ink-2 p-4">
               <div className="relative aspect-video overflow-hidden rounded-lg bg-ink-3">
                 {beat.coverUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={beat.coverUrl}
                     alt=""
-                    className="size-full object-cover"
-                    loading="lazy"
-                    decoding="async"
+                    fill
+                    sizes="(min-width: 1024px) 640px, 100vw"
+                    className="object-cover"
                   />
                 ) : null}
 

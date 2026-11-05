@@ -4,6 +4,7 @@ import { normalizePrices } from "@/lib/prices";
 import type { SupabaseServerClient } from "@/lib/supabase/server";
 import type { FeedBeat } from "@/lib/feed";
 import type { Prices } from "@/lib/prices";
+import type { LicenseTerms } from "@/lib/licenses";
 
 export const POSTS_PAGE_SIZE = 10;
 export const REPLIES_PAGE_SIZE = 30;
@@ -34,6 +35,7 @@ export type PostBeat = {
   genre: GenreSlug | null;
   discountPercent: number;
   pricesBefore: Prices | null;
+  licenseTerms?: LicenseTerms;
   likes: number;
   saves: number;
   prices: Prices;
@@ -501,6 +503,7 @@ export function beatToFeedCard(beat: PostBeat, author: PostAuthor): FeedBeat {
     genre: beat.genre,
     discountPercent: beat.discountPercent,
     pricesBefore: beat.pricesBefore,
+    licenseTerms: beat.licenseTerms ?? {},
     likes: beat.likes,
     saves: beat.saves,
     liked: false,

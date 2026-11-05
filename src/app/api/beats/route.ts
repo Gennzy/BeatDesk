@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 
+import { assetsBelongTo } from "@/lib/beats";
 import { validateBeat } from "@/lib/beat-validation";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { notifySelf } from "@/lib/notifications/self";
 import { createClient } from "@/lib/supabase/server";
 import { applyDiscount, normalizeDiscount, pricesForDb } from "@/lib/prices";
+import { normalizeLicenseTerms } from "@/lib/licenses";
+import { normalizeCollaborators } from "@/lib/collaborators";
 import { initialSaleState } from "@/lib/sales/state";
 
 type Body = {
@@ -22,6 +25,8 @@ type Body = {
   files?: unknown;
   is_public?: unknown;
   free_download?: unknown;
+  license_terms?: unknown;
+  collaborators?: unknown;
 };
 
 function text(value: unknown, max = 2000): string | null {
@@ -78,6 +83,34 @@ export async function POST(request: Request) {
   const mp3Url = text(body.mp3_url, 500);
   const coverUrl = text(body.cover_url, 500);
 
+  // Соавторы могут прийти как {user_id, share_bps} или {username, share_bps}.
+  // Во втором случае разрешаем имя в id профиля здесь, на сервере.
+  let rawCollaborators = body.collaborators;
+  if (Array.isArray(rawCollaborators)) {
+    const resolved: { user_id: string; share_bps: number }[] = [];
+    for (const item of rawCollaborators) {
+      if (!item || typeof item !== "object") continue;
+      const rec = item as Record<string, unknown>;
+      const share = typeof rec.share_bps === "number" ? rec.share_bps : Number(rec.share_bps);
+      let userId = typeof rec.user_id === "string" ? rec.user_id.trim() : "";
+      if (!userId && typeof rec.username === "string") {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("username", rec.username.trim())
+          .maybeSingle();
+        userId = (profile as { id?: string } | null)?.id ?? "";
+      }
+      resolved.push({ user_id: userId, share_bps: share });
+    }
+    rawCollaborators = resolved;
+  }
+
+  const collaboratorsResult = normalizeCollaborators(rawCollaborators);
+  if (!collaboratorsResult.ok) {
+    return NextResponse.json({ error: collaboratorsResult.error }, { status: 400 });
+  }
+
   if (!mp3Url) {
     return NextResponse.json({ error: "Нужен аудиофайл" }, { status: 400 });
   }
@@ -90,6 +123,20 @@ export async function POST(request: Request) {
    */
   const basePrices = pricesForDb(validated.value.prices);
   const discountPercent = normalizeDiscount(body.discount_percent);
+
+  /*
+   * Файлы проверяются на принадлежность владельцу.
+   *
+   * Правка бита такую проверку имела, а создание — нет. Разница была
+   * достаточна: в созданный бит можно было вписать путь к мастеру чужого
+   * бита, и покупатель уровня «MP3 + WAV» получил бы подписанную ссылку
+   * на чужой мастер из закрытого бакета.
+   */
+  const incomingFiles = typeof body.files === "object" && body.files !== null ? body.files : {};
+
+  if (!assetsBelongTo(user.id, incomingFiles as Record<string, unknown>)) {
+    return NextResponse.json({ error: "Файл не принадлежит этому биту" }, { status: 400 });
+  }
 
   const { data, error } = await supabase
     .from("beats")
@@ -110,13 +157,15 @@ export async function POST(request: Request) {
       genre: validated.value.genre,
       mp3_url: mp3Url,
       cover_url: coverUrl,
-      files: typeof body.files === "object" && body.files !== null ? body.files : {},
+      files: incomingFiles,
       is_public: Boolean(body.is_public),
       /*
        * Бесплатное скачивание — решение битмейкера, и вместе с ним бит встаёт
        * под защиту: мы запоминаем, кто и когда брал файл.
        */
       free_download: Boolean(body.free_download),
+      license_terms: normalizeLicenseTerms(body.license_terms),
+      collaborators: collaboratorsResult.value,
       /*
        * Бит выставляется в продажу сам, без второго шага.
        *

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
@@ -251,8 +252,7 @@ export function ShareBoard({ beats, channels, published }: Props) {
                 />
 
                 {beat.coverUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={beat.coverUrl} alt="" className="size-12 shrink-0 border border-line object-cover" />
+                  <Image src={beat.coverUrl} alt="" width={48} height={48} className="size-12 shrink-0 border border-line object-cover" />
                 ) : (
                   <span aria-hidden className="cover-grid size-12 shrink-0 border border-line" />
                 )}

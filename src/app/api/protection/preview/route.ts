@@ -1,5 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { clientKey, rateLimit } from "@/lib/rate-limit";
+import { createClient } from "@/lib/supabase/server";
+
 /**
  * Прокси превью.
  *
@@ -40,6 +43,29 @@ const ALLOWED_HOSTS = [
 const MAX_BYTES = 8 * 1024 * 1024;
 
 export async function GET(request: NextRequest) {
+  /*
+   * Вход и лимит.
+   *
+   * Прокси без входа и без ограничения — это способ выкачивать трафик
+   * площадки за наш счёт: восемь мегабайт на запрос без счётчика.
+   */
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return NextResponse.json({ error: "Нужно войти" }, { status: 401 });
+
+  const gate = rateLimit(clientKey(request, "protection-preview"), 60, 60_000);
+
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "Слишком много запросов, подожди минуту" },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
+    );
+  }
+
   const url = request.nextUrl.searchParams.get("url") ?? "";
 
   let target: URL;

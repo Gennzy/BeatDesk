@@ -1,3 +1,5 @@
+"server-only";
+
 import { createClient } from "@supabase/supabase-js";
 
 import { isCode, isSafeTarget, newCode, normalizeTarget, shortUrl } from "./short-links";

@@ -3,13 +3,14 @@
 import { CURRENCIES, DEFAULT_CURRENCY, formatMoney, isCurrency, type CurrencyCode } from "@/lib/currency";
 
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useState, type FormEvent } from "react";
 
 import { BeatAssistant } from "@/components/beats/beat-assistant";
 import { SellReadiness } from "@/components/beats/sell-readiness";
 import { CurrencyPicker } from "@/components/profile/currency-picker";
 import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/input";
+import { Field, Input, Textarea } from "@/components/ui/input";
 import { KeyPicker } from "@/components/ui/key-picker";
 import { GenreSelect } from "@/components/beat/genre-select";
 import { Switch } from "@/components/ui/switch";
@@ -63,6 +64,8 @@ type Props = {
     discountPercent: number;
     /** Цены до скидки, для зачёркивания. Пусто, если скидки нет. */
     pricesBefore: FeedBeat["prices"] | null;
+    /** Условия лицензии по уровням. */
+    licenseTerms?: FeedBeat["licenseTerms"];
   };
 };
 
@@ -294,6 +297,34 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
       }),
     );
 
+    const pick = (name: string) => String(form.get(name) ?? "").trim();
+    const terms = {
+      mp3: pick("licenseTermsMp3") || undefined,
+      bundle: pick("licenseTermsBundle") || undefined,
+      trackout: pick("licenseTermsTrackout") || undefined,
+      exclusive: pick("licenseTermsExclusive") || undefined,
+    };
+    if (Object.values(terms).some(Boolean)) {
+      payload.set("license_terms", JSON.stringify(terms));
+    }
+
+    const collaboratorsRaw = String(form.get("collaborators") ?? "").trim();
+    if (collaboratorsRaw) {
+      const rows = collaboratorsRaw
+        .split(/\n|,|;/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const parts = line.split(/\s+/);
+          const username = parts[0];
+          const percent = Number(parts[1]);
+          if (!username || !Number.isFinite(percent)) return null;
+          return { username, share_bps: Math.round(percent * 100) };
+        })
+        .filter((row): row is { username: string; share_bps: number } => row !== null);
+      if (rows.length > 0) payload.set("collaborators", JSON.stringify(rows));
+    }
+
     const tagList = parseTags(tags);
 
     // Строку тегов убираем: сервер ждёт массив, и без этого поле уходило
@@ -325,13 +356,11 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-10">
       <div className="flex flex-wrap items-center gap-5">
-        <div className="grid size-24 shrink-0 place-items-center overflow-hidden border border-line bg-ink-2">
+        <div className="relative grid size-24 shrink-0 place-items-center overflow-hidden border border-line bg-ink-2">
           {cover ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={coverPreview ?? undefined} alt="" className="size-full object-cover" />
+            <Image src={coverPreview ?? ""} alt="" fill sizes="96px" className="object-cover" />
           ) : beat.coverUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={beat.coverUrl} alt="" className="size-full object-cover" />
+            <Image src={beat.coverUrl} alt="" fill sizes="96px" className="object-cover" />
           ) : (
             <span className="label text-mute">{t("feed.noCover")}</span>
           )}
@@ -511,7 +540,7 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
             name="priceMp3"
             type="number"
             inputMode="numeric"
-            defaultValue={beat.prices.mp3 ?? ""}
+            defaultValue={(beat.pricesBefore ?? beat.prices).mp3 ?? ""}
             onChange={(event) =>
               setPrices((current) => ({ ...current, mp3: toPrice(event.target.value) }))
             }
@@ -523,7 +552,7 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
             name="priceBundle"
             type="number"
             inputMode="numeric"
-            defaultValue={beat.prices.wav ?? ""}
+            defaultValue={(beat.pricesBefore ?? beat.prices).wav ?? ""}
             onChange={(event) =>
               setPrices((current) => ({ ...current, bundle: toPrice(event.target.value) }))
             }
@@ -535,7 +564,7 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
             name="priceTrackout"
             type="number"
             inputMode="numeric"
-            defaultValue={beat.prices.trackout ?? ""}
+            defaultValue={(beat.pricesBefore ?? beat.prices).trackout ?? ""}
             onChange={(event) =>
               setPrices((current) => ({ ...current, trackout: toPrice(event.target.value) }))
             }
@@ -547,7 +576,7 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
             name="priceExclusive"
             type="number"
             inputMode="numeric"
-            defaultValue={beat.prices.exclusive ?? ""}
+            defaultValue={(beat.pricesBefore ?? beat.prices).exclusive ?? ""}
             onChange={(event) =>
               setPrices((current) => ({ ...current, exclusive: toPrice(event.target.value) }))
             }
@@ -555,11 +584,30 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
           />
         </Field>
 
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={`${t("upload.licenseTerms")} — MP3`}>
+            <Textarea name="licenseTermsMp3" defaultValue={(beat.licenseTerms?.mp3 ?? "")} className="min-h-20" />
+          </Field>
+          <Field label={`${t("upload.licenseTerms")} — MP3 + WAV`}>
+            <Textarea name="licenseTermsBundle" defaultValue={(beat.licenseTerms?.bundle ?? "")} className="min-h-20" />
+          </Field>
+          <Field label={`${t("upload.licenseTerms")} — Track Out`}>
+            <Textarea name="licenseTermsTrackout" defaultValue={(beat.licenseTerms?.trackout ?? "")} className="min-h-20" />
+          </Field>
+          <Field label={`${t("upload.licenseTerms")} — ${t("upload.priceExclusive")}`}>
+            <Textarea name="licenseTermsExclusive" defaultValue={(beat.licenseTerms?.exclusive ?? "")} className="min-h-20" />
+          </Field>
+        </div>
+
         {/*
           Скидка применяется к введённым ценам. Считаем и показываем
           результат сразу: битмейкер должен видеть, что получит покупатель,
           а не проверять арифметику в голове.
         */}
+        <Field label="Соавторы" hint="По одному на строку: ник и доля в процентах, например «john 50». Сумма долей должна быть 100%.">
+          <Textarea name="collaborators" className="min-h-20 font-mono" />
+        </Field>
+
         <Field label={t("discount.label")} hint={t("discount.hint")} optional={t("discount.optional")}>
           <Input
             name="discountPercent"
