@@ -32,7 +32,7 @@ export const metadata: Metadata = {
  * черновик дороже пустого кабинета. Первым показывается то, что стоит денег.
  */
 
-type ToolLabel = "cabinet.beats" | "cabinet.channels" | "cabinet.pulse" | "cabinet.studio" | "cabinet.analytics" | "cabinet.ads";
+type ToolLabel = "cabinet.beats" | "cabinet.channels" | "cabinet.pulse" | "cabinet.studio" | "cabinet.analytics" | "cabinet.ads" | "cabinet.roster";
 
 type Tool = { href: string; icon: IconName; label: ToolLabel; hint: `${ToolLabel}Hint` };
 
@@ -52,6 +52,7 @@ const TOOLS: Tool[] = [
   { href: "/cabinet/studio", icon: "waveform", label: "cabinet.studio", hint: "cabinet.studioHint" },
   { href: "/cabinet/analytics", icon: "trend", label: "cabinet.analytics", hint: "cabinet.analyticsHint" },
   { href: "/cabinet/ads", icon: "share", label: "cabinet.ads", hint: "cabinet.adsHint" },
+  { href: "/cabinet/roster", icon: "follow", label: "cabinet.roster", hint: "cabinet.rosterHint" },
 ];
 
 export default async function CabinetPage() {
