@@ -419,6 +419,7 @@ export type BeatInsert = {
   prices: Prices;
   /** Условия лицензии по уровням. Необязательно — пусто = стандартные. */
   license_terms?: LicenseTerms;
+  roster_member_id?: string | null;
   /** Соавторы и их доли. Пусто = один владелец. */
   collaborators?: Array<{ user_id?: string; username?: string; share_bps: number }>;
   /**

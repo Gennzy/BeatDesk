@@ -26,6 +26,7 @@ type Body = {
   is_public?: unknown;
   free_download?: unknown;
   license_terms?: unknown;
+  roster_member_id?: unknown;
   collaborators?: unknown;
 };
 
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
 
   const mp3Url = text(body.mp3_url, 500);
   const coverUrl = text(body.cover_url, 500);
-
+  const rosterMemberId = text(body.roster_member_id, 100);
   // Соавторы могут прийти как {user_id, share_bps} или {username, share_bps}.
   // Во втором случае разрешаем имя в id профиля здесь, на сервере.
   let rawCollaborators = body.collaborators;
@@ -165,6 +166,7 @@ export async function POST(request: Request) {
        */
       free_download: Boolean(body.free_download),
       license_terms: normalizeLicenseTerms(body.license_terms),
+      roster_member_id: rosterMemberId,
       collaborators: collaboratorsResult.value,
       /*
        * Бит выставляется в продажу сам, без второго шага.

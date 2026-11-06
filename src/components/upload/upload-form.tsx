@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent, useMemo } from "react";
+import { useEffect, useState, type FormEvent, useMemo } from "react";
 
 import { CurrencyPicker } from "@/components/profile/currency-picker";
 import { Button } from "@/components/ui/button";
@@ -82,8 +82,17 @@ export function UploadForm({ userId }: { userId: string }) {
   const [status, setStatus] = useState<Status>("idle");
   const [step, setStep] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/roster")
+      .then((response) => response.json())
+      .then((data: { members?: { id: string; name: string }[] }) => setRosterMembers(data.members ?? []))
+      .catch(() => setRosterMembers([]));
+  }, []);
   // Символ валюты под ценами: выбрал валюту — подписи перестали врать.
   const [currency, setCurrency] = useState<CurrencyCode>("RUB");
+  const [rosterMembers, setRosterMembers] = useState<{ id: string; name: string }[]>([]);
+  const [rosterMemberId, setRosterMemberId] = useState<string>("");
   const currencyHint = CURRENCIES.find((item) => item.code === currency)?.symbol ?? "₽";
 
   /*
@@ -275,6 +284,7 @@ if (!files.mp3) {
       // именно из состояния: hidden-поле может не отправиться.
       currency,
       is_public: form.get("isPublic") === "on",
+      roster_member_id: rosterMemberId || null,
     // Бесплатное скачивание: решение битмейкера, и вместе с ним бит
     // встаёт под защиту — мы запоминаем, кто и когда его брал.
     free_download: form.get("freeDownload") === "on",
@@ -409,6 +419,24 @@ if (!files.mp3) {
                 <CurrencyPicker name="currency" value={currency} onChange={setCurrency} />
               </Field>
             </div>
+
+            {rosterMembers.length > 0 ? (
+              <div className="max-w-xs">
+                <Field label="Артист (из команды)">
+                  <select
+                    name="rosterMemberId"
+                    value={rosterMemberId}
+                    onChange={(event) => setRosterMemberId(event.target.value)}
+                    className="h-12 w-full rounded-control border border-line bg-ink-2 px-3 text-paper"
+                  >
+                    <option value="">— без артиста —</option>
+                    {rosterMembers.map((member) => (
+                      <option key={member.id} value={member.id}>{member.name}</option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+            ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Field label={t("upload.priceMp3")}>

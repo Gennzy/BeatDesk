@@ -194,6 +194,11 @@ patch.genre = normalizeGenre(genre);
     patch.license_terms = normalizeLicenseTerms(licenseTerms);
   }
 
+  const rosterMemberId = form.get("rosterMemberId");
+  if (rosterMemberId !== null) {
+    patch.roster_member_id = rosterMemberId === "" ? null : String(rosterMemberId);
+  }
+
   const collaboratorsRaw = parseJson<unknown>(form.get("collaborators"));
   if (collaboratorsRaw !== null && collaboratorsRaw !== undefined) {
     let resolved: unknown = collaboratorsRaw;

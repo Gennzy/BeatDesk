@@ -65,6 +65,10 @@ export type FeedBeat = {
   score: number;
   /** Жанр бита: null — без жанра. */
   genre: GenreSlug | null;
+  /** ID артиста из ростера, для которого написан бит. */
+  rosterMemberId: string | null;
+  /** Имя артиста из ростера (для отображения). */
+  rosterMemberName: string | null;
   /** Скидка в процентах: ноль — скидки нет. */
   discountPercent: number;
   /** Цены до скидки, для зачёркивания. */
@@ -98,6 +102,8 @@ type BeatRow = {
   plays?: number;
   score?: number | null;
   genre?: string | null;
+  roster_member_id?: string | null;
+  roster_members?: { name: string } | { name: string }[] | null;
   discount_percent?: number | null;
   prices_before?: Record<string, number | null> | null;
   license_terms?: Record<string, string> | null;
@@ -111,7 +117,7 @@ type BeatRow = {
 };
 
 const BEAT_COLUMNS =
-  "id, title, bpm, key, genre, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, discount_percent, prices_before, license_terms, created_at, updated_at, profiles!beats_owner_id_fkey(username, avatar_url, level), beat_reactions(kind, user_id)";
+  "id, title, bpm, key, genre, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, discount_percent, prices_before, license_terms, roster_member_id, created_at, updated_at, profiles!beats_owner_id_fkey(username, avatar_url, level), roster_members!beats_roster_member_id_fkey(name), beat_reactions(kind, user_id)";
 
 /**
  * Пока не применена миграция 0035, колонок скидки ещё нет.
@@ -121,7 +127,7 @@ const BEAT_COLUMNS =
  * уровней. Здесь теряется только скидка — сайт продолжает работать.
  */
 const PRE_DISCOUNT_BEAT_COLUMNS =
-  "id, title, bpm, key, genre, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, license_terms, created_at, updated_at, profiles!beats_owner_id_fkey(username, avatar_url, level), beat_reactions(kind, user_id)";
+  "id, title, bpm, key, genre, tags, type_beat_artists, cover_url, mp3_url, prices, currency, is_public, sale_state, plays, score, license_terms, roster_member_id, created_at, updated_at, profiles!beats_owner_id_fkey(username, avatar_url, level), roster_members!beats_roster_member_id_fkey(name), beat_reactions(kind, user_id)";
 
 /** Пока не применена миграция 0007, колонок plays и updated_at ещё нет в базе. */
 const LEGACY_BEAT_COLUMNS =
@@ -149,6 +155,8 @@ function serialize(row: BeatRow, viewerId?: string | null): FeedBeat {
     plays: row.plays ?? 0,
     score: Number(row.score ?? 0),
     genre: normalizeGenre(row.genre),
+    rosterMemberId: row.roster_member_id ?? null,
+    rosterMemberName: (Array.isArray(row.roster_members) ? row.roster_members[0]?.name : row.roster_members?.name) ?? null,
     discountPercent: Number(row.discount_percent ?? 0),
     pricesBefore: row.prices_before ? normalizePrices(row.prices_before) : null,
     licenseTerms: (row.license_terms ?? {}) as LicenseTerms,

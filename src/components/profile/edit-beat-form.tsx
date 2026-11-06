@@ -4,7 +4,7 @@ import { CURRENCIES, DEFAULT_CURRENCY, formatMoney, isCurrency, type CurrencyCod
 
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { BeatAssistant } from "@/components/beats/beat-assistant";
 import { SellReadiness } from "@/components/beats/sell-readiness";
@@ -66,6 +66,7 @@ type Props = {
     pricesBefore: FeedBeat["prices"] | null;
     /** Условия лицензии по уровням. */
     licenseTerms?: FeedBeat["licenseTerms"];
+    rosterMemberId?: string | null;
   };
 };
 
@@ -202,6 +203,15 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
    * prices_before: битмейкер правит исходную цену, а процент — это способ
    * показать, сколько с неё срезать.
    */
+  const [rosterMembers, setRosterMembers] = useState<{ id: string; name: string }[]>([]);
+  const [rosterMemberId, setRosterMemberId] = useState<string>(beat.rosterMemberId ?? "");
+
+  useEffect(() => {
+    fetch("/api/roster")
+      .then((response) => response.json())
+      .then((data: { members?: { id: string; name: string }[] }) => setRosterMembers(data.members ?? []))
+      .catch(() => setRosterMembers([]));
+  }, []);
   const [prices, setPrices] = useState<Record<TierId, number | null>>({
     mp3: (beat.pricesBefore ?? beat.prices).mp3 ?? null,
     bundle: (beat.pricesBefore ?? beat.prices).wav ?? null,
@@ -307,6 +317,8 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
     if (Object.values(terms).some(Boolean)) {
       payload.set("license_terms", JSON.stringify(terms));
     }
+
+    payload.set("rosterMemberId", rosterMemberId || "");
 
     const collaboratorsRaw = String(form.get("collaborators") ?? "").trim();
     if (collaboratorsRaw) {
@@ -607,6 +619,24 @@ const DISCOUNT_TIERS: { key: string; label: string; priceKey: TierId }[] = [
         <Field label="Соавторы" hint="По одному на строку: ник и доля в процентах, например «john 50». Сумма долей должна быть 100%.">
           <Textarea name="collaborators" className="min-h-20 font-mono" />
         </Field>
+
+        {rosterMembers.length > 0 ? (
+          <div className="max-w-xs">
+            <Field label="Артист (из команды)">
+              <select
+                name="rosterMemberId"
+                value={rosterMemberId}
+                onChange={(event) => setRosterMemberId(event.target.value)}
+                className="h-12 w-full rounded-control border border-line bg-ink-2 px-3 text-paper"
+              >
+                <option value="">— без артиста —</option>
+                {rosterMembers.map((member) => (
+                  <option key={member.id} value={member.id}>{member.name}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        ) : null}
 
         <Field label={t("discount.label")} hint={t("discount.hint")} optional={t("discount.optional")}>
           <Input

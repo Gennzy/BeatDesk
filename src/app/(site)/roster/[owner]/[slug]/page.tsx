@@ -32,6 +32,14 @@ export default async function RosterMemberPage({ params }: { params: Promise<{ o
   const profile = Array.isArray(member?.profiles) ? member?.profiles[0] : member?.profiles;
   if (!member || profile?.username !== owner) notFound();
 
+  const { data: beats } = await client
+    .from("beats")
+    .select("id, title, bpm, key, cover_url")
+    .eq("roster_member_id", member.id)
+    .eq("is_public", true)
+    .order("created_at", { ascending: false })
+    .limit(12);
+
   return (
     <section className="py-10 lg:py-20">
       <Container>
@@ -46,7 +54,18 @@ export default async function RosterMemberPage({ params }: { params: Promise<{ o
           </div>
         </div>
         <div className="pt-10">
-          <p className="text-sm text-mute">Биты и посты этого артиста появятся здесь в следующих этапах.</p>
+          {(beats ?? []).length === 0 ? (
+            <p className="text-sm text-mute">Битов пока нет.</p>
+          ) : (
+            <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {(beats ?? []).map((beat: { id: string; title: string; bpm: number; key: string; cover_url: string | null }) => (
+                <li key={beat.id} className="panel flex flex-col gap-2 p-4">
+                  <a href={`/beats/${beat.id}`} className="text-sm font-semibold text-paper hover:text-signal">{beat.title}</a>
+                  <span className="label text-mute">{beat.bpm} BPM · {beat.key}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </Container>
     </section>

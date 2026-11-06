@@ -31,7 +31,7 @@ export default async function EditBeatPage({ params }: { params: Promise<{ id: s
 
   const { data: beat } = await supabase
     .from("beats")
-    .select("id, title, type_beat_artists, bpm, key, tags, genre, prices, prices_before, discount_percent, is_public, sale_state, mp3_url, cover_url, owner_id, files")
+    .select("id, title, type_beat_artists, bpm, key, tags, genre, prices, prices_before, discount_percent, is_public, sale_state, mp3_url, cover_url, owner_id, files, roster_member_id")
     .eq("id", id)
     .maybeSingle();
 
@@ -95,6 +95,7 @@ export default async function EditBeatPage({ params }: { params: Promise<{ id: s
               prices: normalizePrices(beat.prices),
               discountPercent: beat.discount_percent ?? 0,
               pricesBefore: beat.prices_before ? normalizePrices(beat.prices_before) : null,
+              rosterMemberId: beat.roster_member_id ?? null,
               isPublic: beat.is_public,
               coverUrl: beat.cover_url,
               hasStems: Boolean(beat.files?.zip ?? beat.files?.rar),

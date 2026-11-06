@@ -96,7 +96,7 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
 
   if (!raw) notFound();
 
-  const beat = raw as typeof raw & { plays?: number | null; views?: number | null; impressions?: number | null };
+  const beat = raw as typeof raw & { plays?: number | null; views?: number | null; impressions?: number | null; roster_member_id?: string | null; roster_members?: { name: string } | { name: string }[] | null };
 
   const {
     data: { user },
@@ -333,6 +333,11 @@ const sellable = saleState === "on_sale" && beat.is_public === true;
                     {beat.type_beat_artists && beat.type_beat_artists.length > 0 ? (
                       <BeatFact label={t("feed.typeOf")} value={beat.type_beat_artists.join(", ")} />
                     ) : null}
+                    {(() => {
+                      const rm = Array.isArray(beat.roster_members) ? beat.roster_members[0] : beat.roster_members;
+                      const name = rm?.name;
+                      return name ? <BeatFact label="Артист" value={name} /> : null;
+                    })()}
                   </dl>
                 </section>
 

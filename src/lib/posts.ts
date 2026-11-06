@@ -36,6 +36,8 @@ export type PostBeat = {
   discountPercent: number;
   pricesBefore: Prices | null;
   licenseTerms?: LicenseTerms;
+  rosterMemberId?: string | null;
+  rosterMemberName?: string | null;
   likes: number;
   saves: number;
   prices: Prices;
@@ -504,6 +506,8 @@ export function beatToFeedCard(beat: PostBeat, author: PostAuthor): FeedBeat {
     discountPercent: beat.discountPercent,
     pricesBefore: beat.pricesBefore,
     licenseTerms: beat.licenseTerms ?? {},
+    rosterMemberId: beat.rosterMemberId ?? null,
+    rosterMemberName: beat.rosterMemberName ?? null,
     likes: beat.likes,
     saves: beat.saves,
     liked: false,
