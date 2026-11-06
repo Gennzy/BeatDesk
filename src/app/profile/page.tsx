@@ -35,7 +35,7 @@ export default async function ProfilePage() {
   }
 
   const [profileResult, collaboratorsResult] = await Promise.all([
-    supabase.from("profiles").select("username, avatar_url, cover_url, bio, links, mode").eq("id", user.id).maybeSingle(),
+    supabase.from("profiles").select("username, avatar_url, cover_url, bio, links, mode, aliases").eq("id", user.id).maybeSingle(),
     supabase
       .from("profile_collaborators")
       .select("name")
@@ -116,6 +116,7 @@ export default async function ProfilePage() {
                 bio: profile.bio,
                 links: (profile.links ?? {}) as Record<string, string>,
                 collaborators,
+                aliases: profile.aliases ?? [],
               }}
             />
           </div>
