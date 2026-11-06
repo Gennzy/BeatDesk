@@ -75,6 +75,16 @@ export default async function ProfilePage() {
             followers={follow.followerCount}
             posts={posts.length}
           />
+          {(profile.roster ?? []).length > 0 ? (
+            <div className="pt-4">
+              <span className="label text-mute">Команда</span>
+              <ul className="mt-2 flex flex-wrap gap-2">
+                {(profile.roster as { name: string }[]).map((member, index) => (
+                  <li key={index} className="chip text-mute">{member.name}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-12 pt-12">
