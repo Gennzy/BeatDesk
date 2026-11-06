@@ -20,6 +20,7 @@ export type ProfileData = {
   bio: string | null;
   collaborators: string[];
   aliases: string[];
+  roster: { name: string }[];
   links: Record<string, string>;
 };
 
@@ -45,6 +46,7 @@ export function ProfileForm({ userId, profile }: { userId: string; profile: Prof
   const [username, setUsername] = useState(profile.username);
   const [bio, setBio] = useState(profile.bio ?? "");
   const [aliases, setAliases] = useState((profile.aliases ?? []).join(", "));
+  const [roster, setRoster] = useState((profile.roster ?? []).map((r: { name?: string }) => r.name ?? "").join("\n"));
   const [collaborators, setCollaborators] = useState(profile.collaborators.join(", "));
   const [links, setLinks] = useState<Record<string, string>>(profile.links);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatarUrl);
@@ -170,6 +172,7 @@ export function ProfileForm({ userId, profile }: { userId: string; profile: Prof
           username: username.trim(),
           bio: bio.trim() || null,
           aliases: aliases.split(",").map((a) => a.trim()).filter(Boolean),
+          roster: roster.split("\n").map((name) => name.trim()).filter(Boolean).map((name) => ({ name })),
           links: Object.fromEntries(PLATFORMS.map((platform) => [platform.key, links[platform.key] ?? ""])),
           ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
           ...(coverUrl ? { cover_url: coverUrl } : {}),
@@ -300,6 +303,10 @@ export function ProfileForm({ userId, profile }: { userId: string; profile: Prof
 
         <Field label="Сценические имена" hint="Через запятую: псевдонимы, под которыми вы выступаете.">
           <Input name="aliases" value={aliases} onChange={(event) => setAliases(event.target.value)} placeholder="DJ X, Producer Y" />
+        </Field>
+
+        <Field label="Команда (roster)" hint="По одному имени на строку: артисты и проекты под вашим аккаунтом.">
+          <Textarea name="roster" value={roster} onChange={(event) => setRoster(event.target.value)} className="min-h-20" placeholder="Artist One\nArtist Two" />
         </Field>
 
         <Field label={t("profile.collaborators")} hint={t("profile.collaboratorsHint")}>
