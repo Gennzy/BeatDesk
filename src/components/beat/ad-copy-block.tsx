@@ -8,9 +8,9 @@ import { useI18n } from "@/lib/i18n/provider";
 /**
  * Блок рекламных текстов для бита.
  *
- * Генерирует заготовки под Meta (Facebook/Instagram) и Google Search на основе
- * метаданных бита. Человек копирует и правит под себя — это стартовый
- * каркас, а не финальный текст.
+ * Генерирует несколько вариантов заголовков и основных текстов под Meta
+ * (Facebook/Instagram) и Google Search на основе метаданных бита. Человек
+ * копирует и правит под себя — это стартовый каркас, а не финальный текст.
  */
 export function AdCopyBlock({ title, bpm, musicalKey, tags }: { title: string; bpm: number; musicalKey: string; tags: string[] }) {
   const { t } = useI18n();
@@ -18,9 +18,17 @@ export function AdCopyBlock({ title, bpm, musicalKey, tags }: { title: string; b
 
   const tagLine = tags.slice(0, 3).map((tag) => `#${tag}`).join(" ");
 
-  const metaHeadline = `${title} Type Beat — ${bpm} BPM ${musicalKey}`;
+  const metaHeadlines = [
+    `${title} Type Beat — ${bpm} BPM ${musicalKey}`,
+    `${title} Type Beat | ${bpm} BPM ${musicalKey} Instrumental`,
+    `New ${title} Type Beat — ${bpm} BPM`,
+  ];
   const metaPrimary = `${title} type beat. ${bpm} BPM, ${musicalKey}. ${tagLine}. Лицензия и эксклюзив — по ссылке.`;
-  const googleHeadline = `${title} Type Beat | ${bpm} BPM`;
+  const googleHeadlines = [
+    `${title} Type Beat | ${bpm} BPM`,
+    `${title} Beat — ${bpm} BPM ${musicalKey}`,
+    `Buy ${title} Type Beat`,
+  ];
   const googleDescription = `Купить бит ${title}: ${bpm} BPM, ${musicalKey}. Лицензия и эксклюзив. Скачать сразу после оплаты.`;
 
   async function copy(key: string, text: string) {
@@ -33,26 +41,34 @@ export function AdCopyBlock({ title, bpm, musicalKey, tags }: { title: string; b
     }
   }
 
-  const rows: { key: string; label: string; text: string }[] = [
-    { key: "meta-headline", label: "Meta · заголовок", text: metaHeadline },
-    { key: "meta-primary", label: "Meta · основной текст", text: metaPrimary },
-    { key: "google-headline", label: "Google · заголовок", text: googleHeadline },
-    { key: "google-description", label: "Google · описание", text: googleDescription },
+  const sections: { label: string; items: { key: string; text: string }[] }[] = [
+    {
+      label: "Meta · заголовки",
+      items: metaHeadlines.map((text, index) => ({ key: `meta-h-${index}`, text })),
+    },
+    { label: "Meta · основной текст", items: [{ key: "meta-primary", text: metaPrimary }] },
+    {
+      label: "Google · заголовки",
+      items: googleHeadlines.map((text, index) => ({ key: `google-h-${index}`, text })),
+    },
+    { label: "Google · описание", items: [{ key: "google-desc", text: googleDescription }] },
   ];
 
   return (
     <section className="flex flex-col gap-3">
       <h2 className="label text-mute">Рекламные тексты</h2>
-      <div className="flex flex-col gap-3">
-        {rows.map((row) => (
-          <div key={row.key} className="flex flex-col gap-1.5 border-b border-line pb-3 last:border-b-0">
-            <div className="flex items-center justify-between">
-              <span className="label text-mute">{row.label}</span>
-              <Button type="button" size="sm" variant="ghost" onClick={() => void copy(row.key, row.text)}>
-                {copied === row.key ? "Скопировано" : "Копировать"}
-              </Button>
-            </div>
-            <p className="text-sm text-paper">{row.text}</p>
+      <div className="flex flex-col gap-4">
+        {sections.map((section) => (
+          <div key={section.label} className="flex flex-col gap-2">
+            <span className="label text-mute">{section.label}</span>
+            {section.items.map((item) => (
+              <div key={item.key} className="flex items-center justify-between gap-3 border-b border-line pb-2 last:border-b-0">
+                <p className="min-w-0 flex-1 text-sm text-paper">{item.text}</p>
+                <Button type="button" size="sm" variant="ghost" onClick={() => void copy(item.key, item.text)}>
+                  {copied === item.key ? "Скопировано" : "Копировать"}
+                </Button>
+              </div>
+            ))}
           </div>
         ))}
       </div>
