@@ -11,6 +11,7 @@ import { SellerCard } from "@/components/beat/seller-card";
 import { BeatShare } from "@/components/beat/beat-share";
 import { ShareToTelegram } from "@/components/platforms/share-to-telegram";
 import { SmartLinkButton } from "@/components/beat/smart-link-button";
+import { AdCopyBlock } from "@/components/beat/ad-copy-block";
 import { BeatOffer } from "@/components/sales/beat-offer";
 import { FreeDownloadButton } from "@/components/sales/free-download-button";
 import { ProtectButton } from "@/components/protection/protect-button";
@@ -381,6 +382,7 @@ const sellable = saleState === "on_sale" && beat.is_public === true;
                   */}
                   {isOwner ? <ShareToTelegram beatId={beat.id} /> : null}
                   {isOwner ? <SmartLinkButton beatId={beat.id} /> : null}
+                  {isOwner ? <AdCopyBlock title={beat.title} bpm={beat.bpm} musicalKey={beat.key} tags={beat.tags ?? []} /> : null}
 
                   {/*
                     Бесплатное скачивание.
