@@ -23,11 +23,14 @@ export default async function CabinetRosterPage() {
 
   if (!user) redirect("/login?next=/cabinet/roster");
 
-  const { data: members } = await supabase
+  const [{ data: profile }, { data: members }] = await Promise.all([
+    supabase.from("profiles").select("username").eq("id", user.id).maybeSingle(),
+    supabase
     .from("roster_members")
     .select("id, name, slug, avatar_url, bio, created_at")
     .eq("owner_id", user.id)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true }),
+  ]);
 
   return (
     <section className="py-10 lg:py-20">
@@ -37,7 +40,7 @@ export default async function CabinetRosterPage() {
           <p className="label text-mute">Артисты и проекты, которые вы ведёте под своим аккаунтом.</p>
         </div>
         <div className="pt-10">
-          <RosterManager initial={members ?? []} />
+          <RosterManager initial={members ?? []} ownerUsername={profile?.username ?? ""} />
         </div>
       </Container>
     </section>

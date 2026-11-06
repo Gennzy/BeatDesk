@@ -9,7 +9,7 @@ import { useI18n } from "@/lib/i18n/provider";
 
 type Member = { id: string; name: string; slug: string; avatar_url: string | null; bio: string | null };
 
-export function RosterManager({ initial }: { initial: Member[] }) {
+export function RosterManager({ initial, ownerUsername }: { initial: Member[]; ownerUsername: string }) {
   const { t } = useI18n();
   const router = useRouter();
   const [members, setMembers] = useState<Member[]>(initial);
@@ -77,7 +77,7 @@ export function RosterManager({ initial }: { initial: Member[] }) {
           {members.map((member) => (
             <li key={member.id} className="panel flex items-center justify-between gap-3 p-4">
               <div className="flex flex-col">
-                <span className="text-sm font-semibold text-paper">{member.name}</span>
+                <a href={`/roster/${ownerUsername}/${member.slug}`} className="text-sm font-semibold text-paper hover:text-signal">{member.name}</a>
                 {member.bio ? <span className="text-xs text-mute">{member.bio}</span> : null}
               </div>
               <Button type="button" size="sm" variant="ghost" onClick={() => void remove(member.id)} disabled={busy}>
