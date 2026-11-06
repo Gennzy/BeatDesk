@@ -135,10 +135,12 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
 
   // Похожие биты: тот же жанр, исключая текущий. Простая эвристика,
   // без аудио-отпечатка: даёт discovery, пока Beat ID не готов.
-  // Похожие биты: тот же жанр ИЛИ пересечение тегов. Два запроса
-  // объединяются и дедуплицируются, чтобы не терять ни один источник.
+  // Похожие биты: тот же жанр ИЛИ пересечение тегов ИЛИ близкий BPM (±5).
+  // Три источника объединяются и дедуплицируются, чтобы не терять ни один.
   const tags = beat.tags ?? [];
-  const [{ data: byGenre }, { data: byTags }] = await Promise.all([
+  const bpmMin = Math.max(40, beat.bpm - 5);
+  const bpmMax = Math.min(300, beat.bpm + 5);
+  const [{ data: byGenre }, { data: byTags }, { data: byBpm }] = await Promise.all([
     beat.genre
       ? supabase
           .from("beats")
@@ -159,11 +161,20 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
           .order("plays", { ascending: false })
           .limit(6)
       : Promise.resolve({ data: [] as { id: string; title: string; bpm: number; key: string; cover_url: string | null; plays: number }[] }),
+    supabase
+      .from("beats")
+      .select("id, title, bpm, key, cover_url, plays")
+      .eq("is_public", true)
+      .gte("bpm", bpmMin)
+      .lte("bpm", bpmMax)
+      .neq("id", beat.id)
+      .order("plays", { ascending: false })
+      .limit(6),
   ]);
 
   const seen = new Set<string>();
   const similarBeats: { id: string; title: string; bpm: number; key: string; cover_url: string | null }[] = [];
-  for (const row of [...(byGenre ?? []), ...(byTags ?? [])]) {
+  for (const row of [...(byGenre ?? []), ...(byTags ?? []), ...(byBpm ?? [])]) {
     if (seen.has(row.id)) continue;
     seen.add(row.id);
     similarBeats.push(row);
