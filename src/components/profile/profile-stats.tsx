@@ -12,13 +12,14 @@ type Props = {
   username: string;
   avatarUrl: string | null;
   bio: string | null;
+  aliases?: string[];
   beats: FeedBeat[];
   followers: number;
   posts: number;
 };
 
 /** Сводка по профилю: цифры, ради которых вообще заходят в кабинет. */
-export function ProfileStats({ username, avatarUrl, bio, beats, followers, posts }: Props) {
+export function ProfileStats({ username, avatarUrl, bio, aliases, beats, followers, posts }: Props) {
   const { t, locale } = useI18n();
 
   const totalPlays = beats.reduce((sum, beat) => sum + beat.plays, 0);
@@ -46,6 +47,9 @@ export function ProfileStats({ username, avatarUrl, bio, beats, followers, posts
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <h1 className="font-display text-title text-paper uppercase">{username}</h1>
           {bio ? <p className="max-w-[60ch] text-sm text-mute">{bio}</p> : null}
+          {aliases && aliases.length > 0 ? (
+            <p className="label text-mute">Алиасы: {aliases.join(", ")}</p>
+          ) : null}
         </div>
       </div>
 

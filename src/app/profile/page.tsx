@@ -70,6 +70,7 @@ export default async function ProfilePage() {
             username={profile.username}
             avatarUrl={profile.avatar_url}
             bio={profile.bio}
+            aliases={profile.aliases ?? []}
             beats={beats}
             followers={follow.followerCount}
             posts={posts.length}
